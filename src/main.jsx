@@ -7,7 +7,7 @@ import firebaseStore from "./firebase";
 if (!window.storage) {
   const SERVER_PREFIX = "portal";
   const MIGRATION_FLAG_KEY = "__server_migrated_v1__";
-  const STORAGE_TIMEOUT_MS = 5000;
+  const STORAGE_TIMEOUT_MS = 2000;
   const serverKey = (key) => `${SERVER_PREFIX}/${key}`;
   const withTimeout = (promise, fallbackValue) =>
     Promise.race([

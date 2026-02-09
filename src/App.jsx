@@ -287,6 +287,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null); // student | worker | admin
   const [rememberSession, setRememberSession] = useState(true);
+  const [savedCredentials, setSavedCredentials] = useState(null);
 
   // ─── Data State (persistent) ───────────────────────────────────
   const [reservations, setReservations] = useState([]);
@@ -311,50 +312,56 @@ export default function App() {
   // ─── Load persisted data ───────────────────────────────────────
   useEffect(() => {
     (async () => {
-      const [res, eq, lg, notif, wk, sheet, session, remember, overdue, warn, blk, certs, prints] = await Promise.all([
-        store.get("reservations"),
-        store.get("equipRentals"),
-        store.get("logs"),
-        store.get("notifications"),
-        store.get("workers"),
-        store.get("sheetConfig"),
-        store.get("session"),
-        store.get("rememberSession"),
-        store.get("overdueFlags"),
-        store.get("warnings"),
-        store.get("blacklist"),
-        store.get("certificates"),
-        store.get("inquiries"),
-        store.get("printRequests"),
-      ]);
-      if (res) setReservations(res);
-      if (eq) setEquipRentals(eq);
-      if (lg) setLogs(lg);
-      if (notif) setNotifications(notif);
-      if (wk) setWorkers(wk);
-      if (sheet) setSheetConfig(sheet);
-      if (overdue) setOverdueFlags(overdue);
-      if (warn) setWarnings(warn);
-      if (blk) setBlacklist(blk);
-      if (certs) setCertificates(certs);
-      const inq = await store.get("inquiries");
-      if (inq) setInquiries(inq);
-      if (prints) setPrintRequests(prints);
-      
-      // 방문 횟수 및 방문자 목록 로드 (로그인 기반)
-      const visits = await store.get("visitCount");
-      const visitors = await store.get("visitedUsers");
-      if (visits) setVisitCount(visits);
-      if (visitors) setVisitedUsers(visitors);
-      
-      const rememberPref = remember ?? true;
-      setRememberSession(rememberPref);
-      if (rememberPref && session?.user && session?.role) {
-        setCurrentUser(session.user);
-        setUserRole(session.role);
-        setPage(session.page || session.role);
+      try {
+        // 1단계: 로그인 화면에 꼭 필요한 2개만 먼저 로드 → 즉시 화면 표시
+        const [session, remember] = await Promise.all([
+          store.get("session"),
+          store.get("rememberSession"),
+        ]);
+
+        const rememberPref = remember ?? true;
+        setRememberSession(rememberPref);
+        if (rememberPref && session?.user && session?.role) {
+          setSavedCredentials({ user: session.user, role: session.role });
+        }
+
+        setDataLoaded(true);
+
+        // 2단계: 나머지 데이터 백그라운드 로드 (화면 표시 후)
+        const [wk, warn, blk, certs, res, eq, lg, notif, sheet, overdue, inq, prints, visits, visitors] = await Promise.all([
+          store.get("workers"),
+          store.get("warnings"),
+          store.get("blacklist"),
+          store.get("certificates"),
+          store.get("reservations"),
+          store.get("equipRentals"),
+          store.get("logs"),
+          store.get("notifications"),
+          store.get("sheetConfig"),
+          store.get("overdueFlags"),
+          store.get("inquiries"),
+          store.get("printRequests"),
+          store.get("visitCount"),
+          store.get("visitedUsers"),
+        ]);
+        if (wk) setWorkers(wk);
+        if (warn) setWarnings(warn);
+        if (blk) setBlacklist(blk);
+        if (certs) setCertificates(certs);
+        if (res) setReservations(res);
+        if (eq) setEquipRentals(eq);
+        if (lg) setLogs(lg);
+        if (notif) setNotifications(notif);
+        if (sheet) setSheetConfig(sheet);
+        if (overdue) setOverdueFlags(overdue);
+        if (inq) setInquiries(inq);
+        if (prints) setPrintRequests(prints);
+        if (visits) setVisitCount(visits);
+        if (visitors) setVisitedUsers(visitors);
+      } catch (error) {
+        console.error("Initial data load failed:", error);
+        setDataLoaded(true);
       }
-      setDataLoaded(true);
     })();
   }, []);
 
@@ -820,6 +827,7 @@ export default function App() {
             updateCertificates={updateCertificates}
             inquiries={inquiries}
             updateInquiries={updateInquiries}
+            savedCredentials={savedCredentials}
           />
         )}
         {page === "student" && (
@@ -898,11 +906,11 @@ export default function App() {
 // ════════════════════════════════════════════════════════════════
 //  LOGIN PAGE
 // ════════════════════════════════════════════════════════════════
-function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSession, onRememberSessionChange, blacklist, warnings, certificates, updateCertificates, inquiries, updateInquiries }) {
-  const [mode, setMode] = useState("student"); // student | worker | admin
-  const [sid, setSid] = useState("");
-  const [sname, setSname] = useState("");
-  const [wUser, setWUser] = useState("");
+function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSession, onRememberSessionChange, blacklist, warnings, certificates, updateCertificates, inquiries, updateInquiries, savedCredentials }) {
+  const [mode, setMode] = useState(() => savedCredentials?.role === "worker" ? "worker" : savedCredentials?.role === "admin" ? "admin" : "student");
+  const [sid, setSid] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.id || "") : "");
+  const [sname, setSname] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.name || "") : "");
+  const [wUser, setWUser] = useState(() => savedCredentials?.role === "worker" ? (savedCredentials.user?.username || "") : savedCredentials?.role === "admin" ? (savedCredentials.user?.username || "") : "");
   const [wPass, setWPass] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
@@ -974,40 +982,65 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
   const [haedongHover, setHaedongHover] = useState(false);
   const [certHover, setCertHover] = useState(false);
   const [showUploadConfirm, setShowUploadConfirm] = useState(false);
+  const [isCompactLayout, setIsCompactLayout] = useState(() => window.innerWidth <= 1200);
+  const [viewportSize, setViewportSize] = useState(() => ({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  }));
+
+  const loginScale = useMemo(() => {
+    const shouldScaleDown = viewportSize.width < 1600 || viewportSize.height < 900;
+    if (!shouldScaleDown) return 1;
+
+    const widthRatio = viewportSize.width / 1600;
+    const heightRatio = viewportSize.height / 900;
+    return Math.max(0.72, Math.min(1, widthRatio, heightRatio));
+  }, [viewportSize]);
 
   // 공지사항 가져오기 함수
   const fetchNotices = async () => {
     setNoticeLoading(true);
     try {
-      const proxyUrl = "https://api.allorigins.win/raw?url=";
-      const targetUrl = encodeURIComponent("https://www.kookmin.ac.kr/user/kmuNews/notice/index.do");
-      const response = await fetch(proxyUrl + targetUrl);
-      const html = await response.text();
-      
-      // HTML 파싱
+      const proxies = [
+        "https://api.codetabs.com/v1/proxy?quest=",
+        "https://api.allorigins.win/raw?url=",
+      ];
+      const targetUrl = "https://www.kookmin.ac.kr/user/kmuNews/notice/index.do";
+      let html = null;
+      for (const proxy of proxies) {
+        try {
+          const res = await fetch(proxy + encodeURIComponent(targetUrl));
+          if (res.ok) { html = await res.text(); break; }
+        } catch {}
+      }
+      if (!html) throw new Error("proxy failed");
+
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, "text/html");
-      const rows = doc.querySelectorAll(".board-list tbody tr");
-      
+      const items = doc.querySelectorAll(".board_list ul li");
+
       const newNotices = [];
-      rows.forEach((row, idx) => {
+      items.forEach((li, idx) => {
         if (idx >= 10) return;
-        const titleEl = row.querySelector(".title a");
-        const dateEl = row.querySelector("td:nth-child(5)");
-        const categoryEl = row.querySelector("td:first-child");
-        
-        if (titleEl) {
-          const href = titleEl.getAttribute("href");
+        const anchor = li.querySelector("a");
+        const titleEl = li.querySelector("p.title");
+        const categoryEl = li.querySelector("span.ctg_name");
+        const etcSpans = li.querySelectorAll(".board_etc span");
+
+        if (anchor && titleEl) {
+          const href = anchor.getAttribute("href");
           const fullUrl = href?.startsWith("http") ? href : `https://www.kookmin.ac.kr${href}`;
+          const rawDate = etcSpans[0]?.textContent?.trim() || "";
+          const shortDate = rawDate.length >= 5 ? rawDate.slice(5) : rawDate;
           newNotices.push({
             title: titleEl.textContent?.trim() || "",
-            date: dateEl?.textContent?.trim()?.slice(5) || "",
+            date: shortDate,
             category: categoryEl?.textContent?.trim() || "",
             url: fullUrl
           });
         }
       });
-      
+
       if (newNotices.length > 0) {
         setNotices(newNotices);
         setLastNoticeUpdate(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
@@ -1023,6 +1056,18 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
     fetchNotices(); // 초기 로딩
     const interval = setInterval(fetchNotices, 30 * 60 * 1000); // 30분
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      setIsCompactLayout(width <= 1200);
+      setViewportSize({ width, height });
+    };
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
   const handleInquirySubmit = () => {
@@ -1138,7 +1183,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
 
   const handleAdminLogin = () => {
     setError("");
-    onLogin({ name: ADMIN_ACCOUNT.name, role: "admin" }, "admin");
+    onLogin({ name: ADMIN_ACCOUNT.name, username: ADMIN_ACCOUNT.username, role: "admin" }, "admin");
   };
 
   const handleSubmit = async () => {
@@ -1162,8 +1207,10 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         position: "fixed",
         left: 20,
         top: 20,
-        zIndex: 10,
+        zIndex: isCompactLayout ? 2 : 10,
         width: 500,
+        transform: `scale(${loginScale})`,
+        transformOrigin: "top left",
       }}>
         {/* Horizontal Guide Content */}
         <div style={{
@@ -1232,11 +1279,13 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
       <div style={{
         position: "fixed",
         left: 20,
-        top: 250,
+        top: "50%",
+        transform: `translateY(-50%) scale(${loginScale})`,
         display: "flex",
         flexDirection: "column",
         gap: 8,
-        zIndex: 100,
+        zIndex: isCompactLayout ? 2 : 100,
+        transformOrigin: "left center",
       }}>
         {/* Banner Title */}
         <div style={{
@@ -1446,12 +1495,14 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
       <div style={{
         position: "fixed",
         left: 200,
-        top: 250,
+        top: "50%",
+        transform: `translateY(-50%) scale(${loginScale})`,
         display: "flex",
         flexDirection: "column",
         gap: 6,
-        zIndex: 10,
-        width: 280,
+        zIndex: 1,
+        width: 420,
+        transformOrigin: "left center",
       }}>
         {/* Notice Title */}
         <div style={{
@@ -1531,12 +1582,13 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         position: "fixed",
         right: 60,
         top: "50%",
-        transform: "translateY(-50%)",
+        transform: `translateY(-50%) scale(${loginScale})`,
         display: "flex",
         flexDirection: "column",
         gap: 10,
-        zIndex: 10,
+        zIndex: isCompactLayout ? 2 : 10,
         width: 420,
+        transformOrigin: "top right",
       }}>
         {/* Tab Header */}
         <div style={{
@@ -2189,7 +2241,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         }}
       />
       
-      <div className="fade-in" style={{ width: "100%", maxWidth: 420, position: "relative", zIndex: 1 }}>
+      <div className="fade-in" style={{ width: "100%", maxWidth: 420, position: "relative", zIndex: isCompactLayout ? 30 : 1, transform: `scale(${loginScale})`, transformOrigin: "center top" }}>
         {/* Main Login Section */}
         <div>
           {/* Header */}
@@ -4311,11 +4363,44 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
 // ─── Worker Dashboard ────────────────────────────────────────────
 function WorkerDashboard({ reservations, updateReservations, equipRentals, updateEquipRentals, notifications, markNotifRead, markAllNotifsRead, unreadCount, addLog, workerName, sendEmailNotification, printRequests, visitCount }) {
   const [showNotifPopup, setShowNotifPopup] = useState(false);
+  const [expandedChecklist, setExpandedChecklist] = useState(null);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [roomCleanup, setRoomCleanup] = useState({});
+
+  // 실기실 정리 확인 — 오늘 날짜 기준 store 연동
+  useEffect(() => {
+    const key = `roomCleanup_${dateStr()}`;
+    store.get(key).then(v => { if (v) setRoomCleanup(v); });
+  }, []);
+  const toggleRoomCleanup = (roomId) => {
+    setRoomCleanup(prev => {
+      const next = { ...prev, [roomId]: !prev[roomId] };
+      store.set(`roomCleanup_${dateStr()}`, next);
+      return next;
+    });
+  };
+
   const todayRes = reservations.filter(r => r.status === "approved");
   const pendingRes = reservations.filter(r => r.status === "pending");
   const pendingRentals = equipRentals.filter(r => r.status === "pending_pickup");
+  const activeRentals = equipRentals.filter(r => r.status === "pending_pickup" || r.status === "ready");
   const pendingPrints = (printRequests || []).filter(p => p.status === "pending" || p.status === "processing").length;
   const today = dateStr();
+
+  // 오늘 사용된 실기실 목록
+  const todayUsedRooms = ROOMS.filter(room =>
+    reservations.some(r => r.roomId === room.id && r.date === today && r.status === "approved")
+  );
+  const allRoomsChecked = todayUsedRooms.length === 0 || todayUsedRooms.every(r => roomCleanup[r.id]);
+
+  // 체크리스트 완료 상태
+  const checklistItems = [
+    { key: "pending", label: "승인 대기 예약 처리", icon: <Icons.calendar size={16}/>, count: pendingRes.length, done: pendingRes.length === 0 },
+    { key: "rental", label: "물품 수령/반납 처리", icon: <Icons.package size={16}/>, count: activeRentals.length, done: activeRentals.length === 0 },
+    { key: "print", label: "출력 대기 처리", icon: <Icons.file size={16}/>, count: pendingPrints, done: pendingPrints === 0 },
+    { key: "cleanup", label: "실기실 정리 확인", icon: <Icons.check size={16}/>, count: todayUsedRooms.filter(r => !roomCleanup[r.id]).length, done: allRoomsChecked },
+  ];
+  const doneCount = checklistItems.filter(c => c.done).length;
   
   // 통계 데이터 계산
   const totalReservations = reservations.length;
@@ -4452,79 +4537,40 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
 
   return (
     <div className="fade-in">
-      {/* Analytics Header */}
+      {/* ═══ Header ═══ */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: theme.text }}>Analytics</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: theme.text }}>관리 대시보드</h2>
           <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 4 }}>
-            {new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" })} 기준
+            {new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 8, height: 8, borderRadius: 4, background: theme.green }}/>
             <span style={{ fontSize: 12, color: theme.textMuted }}>실시간</span>
           </div>
-          {/* 알림 아이콘 버튼 */}
+          {/* 알림 벨 */}
           <div style={{ position: "relative" }}>
-            <button
-              onClick={() => setShowNotifPopup(!showNotifPopup)}
-              style={{
-                width: 40, height: 40, borderRadius: "50%", border: "none",
-                background: showNotifPopup ? theme.accent : theme.surface,
-                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                position: "relative", transition: "all 0.2s"
-              }}
-            >
+            <button onClick={() => setShowNotifPopup(!showNotifPopup)} style={{ width: 40, height: 40, borderRadius: "50%", border: "none", background: showNotifPopup ? theme.accent : theme.surface, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", transition: "all 0.2s" }}>
               <Icons.bell size={18} color={showNotifPopup ? "#fff" : theme.textMuted}/>
               {unreadCount > 0 && (
-                <span style={{
-                  position: "absolute", top: -2, right: -2,
-                  minWidth: 18, height: 18, borderRadius: 9,
-                  background: theme.red, color: "#fff",
-                  fontSize: 10, fontWeight: 700,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  padding: "0 4px", border: `2px solid ${theme.bg}`
-                }}>
+                <span style={{ position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, background: theme.red, color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", border: `2px solid ${theme.bg}` }}>
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               )}
             </button>
-
-            {/* 알림 팝업 */}
             {showNotifPopup && (
-              <div style={{
-                position: "absolute", top: "calc(100% + 8px)", right: 0,
-                width: 360, maxHeight: 400,
-                background: theme.card, borderRadius: theme.radius,
-                border: `1px solid ${theme.border}`,
-                boxShadow: "0 10px 40px rgba(0,0,0,0.4)",
-                zIndex: 1000, overflow: "hidden"
-              }}>
-                {/* 팝업 헤더 */}
-                <div style={{
-                  padding: "14px 16px",
-                  borderBottom: `1px solid ${theme.border}`,
-                  display: "flex", justifyContent: "space-between", alignItems: "center"
-                }}>
+              <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 360, maxHeight: 400, background: theme.card, borderRadius: theme.radius, border: `1px solid ${theme.border}`, boxShadow: "0 10px 40px rgba(0,0,0,0.4)", zIndex: 1000, overflow: "hidden" }}>
+                <div style={{ padding: "14px 16px", borderBottom: `1px solid ${theme.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>알림</span>
                     {unreadCount > 0 && <Badge color="red">{unreadCount}</Badge>}
                   </div>
                   {unreadCount > 0 && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); markAllNotifsRead(); }}
-                      style={{
-                        background: "none", border: "none", cursor: "pointer",
-                        fontSize: 12, color: theme.accent, fontWeight: 600, fontFamily: theme.font
-                      }}
-                    >
-                      모두 읽음
-                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); markAllNotifsRead(); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: theme.accent, fontWeight: 600, fontFamily: theme.font }}>모두 읽음</button>
                   )}
                 </div>
-
-                {/* 알림 목록 */}
                 <div style={{ maxHeight: 320, overflowY: "auto" }}>
                   {notifications.length === 0 ? (
                     <div style={{ padding: "40px 20px", textAlign: "center" }}>
@@ -4533,26 +4579,11 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
                     </div>
                   ) : (
                     notifications.slice(0, 15).map((n, i) => (
-                      <div
-                        key={n.id}
-                        onClick={() => markNotifRead(n.id)}
-                        style={{
-                          padding: "12px 16px", cursor: "pointer", transition: "background 0.15s",
-                          borderBottom: i < Math.min(notifications.length, 15) - 1 ? `1px solid ${theme.border}` : "none",
-                          background: !n.read ? (n.urgent ? "rgba(212,93,93,0.06)" : "rgba(212,160,83,0.06)") : "transparent",
-                          opacity: n.read ? 0.6 : 1,
-                        }}
+                      <div key={n.id} onClick={() => markNotifRead(n.id)} style={{ padding: "12px 16px", cursor: "pointer", transition: "background 0.15s", borderBottom: i < Math.min(notifications.length, 15) - 1 ? `1px solid ${theme.border}` : "none", background: !n.read ? (n.urgent ? "rgba(212,93,93,0.06)" : "rgba(212,160,83,0.06)") : "transparent", opacity: n.read ? 0.6 : 1 }}
                         onMouseEnter={e => e.currentTarget.style.background = theme.surfaceHover}
-                        onMouseLeave={e => e.currentTarget.style.background = !n.read ? (n.urgent ? "rgba(212,93,93,0.06)" : "rgba(212,160,83,0.06)") : "transparent"}
-                      >
+                        onMouseLeave={e => e.currentTarget.style.background = !n.read ? (n.urgent ? "rgba(212,93,93,0.06)" : "rgba(212,160,83,0.06)") : "transparent"}>
                         <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                          {!n.read && (
-                            <div style={{
-                              width: 8, height: 8, borderRadius: 4,
-                              background: n.urgent ? theme.red : theme.accent,
-                              marginTop: 5, flexShrink: 0
-                            }}/>
-                          )}
+                          {!n.read && <div style={{ width: 8, height: 8, borderRadius: 4, background: n.urgent ? theme.red : theme.accent, marginTop: 5, flexShrink: 0 }}/>}
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 13, color: theme.text, lineHeight: 1.5 }}>{n.text}</div>
                             <div style={{ fontSize: 11, color: theme.textDim, marginTop: 4 }}>{n.time}</div>
@@ -4568,353 +4599,289 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
         </div>
       </div>
 
-      {/* Top Stats Row */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
-        <Card style={{ padding: 18, background: theme.card }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ fontSize: 12, color: theme.textMuted }}>총 예약</div>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: theme.surface, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icons.calendar size={16} color={theme.accent}/>
+      {/* ═══ 퇴근 전 체크리스트 ═══ */}
+      <Card style={{ padding: 0, marginBottom: 20, overflow: "hidden" }}>
+        {/* 체크리스트 헤더 */}
+        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${theme.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Icons.shield size={18} color={doneCount === 4 ? theme.green : theme.accent}/>
+            <span style={{ fontSize: 16, fontWeight: 800, color: theme.text }}>퇴근 전 체크리스트</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 80, height: 6, borderRadius: 3, background: theme.surface, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${(doneCount / 4) * 100}%`, background: doneCount === 4 ? theme.green : theme.accent, borderRadius: 3, transition: "width 0.3s" }}/>
             </div>
+            <span style={{ fontSize: 13, fontWeight: 700, color: doneCount === 4 ? theme.green : theme.accent, fontFamily: theme.fontMono }}>{doneCount}/4</span>
           </div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: theme.text, marginTop: 8, fontFamily: theme.fontMono }}>{totalReservations}</div>
-          <div style={{ fontSize: 11, color: theme.green, marginTop: 6 }}>▲ {completedReservations} 승인됨</div>
-        </Card>
-
-        <Card style={{ padding: 18, background: theme.card }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ fontSize: 12, color: theme.textMuted }}>승인 대기</div>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: theme.surface, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icons.check size={16} color={theme.yellow}/>
-            </div>
-          </div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: theme.yellow, marginTop: 8, fontFamily: theme.fontMono }}>{pendingRes.length}</div>
-          <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 6 }}>처리 필요</div>
-        </Card>
-
-        <Card style={{ padding: 18, background: theme.card }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ fontSize: 12, color: theme.textMuted }}>물품 대여</div>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: theme.surface, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icons.package size={16} color={theme.blue}/>
-            </div>
-          </div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: theme.text, marginTop: 8, fontFamily: theme.fontMono }}>{totalRentals}</div>
-          <div style={{ fontSize: 11, color: theme.blue, marginTop: 6 }}>▲ {returnedRentals} 반납 완료</div>
-        </Card>
-
-        <Card style={{ padding: 18, background: theme.card }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ fontSize: 12, color: theme.textMuted }}>알림</div>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: theme.surface, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icons.bell size={16} color={theme.red}/>
-            </div>
-          </div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: unreadCount > 0 ? theme.red : theme.text, marginTop: 8, fontFamily: theme.fontMono }}>{unreadCount}</div>
-          <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 6 }}>읽지 않음</div>
-        </Card>
-
-        <Card style={{ padding: 18, background: theme.card }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ fontSize: 12, color: theme.textMuted }}>방문자 수</div>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: theme.surface, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icons.users size={16} color={theme.green}/>
-            </div>
-          </div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: theme.green, marginTop: 8, fontFamily: theme.fontMono }}>{visitCount || 0}</div>
-          <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 6 }}>총 로그인 횟수</div>
-        </Card>
-      </div>
-
-      {/* Second Stats Row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
-        <Card style={{ padding: 18 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              <div style={{ fontSize: 12, color: theme.textMuted }}>오늘 예약</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: theme.accent, marginTop: 8, fontFamily: theme.fontMono }}>{todayRes.filter(r => r.date === today).length}</div>
-              <div style={{ fontSize: 11, color: theme.green, marginTop: 4 }}>▲ 2.1% 전일 대비</div>
-            </div>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: theme.accentBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>📅</div>
-          </div>
-        </Card>
-
-        {/* 출력 대기 */}
-        <Card style={{ padding: 18, borderColor: pendingPrints > 0 ? theme.yellow : theme.border, background: pendingPrints > 0 ? theme.yellowBg : theme.card }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              <div style={{ fontSize: 12, color: theme.textMuted }}>출력 대기</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: pendingPrints > 0 ? theme.yellow : theme.text, marginTop: 8, fontFamily: theme.fontMono }}>{pendingPrints}</div>
-              <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>확인 필요</div>
-            </div>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: pendingPrints > 0 ? "rgba(255,193,7,0.2)" : theme.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🖨️</div>
-          </div>
-        </Card>
-
-        {/* Donut Chart for Reservation Status */}
-        <Card style={{ padding: 18, display: "flex", alignItems: "center", gap: 16 }}>
-          <DonutChart 
-            data={[
-              { value: completedReservations, color: theme.green },
-              { value: pendingRes.length, color: theme.yellow },
-              { value: cancelledReservations, color: theme.red },
-            ]} 
-            size={70} 
-            strokeWidth={10}
-          />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 8 }}>예약 현황</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 4, background: theme.green }}/>
-                <span style={{ color: theme.textMuted }}>승인 {completedReservations}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 4, background: theme.yellow }}/>
-                <span style={{ color: theme.textMuted }}>대기 {pendingRes.length}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 4, background: theme.red }}/>
-                <span style={{ color: theme.textMuted }}>취소 {cancelledReservations}</span>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Charts Row */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12, marginBottom: 20 }}>
-        {/* Weekly Bar Chart */}
-        <Card style={{ padding: 18 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>주간 예약 현황</div>
-            <div style={{ fontSize: 11, color: theme.textMuted }}>{last7Days[0]} ~ {last7Days[6]}</div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", height: 160, position: "relative" }}>
-            {/* Y-axis labels */}
-            <div style={{ position: "absolute", left: 0, top: 0, bottom: 24, display: "flex", flexDirection: "column", justifyContent: "space-between", fontSize: 10, color: theme.textDim }}>
-              <span>{maxDailyCount}</span>
-              <span>{Math.round(maxDailyCount/2)}</span>
-              <span>0</span>
-            </div>
-            {/* Bars */}
-            <div style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "space-around", marginLeft: 24 }}>
-              {dailyStats.map((d, i) => (
-                <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, height: "100%" }}>
-                  <div style={{ flex: 1, display: "flex", alignItems: "flex-end", width: "100%", justifyContent: "center" }}>
-                    <div style={{ 
-                      width: "70%", 
-                      height: `${Math.max((d.count / maxDailyCount) * 100, 5)}%`,
-                      background: d.date === today ? theme.accent : theme.blue,
-                      borderRadius: "4px 4px 0 0",
-                      transition: "height 0.3s",
-                      minHeight: 4,
-                    }}/>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {/* X-axis labels */}
-            <div style={{ display: "flex", justifyContent: "space-around", marginLeft: 24, marginTop: 8 }}>
-              {dailyStats.map((d, i) => (
-                <span key={i} style={{ flex: 1, textAlign: "center", fontSize: 10, color: d.date === today ? theme.accent : theme.textDim }}>{d.day}</span>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        {/* Room Stats */}
-        <Card style={{ padding: 18 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>실기실별 이용</div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {roomStats.slice(0, 5).map((room, i) => (
-              <div key={i}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                  <span style={{ fontSize: 12, color: theme.textMuted }}>{room.name}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{room.count}</span>
-                </div>
-                <div style={{ height: 6, background: theme.surface, borderRadius: 3, overflow: "hidden" }}>
-                  <div style={{ 
-                    height: "100%", 
-                    width: `${(room.count / maxRoomCount) * 100}%`,
-                    background: `linear-gradient(90deg, ${theme.accent}, ${theme.yellow})`,
-                    borderRadius: 3,
-                    transition: "width 0.3s"
-                  }}/>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* Stats Cards Row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-        <Card style={{ padding: 18, display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: theme.blueBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Icons.package size={20} color={theme.blue}/>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12, color: theme.textMuted }}>수령 대기</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: theme.text, fontFamily: theme.fontMono }}>{pendingRentals.length}건</div>
-          </div>
-          <CircularProgress value={returnedRentals} max={totalRentals || 1} size={50} color={theme.blue}/>
-        </Card>
-
-        <Card style={{ padding: 18, display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: theme.greenBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Icons.check size={20} color={theme.green}/>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12, color: theme.textMuted }}>완료된 반납</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: theme.text, fontFamily: theme.fontMono }}>{returnedRentals}건</div>
-          </div>
-          <CircularProgress value={completedReservations} max={totalReservations || 1} size={50} color={theme.green}/>
-        </Card>
-      </div>
-
-      {/* Recent Reservations Table */}
-      <Card style={{ marginBottom: 20, padding: 0, overflow: "hidden" }}>
-        <div style={{ padding: "16px 18px", borderBottom: `1px solid ${theme.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>최근 예약</div>
-          <Icons.search size={16} color={theme.textMuted}/>
         </div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: theme.surface }}>
-                <th style={{ padding: "10px 16px", textAlign: "left", color: theme.textMuted, fontWeight: 600, fontSize: 11 }}>예약자</th>
-                <th style={{ padding: "10px 16px", textAlign: "left", color: theme.textMuted, fontWeight: 600, fontSize: 11 }}>실기실</th>
-                <th style={{ padding: "10px 16px", textAlign: "left", color: theme.textMuted, fontWeight: 600, fontSize: 11 }}>날짜</th>
-                <th style={{ padding: "10px 16px", textAlign: "left", color: theme.textMuted, fontWeight: 600, fontSize: 11 }}>상태</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reservations.slice(0, 5).map((res, i) => (
-                <tr key={res.id} style={{ borderBottom: i < 4 ? `1px solid ${theme.border}` : "none" }}>
-                  <td style={{ padding: "12px 16px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: ["#f59e0b", "#10b981", "#3b82f6", "#ef4444", "#8b5cf6"][i % 5], display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700 }}>
-                        {res.studentName?.charAt(0)}
-                      </div>
-                      <span style={{ fontWeight: 600, color: theme.text }}>{res.studentName}</span>
+
+        {/* 체크리스트 항목들 */}
+        {checklistItems.map((item, idx) => (
+          <div key={item.key}>
+            {/* 항목 행 */}
+            <div
+              onClick={() => setExpandedChecklist(expandedChecklist === item.key ? null : item.key)}
+              style={{
+                padding: "14px 20px", cursor: "pointer", transition: "background 0.15s",
+                borderBottom: idx < checklistItems.length - 1 || expandedChecklist === item.key ? `1px solid ${theme.border}` : "none",
+                display: "flex", alignItems: "center", gap: 12,
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = theme.surfaceHover}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            >
+              {/* 체크 아이콘 */}
+              <div style={{
+                width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                background: item.done ? theme.greenBg : theme.surface,
+                border: `2px solid ${item.done ? theme.green : theme.border}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.2s"
+              }}>
+                {item.done && <Icons.check size={14} color={theme.green}/>}
+              </div>
+              {/* 아이콘 + 라벨 */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+                <span style={{ color: item.done ? theme.green : theme.textMuted }}>{item.icon}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: item.done ? theme.green : theme.text, textDecoration: item.done ? "line-through" : "none", opacity: item.done ? 0.7 : 1 }}>{item.label}</span>
+              </div>
+              {/* 카운트 뱃지 */}
+              {item.done ? (
+                <Badge color="green">완료</Badge>
+              ) : (
+                <Badge color={item.count > 0 ? "yellow" : "dim"}>{item.count}건 남음</Badge>
+              )}
+              {/* 펼침 화살표 */}
+              <span style={{ fontSize: 11, color: theme.textDim, transition: "transform 0.2s", transform: expandedChecklist === item.key ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+            </div>
+
+            {/* 펼침 콘텐츠 */}
+            <div style={{
+              maxHeight: expandedChecklist === item.key ? 600 : 0,
+              overflow: "hidden",
+              transition: "max-height 0.3s ease-in-out",
+              background: "rgba(0,0,0,0.15)",
+            }}>
+              <div style={{ padding: "12px 20px" }}>
+                {/* 1) 승인 대기 예약 */}
+                {item.key === "pending" && (
+                  pendingRes.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "20px 0", color: theme.textDim, fontSize: 13 }}>
+                      <Icons.check size={24} color={theme.green}/><div style={{ marginTop: 8 }}>모든 예약이 처리되었습니다</div>
                     </div>
-                  </td>
-                  <td style={{ padding: "12px 16px", color: theme.textMuted }}>{res.roomName}</td>
-                  <td style={{ padding: "12px 16px", color: theme.textMuted }}>{res.date}</td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <span style={{ 
-                      padding: "4px 10px", 
-                      borderRadius: 12, 
-                      fontSize: 11, 
-                      fontWeight: 600,
-                      background: res.status === "approved" ? theme.greenBg : res.status === "pending" ? theme.yellowBg : theme.redBg,
-                      color: res.status === "approved" ? theme.green : res.status === "pending" ? theme.yellow : theme.red,
-                    }}>
-                      {res.status === "approved" ? "승인" : res.status === "pending" ? "대기" : res.status === "cancelled" ? "취소" : "반려"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {pendingRes.map(res => (
+                        <div key={res.id} style={{ padding: 14, background: theme.card, borderRadius: theme.radiusSm, border: `1px solid ${theme.border}` }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>{res.studentName} <span style={{ color: theme.textMuted, fontWeight: 400 }}>({res.studentId})</span></div>
+                            <Badge color="yellow">대기</Badge>
+                          </div>
+                          <div style={{ fontSize: 13, color: theme.textMuted, marginBottom: 4 }}>{res.roomName} · {res.date} · {res.slotLabels?.join(", ")}</div>
+                          {res.purpose && <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 8 }}>목적: {res.purpose}</div>}
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <Button size="sm" onClick={() => approveReservation(res.id)}>승인</Button>
+                            <Button size="sm" variant="danger" onClick={() => rejectReservation(res.id)}>반려</Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
 
-      {/* Pending Equipment Rentals */}
-      {equipRentals.filter(r => r.status === "pending_pickup" || r.status === "ready").length > 0 && (
-        <>
-          <SectionTitle icon={<Icons.package size={16} color={theme.accent}/>}>물품 대여 진행중</SectionTitle>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
-            {equipRentals.filter(r => r.status === "pending_pickup" || r.status === "ready").map(rental => (
-              <Card key={rental.id} style={{ padding: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700 }}>{rental.studentName} <span style={{ color: theme.textMuted, fontWeight: 400 }}>({rental.studentId})</span></div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {rental.returnDate && rental.returnDate < today && (
-                      <Badge color="red">연체</Badge>
-                    )}
-                    <Badge color={rental.status === "ready" ? "blue" : "yellow"}>
-                      {rental.status === "ready" ? "준비완료" : "준비 필요"}
-                    </Badge>
-                  </div>
-                </div>
-                <div style={{ fontSize: 13, color: theme.textMuted, marginBottom: 8 }}>
-                  {rental.items.map(i => `${i.icon} ${i.name}`).join("  ·  ")}
-                </div>
-                <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 10 }}>반납: {rental.returnDate}</div>
-                {rental.status === "ready" && (
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>반납 체크리스트</div>
+                {/* 2) 물품 수령/반납 */}
+                {item.key === "rental" && (
+                  activeRentals.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "20px 0", color: theme.textDim, fontSize: 13 }}>
+                      <Icons.check size={24} color={theme.green}/><div style={{ marginTop: 8 }}>진행 중인 대여가 없습니다</div>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {activeRentals.map(rental => (
+                        <div key={rental.id} style={{ padding: 14, background: theme.card, borderRadius: theme.radiusSm, border: `1px solid ${theme.border}` }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>{rental.studentName} <span style={{ color: theme.textMuted, fontWeight: 400 }}>({rental.studentId})</span></div>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              {rental.returnDate && rental.returnDate < today && <Badge color="red">연체</Badge>}
+                              <Badge color={rental.status === "ready" ? "blue" : "yellow"}>{rental.status === "ready" ? "준비완료" : "준비 필요"}</Badge>
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 13, color: theme.textMuted, marginBottom: 6 }}>{rental.items.map(i => `${i.icon} ${i.name}`).join("  ·  ")}</div>
+                          <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 8 }}>반납: {rental.returnDate}</div>
+                          {rental.status === "ready" && (
+                            <div style={{ marginBottom: 8 }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>반납 체크리스트</div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                {(rental.returnChecklist || EDITABLE.equipmentReturnChecklist.map(label => ({ label, done: false }))).map((cl, cidx) => (
+                                  <label key={cidx} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: theme.textMuted, cursor: "pointer" }}>
+                                    <input type="checkbox" checked={!!cl.done} onChange={() => toggleChecklistItem(rental.id, cidx)}/>
+                                    {cl.label}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div style={{ display: "flex", gap: 8 }}>
+                            {rental.status === "pending_pickup" && <Button size="sm" onClick={() => markEquipReady(rental.id)}>✓ 준비 완료</Button>}
+                            {rental.status === "ready" && <Button size="sm" variant="success" onClick={() => markEquipReturned(rental.id)} disabled={(rental.returnChecklist || []).some(i => !i.done)}>↩ 반납 처리</Button>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
+
+                {/* 3) 출력 대기 */}
+                {item.key === "print" && (
+                  pendingPrints === 0 ? (
+                    <div style={{ textAlign: "center", padding: "20px 0", color: theme.textDim, fontSize: 13 }}>
+                      <Icons.check size={24} color={theme.green}/><div style={{ marginTop: 8 }}>대기 중인 출력이 없습니다</div>
+                    </div>
+                  ) : (
+                    <div style={{ padding: 14, background: theme.card, borderRadius: theme.radiusSm, border: `1px solid ${theme.yellowBorder}` }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: theme.yellow }}>
+                        <Icons.alert size={16}/>
+                        <span style={{ fontWeight: 600 }}>{pendingPrints}건의 출력 요청이 대기 중입니다.</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 6 }}>출력 대기 탭에서 처리해주세요.</div>
+                    </div>
+                  )
+                )}
+
+                {/* 4) 실기실 정리 확인 */}
+                {item.key === "cleanup" && (
+                  todayUsedRooms.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "20px 0", color: theme.textDim, fontSize: 13 }}>
+                      <Icons.check size={24} color={theme.green}/><div style={{ marginTop: 8 }}>오늘 사용된 실기실이 없습니다</div>
+                    </div>
+                  ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {(rental.returnChecklist || EDITABLE.equipmentReturnChecklist.map(label => ({ label, done: false }))).map((item, idx) => (
-                        <label key={idx} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: theme.textMuted }}>
-                          <input
-                            type="checkbox"
-                            checked={!!item.done}
-                            onChange={() => toggleChecklistItem(rental.id, idx)}
-                          />
-                          {item.label}
+                      {todayUsedRooms.map(room => (
+                        <label key={room.id}
+                          onClick={(e) => { e.stopPropagation(); toggleRoomCleanup(room.id); }}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", cursor: "pointer",
+                            background: roomCleanup[room.id] ? theme.greenBg : theme.card,
+                            borderRadius: theme.radiusSm, border: `1px solid ${roomCleanup[room.id] ? theme.greenBorder : theme.border}`,
+                            transition: "all 0.2s",
+                          }}>
+                          <input type="checkbox" checked={!!roomCleanup[room.id]} readOnly style={{ accentColor: theme.green }}/>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: roomCleanup[room.id] ? theme.green : theme.text }}>{room.name}</div>
+                            <div style={{ fontSize: 11, color: theme.textDim }}>{room.floor} · {room.building}</div>
+                          </div>
+                          {roomCleanup[room.id] && <Badge color="green">확인됨</Badge>}
                         </label>
                       ))}
                     </div>
-                  </div>
+                  )
                 )}
-                <div style={{ display: "flex", gap: 8 }}>
-                  {rental.status === "pending_pickup" && (
-                    <Button size="sm" onClick={() => markEquipReady(rental.id)}>✓ 준비 완료</Button>
-                  )}
-                  {rental.status === "ready" && (
-                    <Button
-                      size="sm"
-                      variant="success"
-                      onClick={() => markEquipReturned(rental.id)}
-                      disabled={(rental.returnChecklist || []).some(i => !i.done)}
-                    >
-                      ↩ 반납 처리
-                    </Button>
-                  )}
-                </div>
-              </Card>
-            ))}
+              </div>
+            </div>
           </div>
-        </>
-      )}
+        ))}
+      </Card>
 
-      {/* Pending Room Reservations */}
-      {pendingRes.length > 0 && (
-        <>
-          <SectionTitle icon={<Icons.calendar size={16} color={theme.accent}/>}>실기실 예약 승인 대기</SectionTitle>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
-            {pendingRes.map(res => (
-              <Card key={res.id} style={{ padding: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700 }}>{res.studentName} <span style={{ color: theme.textMuted, fontWeight: 400 }}>({res.studentId})</span></div>
-                  <Badge color="yellow">승인 대기</Badge>
-                </div>
-                <div style={{ fontSize: 13, color: theme.textMuted, marginBottom: 6 }}>
-                  {res.roomName} · {res.date} · {res.slotLabels?.join(", ")}
-                </div>
-                {res.purpose && <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 10 }}>목적: {res.purpose}</div>}
-                <div style={{ display: "flex", gap: 8 }}>
-                  <Button size="sm" onClick={() => approveReservation(res.id)}>승인</Button>
-                  <Button size="sm" variant="danger" onClick={() => rejectReservation(res.id)}>반려</Button>
-                </div>
-              </Card>
-            ))}
+      {/* ═══ 간단 요약 카드 ═══ */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 20 }}>
+        {[
+          { label: "오늘 예약", value: todayRes.filter(r => r.date === today).length, icon: <Icons.calendar size={15} color={theme.accent}/>, color: theme.accent },
+          { label: "총 예약", value: totalReservations, icon: <Icons.list size={15} color={theme.blue}/>, color: theme.blue },
+          { label: "물품 대여", value: totalRentals, icon: <Icons.package size={15} color={theme.yellow}/>, color: theme.yellow },
+          { label: "방문자", value: visitCount || 0, icon: <Icons.users size={15} color={theme.green}/>, color: theme.green },
+        ].map((stat, i) => (
+          <Card key={i} style={{ padding: "14px 16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              {stat.icon}
+              <span style={{ fontSize: 11, color: theme.textMuted }}>{stat.label}</span>
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: stat.color, fontFamily: theme.fontMono }}>{stat.value}</div>
+          </Card>
+        ))}
+      </div>
+
+      {/* ═══ Analytics (접을 수 있음) ═══ */}
+      <div style={{ marginBottom: 20 }}>
+        <div
+          onClick={() => setAnalyticsOpen(!analyticsOpen)}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", marginBottom: analyticsOpen ? 12 : 0, padding: "8px 0" }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 700, color: theme.text }}>
+            <Icons.grid size={16} color={theme.accent}/>
+            Analytics
           </div>
-        </>
-      )}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, color: theme.textDim }}>{analyticsOpen ? "접기" : "펼치기"}</span>
+            <span style={{ fontSize: 11, color: theme.textDim, transition: "transform 0.2s", display: "inline-block", transform: analyticsOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+          </div>
+        </div>
+        <div style={{ maxHeight: analyticsOpen ? 800 : 0, overflow: "hidden", transition: "max-height 0.4s ease-in-out" }}>
+          {/* 도넛 + 주간 차트 + 실기실별 이용 */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            {/* 주간 예약 현황 */}
+            <Card style={{ padding: 18 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>주간 예약 현황</div>
+                <div style={{ fontSize: 11, color: theme.textMuted }}>{last7Days[0]} ~ {last7Days[6]}</div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", height: 140, position: "relative" }}>
+                <div style={{ position: "absolute", left: 0, top: 0, bottom: 24, display: "flex", flexDirection: "column", justifyContent: "space-between", fontSize: 10, color: theme.textDim }}>
+                  <span>{maxDailyCount}</span><span>{Math.round(maxDailyCount/2)}</span><span>0</span>
+                </div>
+                <div style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "space-around", marginLeft: 24 }}>
+                  {dailyStats.map((d, i) => (
+                    <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, height: "100%" }}>
+                      <div style={{ flex: 1, display: "flex", alignItems: "flex-end", width: "100%", justifyContent: "center" }}>
+                        <div style={{ width: "70%", height: `${Math.max((d.count / maxDailyCount) * 100, 5)}%`, background: d.date === today ? theme.accent : theme.blue, borderRadius: "4px 4px 0 0", transition: "height 0.3s", minHeight: 4 }}/>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-around", marginLeft: 24, marginTop: 8 }}>
+                  {dailyStats.map((d, i) => (
+                    <span key={i} style={{ flex: 1, textAlign: "center", fontSize: 10, color: d.date === today ? theme.accent : theme.textDim }}>{d.day}</span>
+                  ))}
+                </div>
+              </div>
+            </Card>
 
-      {/* Today's Reservations */}
+            {/* 실기실별 이용 + 도넛 */}
+            <Card style={{ padding: 18 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>예약 현황</div>
+              </div>
+              <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
+                <DonutChart data={[ { value: completedReservations, color: theme.green }, { value: pendingRes.length, color: theme.yellow }, { value: cancelledReservations, color: theme.red } ]} size={60} strokeWidth={8}/>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}><span style={{ width: 8, height: 8, borderRadius: 4, background: theme.green }}/><span style={{ color: theme.textMuted }}>승인 {completedReservations}</span></div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}><span style={{ width: 8, height: 8, borderRadius: 4, background: theme.yellow }}/><span style={{ color: theme.textMuted }}>대기 {pendingRes.length}</span></div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}><span style={{ width: 8, height: 8, borderRadius: 4, background: theme.red }}/><span style={{ color: theme.textMuted }}>취소 {cancelledReservations}</span></div>
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {roomStats.slice(0, 5).map((room, i) => (
+                  <div key={i}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                      <span style={{ fontSize: 11, color: theme.textMuted }}>{room.name}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>{room.count}</span>
+                    </div>
+                    <div style={{ height: 4, background: theme.surface, borderRadius: 2, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${(room.count / maxRoomCount) * 100}%`, background: `linear-gradient(90deg, ${theme.accent}, ${theme.yellow})`, borderRadius: 2, transition: "width 0.3s" }}/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ 활성 예약 ═══ */}
       <SectionTitle icon={<Icons.calendar size={16} color={theme.accent}/>}>활성 예약</SectionTitle>
-      <Card style={{ padding: 0, overflow: "hidden" }}>
+      <Card style={{ padding: 0, overflow: "hidden", maxHeight: 350, overflowY: "auto" }}>
         {todayRes.length === 0 ? (
-          <Empty icon={<Icons.calendar size={28}/>} text="예약이 없습니다"/>
+          <Empty icon={<Icons.calendar size={28}/>} text="승인된 예약이 없습니다"/>
         ) : (
-          todayRes.slice(0, 10).map((res, i) => (
+          todayRes.map((res, i) => (
             <div key={res.id} style={{ padding: "14px 18px", borderBottom: i < todayRes.length - 1 ? `1px solid ${theme.border}` : "none" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
@@ -4923,9 +4890,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
                 </div>
                 <Badge color="green">{res.autoApproved ? "자동승인" : "승인"}</Badge>
               </div>
-              <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 4 }}>
-                {res.roomName} · {res.date} · {res.slotLabels?.join(", ")}
-              </div>
+              <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 4 }}>{res.roomName} · {res.date} · {res.slotLabels?.join(", ")}</div>
               {res.purpose && <div style={{ fontSize: 12, color: theme.textDim, marginTop: 2 }}>목적: {res.purpose}</div>}
             </div>
           ))
