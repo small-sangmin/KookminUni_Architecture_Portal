@@ -120,7 +120,8 @@ const store = {
     catch { return null; }
   },
   async set(key, val) {
-    try { await window.storage.set(key, JSON.stringify(val)); return true; }
+    // null을 전달하면 Firebase에서 해당 노드가 삭제됨 (set(ref, null))
+    try { await window.storage.set(key, val === null ? null : JSON.stringify(val)); return true; }
     catch { return false; }
   },
   async listByPrefix(prefix) {
@@ -2776,7 +2777,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
           <div style={{
             position: "fixed",
             top: 0, left: 0, right: 0, bottom: 0,
-            background: "rgba(0,0,0,0.7)",
+            background: "transparent",
             display: "flex", alignItems: "center", justifyContent: "center",
             zIndex: 10000,
             animation: "fadeIn 0.2s ease"
@@ -2784,12 +2785,12 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
             <div style={{
               background: theme.card,
               borderRadius: theme.radius,
-              border: `1px solid ${theme.border}`,
+              border: "none",
               padding: 28,
               maxWidth: 400,
               width: "90%",
               textAlign: "center",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.5)"
+              boxShadow: "0 8px 32px rgba(0,0,0,0.15)"
             }}>
               <div style={{
                 width: 60, height: 60,
@@ -3883,12 +3884,12 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
       {showHistoryModal && (
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          background: "rgba(0,0,0,0.7)", zIndex: 9999,
+          background: "transparent", zIndex: 9999,
           display: "flex", alignItems: "center", justifyContent: "center",
           padding: 20,
         }} onClick={() => setShowHistoryModal(false)}>
           <div style={{
-            background: theme.card, borderRadius: 16, width: "100%", maxWidth: 500,
+            background: theme.card, borderRadius: 16, width: "100%", maxWidth: 500, boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
             maxHeight: "80vh", overflow: "hidden", display: "flex", flexDirection: "column",
           }} onClick={e => e.stopPropagation()}>
             {/* 모달 헤더 */}
@@ -4326,9 +4327,9 @@ function StudentInquiries({ user, inquiries, updateInquiries }) {
 
       {/* Detail Modal */}
       {selectedInquiry && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "transparent", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
           onClick={() => setSelectedInquiry(null)}>
-          <div style={{ background: theme.card, borderRadius: theme.radius, padding: 24, maxWidth: 500, width: "100%", maxHeight: "80vh", overflow: "auto", border: `1px solid ${theme.border}` }}
+          <div style={{ background: theme.card, borderRadius: theme.radius, padding: 24, maxWidth: 500, width: "100%", maxHeight: "80vh", overflow: "auto", border: "none", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}
             onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div style={{ fontSize: 16, fontWeight: 700 }}>{selectedInquiry.title}</div>
@@ -4693,14 +4694,14 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
       {selectedInquiry && (
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          background: "rgba(0,0,0,0.7)",
+          background: "transparent",
           display: "flex", alignItems: "center", justifyContent: "center",
           zIndex: 2000,
           padding: 20
         }} onClick={() => setSelectedInquiry(null)}>
           <div
             style={{
-              background: theme.card,
+              background: theme.card, boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
               borderRadius: theme.radius,
               padding: 24,
               maxWidth: 500,
@@ -6372,7 +6373,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
           left: 0,
           right: 0,
           bottom: 0,
-          background: "rgba(0,0,0,0.85)",
+          background: "transparent",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -6384,7 +6385,8 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
           <div style={{
             background: theme.card,
             borderRadius: theme.radius,
-            border: `1px solid ${theme.border}`,
+            border: "none",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
             maxWidth: 900,
             width: "100%",
             maxHeight: "90vh",
