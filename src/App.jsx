@@ -309,6 +309,40 @@ export default function App() {
   const [visitedUsers, setVisitedUsers] = useState({}); // 방문한 고유 사용자 목록
   const [dataLoaded, setDataLoaded] = useState(false);
 
+  // ─── Community & Exhibition (shared between LoginPage & AdminPortal) ──
+  const defaultPosts = useMemo(() => [
+    { id: "c1", content: "레이저컷터 사용법 알려줄 분 계신가요?", createdAt: "2026-02-07T10:30:00", comments: [
+      { id: "cm1", content: "유튜브에 튜토리얼 많아요!", createdAt: "2026-02-07T11:00:00" },
+      { id: "cm2", content: "조교실에 문의하시면 교육받으실 수 있어요", createdAt: "2026-02-07T12:30:00" },
+    ] },
+    { id: "c2", content: "4학년 졸업전시 준비하시는 분들 화이팅!", createdAt: "2026-02-06T15:20:00", comments: [
+      { id: "cm3", content: "감사합니다 ㅠㅠ", createdAt: "2026-02-06T16:00:00" },
+    ] },
+    { id: "c3", content: "실기실 예약 시스템 너무 편하네요 ㅎㅎ", createdAt: "2026-02-05T09:15:00", comments: [] },
+  ], []);
+  const [communityPosts, setCommunityPostsRaw] = useState(defaultPosts);
+  const setCommunityPosts = useCallback((updater) => {
+    setCommunityPostsRaw(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      store.set("communityPosts", next);
+      return next;
+    });
+  }, []);
+  const defaultExhibitionPosts = useMemo(() => [{
+    id: "exh1", title: "archi.zip", description: "건축을 구성하는 작은 요소들에 대해",
+    dates: "2026.02.05 ~ 02.09", location: "레드로드예술실험센터",
+    instagramUrl: "https://www.instagram.com/archi.zip_kmu", posterUrl: "/archzip_poster.jpeg",
+    createdAt: "2026-02-01T00:00:00",
+  }], []);
+  const [exhibitionPosts, setExhibitionPostsRaw] = useState(defaultExhibitionPosts);
+  const setExhibitionPosts = useCallback((updater) => {
+    setExhibitionPostsRaw(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      store.set("exhibitionPosts", next);
+      return next;
+    });
+  }, []);
+
   // ─── Load persisted data ───────────────────────────────────────
   useEffect(() => {
     (async () => {
@@ -328,7 +362,7 @@ export default function App() {
         setDataLoaded(true);
 
         // 2단계: 나머지 데이터 백그라운드 로드 (화면 표시 후)
-        const [wk, warn, blk, certs, res, eq, lg, notif, sheet, overdue, inq, prints, visits, visitors] = await Promise.all([
+        const [wk, warn, blk, certs, res, eq, lg, notif, sheet, overdue, inq, prints, visits, visitors, cmPosts, exhPosts, exhDataOld] = await Promise.all([
           store.get("workers"),
           store.get("warnings"),
           store.get("blacklist"),
@@ -343,6 +377,9 @@ export default function App() {
           store.get("printRequests"),
           store.get("visitCount"),
           store.get("visitedUsers"),
+          store.get("communityPosts"),
+          store.get("exhibitionPosts"),
+          store.get("exhibitionData"),
         ]);
         if (wk) setWorkers(wk);
         if (warn) setWarnings(warn);
@@ -358,6 +395,16 @@ export default function App() {
         if (prints) setPrintRequests(prints);
         if (visits) setVisitCount(visits);
         if (visitors) setVisitedUsers(visitors);
+        if (cmPosts) setCommunityPostsRaw(cmPosts); else store.set("communityPosts", defaultPosts);
+        if (exhPosts) {
+          setExhibitionPostsRaw(exhPosts);
+        } else if (exhDataOld) {
+          const migrated = [{ ...exhDataOld, id: `exh${Date.now()}`, createdAt: new Date().toISOString() }];
+          setExhibitionPostsRaw(migrated);
+          store.set("exhibitionPosts", migrated);
+        } else {
+          store.set("exhibitionPosts", defaultExhibitionPosts);
+        }
       } catch (error) {
         console.error("Initial data load failed:", error);
         setDataLoaded(true);
@@ -828,6 +875,9 @@ export default function App() {
             inquiries={inquiries}
             updateInquiries={updateInquiries}
             savedCredentials={savedCredentials}
+            communityPosts={communityPosts}
+            setCommunityPosts={setCommunityPosts}
+            exhibitionPosts={exhibitionPosts}
           />
         )}
         {page === "student" && (
@@ -872,6 +922,8 @@ export default function App() {
             certificates={certificates}
             updateCertificates={updateCertificates}
             sendEmailNotification={sendEmailNotification}
+            communityPosts={communityPosts} setCommunityPosts={setCommunityPosts}
+            exhibitionPosts={exhibitionPosts} setExhibitionPosts={setExhibitionPosts}
           />
         )}
       </div>
@@ -906,7 +958,7 @@ export default function App() {
 // ════════════════════════════════════════════════════════════════
 //  LOGIN PAGE
 // ════════════════════════════════════════════════════════════════
-function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSession, onRememberSessionChange, blacklist, warnings, certificates, updateCertificates, inquiries, updateInquiries, savedCredentials }) {
+function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSession, onRememberSessionChange, blacklist, warnings, certificates, updateCertificates, inquiries, updateInquiries, savedCredentials, communityPosts, setCommunityPosts, exhibitionPosts }) {
   const [mode, setMode] = useState(() => savedCredentials?.role === "worker" ? "worker" : savedCredentials?.role === "admin" ? "admin" : "student");
   const [sid, setSid] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.id || "") : "");
   const [sname, setSname] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.name || "") : "");
@@ -936,16 +988,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
   
   // 전시회/커뮤니티 탭 상태
   const [rightPanelTab, setRightPanelTab] = useState("community"); // exhibition | community
-  const [communityPosts, setCommunityPosts] = useState([
-    { id: "c1", content: "레이저컷터 사용법 알려줄 분 계신가요?", createdAt: "2026-02-07T10:30:00", comments: [
-      { id: "cm1", content: "유튜브에 튜토리얼 많아요!", createdAt: "2026-02-07T11:00:00" },
-      { id: "cm2", content: "조교실에 문의하시면 교육받으실 수 있어요", createdAt: "2026-02-07T12:30:00" },
-    ] },
-    { id: "c2", content: "4학년 졸업전시 준비하시는 분들 화이팅!", createdAt: "2026-02-06T15:20:00", comments: [
-      { id: "cm3", content: "감사합니다 ㅠㅠ", createdAt: "2026-02-06T16:00:00" },
-    ] },
-    { id: "c3", content: "실기실 예약 시스템 너무 편하네요 ㅎㅎ", createdAt: "2026-02-05T09:15:00", comments: [] },
-  ]);
+  const [expandedExhId, setExpandedExhId] = useState(null); // 펼친 전시회 ID
   const [newPostContent, setNewPostContent] = useState("");
   const [expandedPostId, setExpandedPostId] = useState(null); // 슬라이드 확장된 게시글 ID
   const [newCommentContent, setNewCommentContent] = useState(""); // 새 댓글 내용
@@ -963,7 +1006,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
   }); // 내가 작성한 댓글 ID들
   const [editingCommentId, setEditingCommentId] = useState(null); // 수정 중인 댓글 ID
   const [editingCommentContent, setEditingCommentContent] = useState(""); // 수정 중인 댓글 내용
-  
+
   // 공지사항 상태
   const [notices, setNotices] = useState([
     { title: "[사단법인 밀레니엄심포니오케스트라] 대학생·대학원생 서포터즈 밀리언 3기 모집(~3/15)", date: "02.05", category: "사회봉사", url: "https://www.kookmin.ac.kr/user/kmuNews/notice/8/11324/view.do" },
@@ -1639,61 +1682,111 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
 
         {/* Exhibition Tab Content */}
         {rightPanelTab === "exhibition" && (
-          <>
-            {/* Poster Image */}
-            <div style={{
-              background: "rgba(30, 31, 38, 0.9)",
-              backdropFilter: "blur(10px)",
-              border: `1px solid ${theme.border}`,
-              borderRadius: 12,
-              overflow: "hidden",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
-            }}>
-              <a 
-                href="https://www.instagram.com/archi.zip_kmu" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                style={{ display: "block" }}
-              >
-                <img 
-                  src="/archzip_poster.jpeg" 
-                  alt="archi.zip 전시회 포스터"
-                  style={{
-                    width: "100%",
-                    height: "auto",
-                    display: "block",
-                    transition: "transform 0.3s, opacity 0.3s",
-                  }}
-                  onMouseOver={e => { e.currentTarget.style.transform = "scale(1.02)"; e.currentTarget.style.opacity = "0.9"; }}
-                  onMouseOut={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}
-                  onError={e => {
-                    e.currentTarget.style.display = "none";
-                    e.currentTarget.parentElement.innerHTML = `
-                      <div style="padding: 40px 20px; text-align: center; color: #888;">
-                        <div style="font-size: 48px; margin-bottom: 12px;">🎨</div>
-                        <div style="font-size: 12px;">포스터 이미지를 불러올 수 없습니다</div>
-                        <div style="font-size: 10px; margin-top: 8px; color: #666;">public/exhibition-poster.jpg 파일을 추가해주세요</div>
-                      </div>
-                    `;
-                  }}
-                />
-              </a>
-            </div>
-            {/* Exhibition Info */}
-            <div style={{
-              padding: "10px 14px",
-              background: "rgba(30, 31, 38, 0.8)",
-              borderRadius: 8,
-              border: `1px solid ${theme.border}`,
-            }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: theme.accent, marginBottom: 4 }}>archi.zip</div>
-              <div style={{ fontSize: 11, color: theme.textMuted, lineHeight: 1.5 }}>
-                건축을 구성하는 작은 요소들에 대해<br/>
-                📅 2026.02.05 ~ 02.09<br/>
-                📍 레드로드예술실험센터
+          <div style={{ display: "flex", flexDirection: "column", gap: 0, maxHeight: 500, overflowY: "auto" }}>
+            {(!exhibitionPosts || exhibitionPosts.length === 0) ? (
+              <div style={{
+                padding: 30, textAlign: "center", color: theme.textDim, fontSize: 13,
+                background: "rgba(30, 31, 38, 0.9)", borderRadius: 10,
+                border: `1px solid ${theme.border}`,
+              }}>
+                등록된 전시회가 없습니다.
               </div>
-            </div>
-          </>
+            ) : (
+              <div style={{
+                background: "rgba(30, 31, 38, 0.9)",
+                backdropFilter: "blur(10px)",
+                border: `1px solid ${theme.border}`,
+                borderRadius: 10,
+                overflow: "hidden",
+              }}>
+                {exhibitionPosts.map((exhPost, idx) => (
+                  <div key={exhPost.id}>
+                    {/* 제목 행 (클릭하여 펼침) */}
+                    <div
+                      onClick={() => setExpandedExhId(expandedExhId === exhPost.id ? null : exhPost.id)}
+                      style={{
+                        padding: "12px 16px",
+                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                        cursor: "pointer",
+                        borderBottom: (expandedExhId === exhPost.id || idx < exhibitionPosts.length - 1) ? `1px solid ${theme.border}` : "none",
+                        background: expandedExhId === exhPost.id ? "rgba(212, 160, 83, 0.08)" : "transparent",
+                        transition: "background 0.2s",
+                      }}
+                      onMouseEnter={e => { if (expandedExhId !== exhPost.id) e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
+                      onMouseLeave={e => { if (expandedExhId !== exhPost.id) e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: expandedExhId === exhPost.id ? theme.accent : theme.text, transition: "color 0.2s" }}>
+                          {exhPost.title || "전시회"}
+                        </div>
+                        <div style={{ fontSize: 10, color: "#fff", marginTop: 3 }}>
+                          📅 {exhPost.dates || "미정"} · 📍 {exhPost.location || "미정"}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 11, color: theme.textDim, flexShrink: 0, marginLeft: 8, transition: "transform 0.2s", transform: expandedExhId === exhPost.id ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+                    </div>
+                    {/* 펼침 내용: 포스터 + 상세정보 */}
+                    {expandedExhId === exhPost.id && (
+                      <div style={{ borderBottom: idx < exhibitionPosts.length - 1 ? `1px solid ${theme.border}` : "none" }}>
+                        {/* Poster Image */}
+                        {exhPost.posterUrl && (
+                          <div style={{ overflow: "hidden" }}>
+                            <a
+                              href={exhPost.instagramUrl || "#"}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ display: "block" }}
+                            >
+                              <img
+                                src={exhPost.posterUrl}
+                                alt={`${exhPost.title || ""} 전시회 포스터`}
+                                style={{
+                                  width: "100%",
+                                  height: "auto",
+                                  display: "block",
+                                  transition: "transform 0.3s, opacity 0.3s",
+                                }}
+                                onMouseOver={e => { e.currentTarget.style.transform = "scale(1.02)"; e.currentTarget.style.opacity = "0.9"; }}
+                                onMouseOut={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}
+                                onError={e => {
+                                  e.currentTarget.style.display = "none";
+                                  e.currentTarget.parentElement.innerHTML = `
+                                    <div style="padding: 30px 20px; text-align: center; color: #888;">
+                                      <div style="font-size: 36px; margin-bottom: 8px;">🎨</div>
+                                      <div style="font-size: 11px;">포스터를 불러올 수 없습니다</div>
+                                    </div>
+                                  `;
+                                }}
+                              />
+                            </a>
+                          </div>
+                        )}
+                        {/* 상세 정보 */}
+                        <div style={{ padding: "12px 16px", background: "rgba(0,0,0,0.15)" }}>
+                          <div style={{ fontSize: 12, color: theme.text, lineHeight: 1.6, marginBottom: 8 }}>
+                            {exhPost.description || ""}
+                          </div>
+                          <div style={{ fontSize: 11, color: "#fff", lineHeight: 1.5 }}>
+                            📅 {exhPost.dates || ""}<br/>
+                            📍 {exhPost.location || ""}
+                          </div>
+                          {exhPost.instagramUrl && (
+                            <a href={exhPost.instagramUrl} target="_blank" rel="noopener noreferrer"
+                              style={{ display: "inline-block", marginTop: 8, fontSize: 11, color: theme.accent, textDecoration: "none" }}
+                              onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
+                              onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}
+                            >
+                              Instagram →
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {/* Community Tab Content */}
@@ -5001,7 +5094,7 @@ function LogViewer({ logs }) {
 // ════════════════════════════════════════════════════════════════
 //  ADMIN PORTAL
 // ════════════════════════════════════════════════════════════════
-function AdminPortal({ onLogout, reservations, updateReservations, workers, updateWorkers, logs, addLog, sheetConfig, updateSheetConfig, warnings, updateWarnings, blacklist, updateBlacklist, certificates, updateCertificates, sendEmailNotification }) {
+function AdminPortal({ onLogout, reservations, updateReservations, workers, updateWorkers, logs, addLog, sheetConfig, updateSheetConfig, warnings, updateWarnings, blacklist, updateBlacklist, certificates, updateCertificates, sendEmailNotification, communityPosts, setCommunityPosts, exhibitionPosts, setExhibitionPosts }) {
   const [tab, setTab] = useState("accounts");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -5014,6 +5107,38 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
   const [blkForm, setBlkForm] = useState({ studentId: "", name: "", reason: "" });
   const [certModal, setCertModal] = useState(null);
   const [approving, setApproving] = useState(false);
+  // 커뮤니티/전시 관리 상태
+  const [exhForm, setExhForm] = useState({ title: "", description: "", dates: "", location: "", instagramUrl: "", posterUrl: "" });
+  const [exhSaved, setExhSaved] = useState(false);
+  const [exhEditingId, setExhEditingId] = useState(null);
+  const [exhDeleteConfirm, setExhDeleteConfirm] = useState(null);
+  const [exhPosterFile, setExhPosterFile] = useState(null);
+  const [exhPosterUploading, setExhPosterUploading] = useState(false);
+  const exhPosterFileRef = useRef(null);
+  const [cmDeleteConfirm, setCmDeleteConfirm] = useState(null);
+  const [cmExpandedPostId, setCmExpandedPostId] = useState(null);
+  const [cmCommentDeleteConfirm, setCmCommentDeleteConfirm] = useState(null);
+
+  const handlePosterUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert("파일 크기가 5MB를 초과합니다. 더 작은 이미지를 선택해주세요.");
+      return;
+    }
+    setExhPosterUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setExhForm(p => ({ ...p, posterUrl: reader.result }));
+      setExhPosterFile(file);
+      setExhPosterUploading(false);
+    };
+    reader.onerror = () => {
+      alert("이미지 업로드 실패");
+      setExhPosterUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
 
   // 수료증 개수 계산
   const certificateCount = certificates ? Object.keys(certificates).length : 0;
@@ -5229,6 +5354,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             { id: "accounts", label: "근로학생 계정", icon: <Icons.users size={15}/> },
             { id: "discipline", label: "경고/블랙리스트", icon: <Icons.alert size={15}/> },
             { id: "certificates", label: "수료증 관리", icon: <Icons.file size={15}/>, badge: certificateCount },
+            { id: "community", label: "커뮤니티/전시", icon: <Icons.edit size={15}/>, badge: communityPosts?.length || 0 },
             { id: "adminLog", label: "관리 이력", icon: <Icons.log size={15}/> },
             { id: "integration", label: "연동 설정", icon: <Icons.refresh size={15}/> },
           ]}
@@ -5376,6 +5502,249 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                   </div>
                 </div>
               ))
+            )}
+          </Card>
+        </div>
+      )}
+
+      {tab === "community" && (
+        <div>
+          {/* 전시회 정보 관리 */}
+          <SectionTitle icon={<Icons.edit size={16} color={theme.accent}/>}>전시회 정보 관리</SectionTitle>
+          <Card style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: theme.accent, marginBottom: 12 }}>
+              {exhEditingId ? "전시회 수정" : "새 전시회 등록"}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <Input label="전시 제목" value={exhForm.title || ""} onChange={e => setExhForm(p => ({ ...p, title: e.target.value }))}/>
+              <Input label="장소" value={exhForm.location || ""} onChange={e => setExhForm(p => ({ ...p, location: e.target.value }))}/>
+              <Input label="기간" placeholder="예: 2026.02.05 ~ 02.09" value={exhForm.dates || ""} onChange={e => setExhForm(p => ({ ...p, dates: e.target.value }))}/>
+              <Input label="Instagram URL" value={exhForm.instagramUrl || ""} onChange={e => setExhForm(p => ({ ...p, instagramUrl: e.target.value }))}/>
+            </div>
+            <Input label="설명" value={exhForm.description || ""} onChange={e => setExhForm(p => ({ ...p, description: e.target.value }))}/>
+            {/* 포스터 이미지 업로드 */}
+            <input ref={exhPosterFileRef} type="file" accept="image/*" onChange={handlePosterUpload} style={{ display: "none" }}/>
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 6 }}>포스터 이미지</div>
+              <button
+                onClick={() => exhPosterFileRef.current?.click()}
+                disabled={exhPosterUploading}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  cursor: exhPosterUploading ? "not-allowed" : "pointer",
+                  padding: "10px 16px", background: theme.surface,
+                  border: `1px solid ${theme.border}`, borderRadius: 8,
+                  fontSize: 13, color: theme.text, transition: "all 0.2s",
+                  fontFamily: theme.font, width: "100%", justifyContent: "flex-start",
+                  opacity: exhPosterUploading ? 0.5 : 1,
+                }}
+                onMouseEnter={e => { if (!exhPosterUploading) { e.currentTarget.style.borderColor = theme.accent; }}}
+                onMouseLeave={e => { if (!exhPosterUploading) { e.currentTarget.style.borderColor = theme.border; }}}
+              >
+                <Icons.upload size={16}/>
+                {exhPosterFile ? exhPosterFile.name : (exhForm.posterUrl ? (exhForm.posterUrl.startsWith("data:") ? "이미지 업로드됨 (변경하려면 클릭)" : exhForm.posterUrl) : "포스터 이미지 업로드")}
+              </button>
+              {exhForm.posterUrl && (
+                <div style={{ marginTop: 10, borderRadius: 8, overflow: "hidden", border: `1px solid ${theme.border}`, maxHeight: 200 }}>
+                  <img src={exhForm.posterUrl} alt="포스터 미리보기" style={{ width: "100%", height: "auto", display: "block", maxHeight: 200, objectFit: "cover" }}/>
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 14, alignItems: "center" }}>
+              <Button size="sm" onClick={() => {
+                if (!exhForm.title?.trim()) return;
+                if (exhEditingId) {
+                  setExhibitionPosts(prev => prev.map(p => p.id === exhEditingId ? { ...p, ...exhForm } : p));
+                  addLog(`[관리자] 전시회 수정: "${exhForm.title}"`, "admin");
+                } else {
+                  const newPost = { ...exhForm, id: `exh${Date.now()}`, createdAt: new Date().toISOString() };
+                  setExhibitionPosts(prev => [newPost, ...prev]);
+                  addLog(`[관리자] 전시회 등록: "${exhForm.title}"`, "admin");
+                }
+                setExhForm({ title: "", description: "", dates: "", location: "", instagramUrl: "", posterUrl: "" });
+                setExhEditingId(null);
+                setExhPosterFile(null);
+                setExhSaved(true);
+                setTimeout(() => setExhSaved(false), 2000);
+              }}>
+                {exhEditingId ? "수정 저장" : "등록"}
+              </Button>
+              {exhEditingId && (
+                <Button size="sm" variant="ghost" onClick={() => {
+                  setExhForm({ title: "", description: "", dates: "", location: "", instagramUrl: "", posterUrl: "" });
+                  setExhEditingId(null);
+                  setExhPosterFile(null);
+                }}>취소</Button>
+              )}
+              {exhSaved && <span style={{ fontSize: 12, color: theme.green, fontWeight: 600 }}>저장되었습니다</span>}
+            </div>
+          </Card>
+
+          {/* 등록된 전시회 목록 */}
+          <Card style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 14, lineHeight: 1.6 }}>
+              등록된 전시회 목록입니다. 전시회 홍보 탭에 표시됩니다.
+            </div>
+            {!exhibitionPosts?.length ? (
+              <Empty icon={<Icons.list size={28}/>} text="등록된 전시회가 없습니다"/>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                {exhibitionPosts.map((post, idx) => (
+                  <div key={post.id} style={{
+                    padding: "14px 16px",
+                    borderBottom: idx < exhibitionPosts.length - 1 ? `1px solid ${theme.border}` : "none",
+                    display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0, display: "flex", gap: 12 }}>
+                      {post.posterUrl && (
+                        <img src={post.posterUrl} alt="" style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
+                          onError={e => { e.currentTarget.style.display = "none"; }}
+                        />
+                      )}
+                      <div>
+                        <div style={{ fontSize: 13, color: theme.text, fontWeight: 600, marginBottom: 4 }}>{post.title}</div>
+                        <div style={{ fontSize: 11, color: theme.textDim }}>
+                          📅 {post.dates || "미정"} · 📍 {post.location || "미정"}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ flexShrink: 0, display: "flex", gap: 4 }}>
+                      <Button size="sm" variant="ghost" onClick={() => {
+                        setExhForm({ title: post.title || "", description: post.description || "", dates: post.dates || "", location: post.location || "", instagramUrl: post.instagramUrl || "", posterUrl: post.posterUrl || "" });
+                        setExhEditingId(post.id);
+                        setExhPosterFile(null);
+                      }}>
+                        <Icons.edit size={14}/> 수정
+                      </Button>
+                      {exhDeleteConfirm === post.id ? (
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <Button size="sm" variant="danger" onClick={() => {
+                            setExhibitionPosts(prev => prev.filter(p => p.id !== post.id));
+                            setExhDeleteConfirm(null);
+                            addLog(`[관리자] 전시회 삭제: "${post.title}"`, "admin");
+                          }}>확인</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setExhDeleteConfirm(null)}>취소</Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="ghost" onClick={() => setExhDeleteConfirm(post.id)} style={{ color: theme.red }}>
+                          <Icons.trash size={14}/> 삭제
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* 커뮤니티 글 관리 */}
+          <SectionTitle icon={<Icons.list size={16} color={theme.accent}/>}>커뮤니티 글 관리</SectionTitle>
+          <Card>
+            <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 14, lineHeight: 1.6 }}>
+              로그인 페이지 커뮤니티 탭에 표시되는 익명 게시글을 관리합니다. 부적절한 글이나 댓글을 삭제할 수 있습니다.
+            </div>
+            {!communityPosts?.length ? (
+              <Empty icon={<Icons.list size={28}/>} text="커뮤니티 글이 없습니다"/>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                {communityPosts.map((post, idx) => (
+                  <div key={post.id} style={{ borderBottom: idx < communityPosts.length - 1 ? `1px solid ${theme.border}` : "none" }}>
+                    {/* 글 헤더 */}
+                    <div
+                      style={{
+                        padding: "14px 16px",
+                        display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
+                        cursor: post.comments?.length > 0 ? "pointer" : "default",
+                        background: cmExpandedPostId === post.id ? "rgba(212, 160, 83, 0.05)" : "transparent",
+                        transition: "background 0.2s",
+                      }}
+                      onClick={() => {
+                        if (post.comments?.length > 0) {
+                          setCmExpandedPostId(cmExpandedPostId === post.id ? null : post.id);
+                          setCmCommentDeleteConfirm(null);
+                        }
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, color: theme.text, lineHeight: 1.5, marginBottom: 6, wordBreak: "break-word" }}>{post.content}</div>
+                        <div style={{ display: "flex", gap: 12, fontSize: 11, color: theme.textDim }}>
+                          <span>{new Date(post.createdAt).toLocaleString("ko-KR")}</span>
+                          <span style={{ color: post.comments?.length > 0 ? theme.accent : theme.textDim }}>
+                            💬 댓글 {post.comments?.length || 0}개 {post.comments?.length > 0 ? (cmExpandedPostId === post.id ? "▲" : "▼") : ""}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                        {cmDeleteConfirm === post.id ? (
+                          <div style={{ display: "flex", gap: 4 }}>
+                            <Button size="sm" variant="danger" onClick={() => {
+                              setCommunityPosts(prev => prev.filter(p => p.id !== post.id));
+                              setCmDeleteConfirm(null);
+                              addLog(`[관리자] 커뮤니티 글 삭제: "${post.content.slice(0, 20)}..."`, "admin");
+                            }}>확인</Button>
+                            <Button size="sm" variant="ghost" onClick={() => setCmDeleteConfirm(null)}>취소</Button>
+                          </div>
+                        ) : (
+                          <Button size="sm" variant="ghost" onClick={() => setCmDeleteConfirm(post.id)} style={{ color: theme.red }}>
+                            <Icons.trash size={14}/> 삭제
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    {/* 댓글 목록 (펼침) */}
+                    {cmExpandedPostId === post.id && post.comments?.length > 0 && (
+                      <div style={{ padding: "0 16px 14px 32px", background: "rgba(0,0,0,0.15)" }}>
+                        {post.comments.map((comment) => (
+                          <div key={comment.id} style={{
+                            padding: "8px 0",
+                            borderBottom: `1px solid rgba(255,255,255,0.05)`,
+                            display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8,
+                          }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12, color: theme.text, lineHeight: 1.4, marginBottom: 3 }}>
+                                ↳ {comment.content}
+                              </div>
+                              <div style={{ fontSize: 10, color: theme.textDim }}>
+                                {new Date(comment.createdAt).toLocaleString("ko-KR")}
+                              </div>
+                            </div>
+                            <div style={{ flexShrink: 0 }}>
+                              {cmCommentDeleteConfirm === comment.id ? (
+                                <div style={{ display: "flex", gap: 4 }}>
+                                  <Button size="sm" variant="danger" onClick={() => {
+                                    setCommunityPosts(prev => prev.map(p =>
+                                      p.id === post.id
+                                        ? { ...p, comments: p.comments.filter(c => c.id !== comment.id) }
+                                        : p
+                                    ));
+                                    setCmCommentDeleteConfirm(null);
+                                    addLog(`[관리자] 댓글 삭제: "${comment.content.slice(0, 20)}..."`, "admin");
+                                  }}>확인</Button>
+                                  <Button size="sm" variant="ghost" onClick={() => setCmCommentDeleteConfirm(null)}>취소</Button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setCmCommentDeleteConfirm(comment.id)}
+                                  style={{
+                                    padding: "3px 8px", border: "none", borderRadius: 3,
+                                    background: "transparent", color: theme.textDim,
+                                    fontSize: 10, cursor: "pointer", fontFamily: theme.font,
+                                    display: "flex", alignItems: "center", gap: 4,
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.color = theme.red}
+                                  onMouseLeave={e => e.currentTarget.style.color = theme.textDim}
+                                >
+                                  <Icons.trash size={12}/> 삭제
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </Card>
         </div>
