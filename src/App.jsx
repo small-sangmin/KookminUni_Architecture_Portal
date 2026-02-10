@@ -193,8 +193,8 @@ const lightColors = {
   bg: "#f0f1f3", surface: "#e8e9ec", surfaceHover: "#dcdde0",
   card: "#ffffff", border: "#d0d2d6", borderLight: "#c0c2c6",
   text: "#1a1b1e", textMuted: "#5a5d65", textDim: "#9a9da5",
-  accent: "#b8862d", accentDim: "#8b6b38",
-  accentBg: "rgba(184,134,45,0.1)", accentBorder: "rgba(184,134,45,0.25)",
+  accent: "#e8a832", accentDim: "#b8862d",
+  accentBg: "rgba(232,168,50,0.12)", accentBorder: "rgba(232,168,50,0.3)",
   blue: "#2e73c0", blueBg: "rgba(46,115,192,0.1)", blueBorder: "rgba(46,115,192,0.25)",
   green: "#3a9a58", greenBg: "rgba(58,154,88,0.1)", greenBorder: "rgba(58,154,88,0.25)",
   red: "#c0392b", redBg: "rgba(192,57,43,0.08)", redBorder: "rgba(192,57,43,0.2)",
@@ -1276,10 +1276,13 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
     setError("");
     try {
       const reader = new FileReader();
-      reader.onload = () => {
+      reader.onload = async () => {
         const base64 = reader.result;
-        const certData = {
-          studentId: certSid.trim(),
+        const sid = certSid.trim();
+        // base64 파일은 별도 키에 저장 (certificates 객체를 가볍게 유지)
+        await store.set(`certFile_${sid}`, base64);
+        const certMeta = {
+          studentId: sid,
           studentName: certSname.trim(),
           studentYear: certYear.trim(),
           studentMajor: certMajor.trim(),
@@ -1288,9 +1291,8 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
           fileSize: uploadFile.size,
           fileType: uploadFile.type,
           uploadDate: new Date().toISOString(),
-          data: base64,
         };
-        updateCertificates?.(prev => ({ ...prev, [certSid.trim()]: certData }));
+        updateCertificates?.(prev => ({ ...prev, [sid]: certMeta }));
         setUploading(false);
         setUploadSuccess("✅ 업로드 완료!");
         setShowUploadConfirm(true);
@@ -2520,11 +2522,11 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         {mode === "student" && (
           <div style={{ marginTop: 16, width: "100%" }}>
             <Card
-              onClick={() => !showCertUpload && setShowCertUpload(true)}
-              hover={!showCertUpload}
+              onClick={showCertUpload ? undefined : () => setShowCertUpload(true)}
+              hover={false}
               style={{
-                background: showCertUpload ? theme.blueBg : theme.surfaceHover,
-                borderColor: showCertUpload ? theme.blueBorder : theme.border,
+                background: showCertUpload ? theme.card : theme.surfaceHover,
+                borderColor: showCertUpload ? theme.border : theme.border,
                 cursor: showCertUpload ? "default" : "pointer",
                 transition: "all 0.3s ease",
               }}
@@ -2534,7 +2536,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: theme.blue }}>
-                      안전교육 수료증 업로드
+                      안전교육이수증 업로드
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <div
@@ -2700,12 +2702,13 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         {showSafetyInfo && (
           <div style={{
             position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-            background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center",
+            background: "transparent", display: "flex", alignItems: "center", justifyContent: "center",
             zIndex: 10000, padding: 20,
           }} onClick={() => setShowSafetyInfo(false)}>
             <div onClick={e => e.stopPropagation()} style={{
-              background: theme.card, borderRadius: theme.radius, border: `1px solid ${theme.border}`,
+              background: theme.card, borderRadius: theme.radius, border: "none",
               padding: 28, maxWidth: 480, width: "100%", maxHeight: "80vh", overflowY: "auto",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <div style={{ fontSize: 16, fontWeight: 800, color: theme.red }}>⚠️ 꼭 먼저 읽어주세요</div>
@@ -2732,6 +2735,10 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               </div>
 
               <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 8 }}>⭐안전교육이수증 발급 받는 방법!</div>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 8 }}>1. 대상</div>
                 <div style={{ fontSize: 13, color: theme.text, fontWeight: 600, paddingLeft: 12 }}>건축대학 소속 재학생 전체</div>
               </div>
@@ -2747,7 +2754,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                       rel="noopener noreferrer"
                       style={{ fontSize: 12, color: theme.blue, textDecoration: "underline", wordBreak: "break-all" }}
                     >
-                      URL : https://safety.kookmin.ac.kr/UserHome/Index?LabNo=0
+                      바로가기 : https://safety.kookmin.ac.kr/UserHome/Index?LabNo=0
                     </a>
                   </div>
                   <div>
@@ -2813,11 +2820,11 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         {/* Inquiry Banner */}
         <div style={{ marginTop: 12 }}>
           <Card
-            onClick={() => !showInquiry && setShowInquiry(true)}
-            hover={!showInquiry}
+            onClick={showInquiry ? undefined : () => setShowInquiry(true)}
+            hover={false}
             style={{
-              background: showInquiry ? theme.accentBg : theme.surfaceHover,
-              borderColor: showInquiry ? theme.accentBorder : theme.border,
+              background: showInquiry ? theme.card : theme.surfaceHover,
+              borderColor: showInquiry ? theme.border : theme.border,
               cursor: showInquiry ? "default" : "pointer",
               transition: "all 0.3s ease",
             }}
@@ -5462,7 +5469,19 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
   const [warnForm, setWarnForm] = useState({ studentId: "", name: "", reason: "" });
   const [blkForm, setBlkForm] = useState({ studentId: "", name: "", reason: "" });
   const [certModal, setCertModal] = useState(null);
+  const [certFileData, setCertFileData] = useState(null);
+  const [certFileLoading, setCertFileLoading] = useState(false);
   const [approving, setApproving] = useState(false);
+
+  const openCertModal = async (cert) => {
+    setCertModal(cert);
+    setCertFileData(null);
+    setCertFileLoading(true);
+    // 새 방식: 별도 키에서 로드 / 구버전 호환: cert.data에 직접 있을 수 있음
+    const fileData = cert.data || await store.get(`certFile_${cert.studentId}`);
+    setCertFileData(fileData);
+    setCertFileLoading(false);
+  };
   // 커뮤니티/전시 관리 상태
   const [exhForm, setExhForm] = useState({ title: "", description: "", dates: "", location: "", instagramUrl: "", posterUrl: "" });
   const [exhSaved, setExhSaved] = useState(false);
@@ -5653,6 +5672,8 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
         delete next[cert.studentId];
         return next;
       });
+      // 별도 저장된 파일 데이터 삭제
+      store.set(`certFile_${cert.studentId}`, null);
 
       // 승인 이메일 발송
       if (cert.studentEmail && sendEmailNotification) {
@@ -5678,6 +5699,8 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
       delete next[cert.studentId];
       return next;
     });
+    // 별도 저장된 파일 데이터 삭제
+    store.set(`certFile_${cert.studentId}`, null);
     addLog(`[관리자] 수료증 반려: ${cert.studentName}(${cert.studentId})`, "admin");
     setCertModal(null);
   };
@@ -6282,7 +6305,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                     key={studentId}
                     style={{ background: theme.surface, padding: 14, cursor: "pointer" }}
                     hover
-                    onClick={() => setCertModal(cert)}
+                    onClick={() => openCertModal(cert)}
                   >
                     <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                       <div style={{ padding: 12, background: theme.blueBg, borderRadius: theme.radiusSm, border: `1px solid ${theme.blueBorder}` }}>
@@ -6405,15 +6428,24 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
               justifyContent: "center",
               alignItems: "center"
             }}>
-              {certModal.fileType?.startsWith("image/") ? (
+              {certFileLoading ? (
+                <div style={{ textAlign: "center", padding: 40, color: theme.textMuted }}>
+                  <div style={{ fontSize: 14 }}>파일 로딩 중...</div>
+                </div>
+              ) : !certFileData ? (
+                <div style={{ textAlign: "center", padding: 40, color: theme.textMuted }}>
+                  <Icons.file size={48} style={{ opacity: 0.5, marginBottom: 12 }} />
+                  <div style={{ fontSize: 14 }}>파일을 불러올 수 없습니다</div>
+                </div>
+              ) : certModal.fileType?.startsWith("image/") ? (
                 <img
-                  src={certModal.data}
+                  src={certFileData}
                   alt="수료증"
                   style={{ maxWidth: "100%", maxHeight: "60vh", objectFit: "contain" }}
                 />
               ) : certModal.fileType === "application/pdf" ? (
                 <iframe
-                  src={certModal.data}
+                  src={certFileData}
                   style={{ width: "100%", height: "60vh", border: "none" }}
                   title="PDF 수료증"
                 />
@@ -6438,8 +6470,9 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
               <Button
                 variant="ghost"
                 onClick={() => {
+                  if (!certFileData) return;
                   const link = document.createElement("a");
-                  link.href = certModal.data;
+                  link.href = certFileData;
                   link.download = certModal.fileName;
                   link.click();
                 }}
