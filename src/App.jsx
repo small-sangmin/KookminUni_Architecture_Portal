@@ -1557,91 +1557,6 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         </div>
       </div>
 
-      {/* Notice Board - Between Banner and Login */}
-      <div style={{
-        position: "fixed",
-        left: 200,
-        top: "50%",
-        transform: `translateY(-50%) scale(${loginScale})`,
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-        zIndex: 1,
-        width: 420,
-        transformOrigin: "left center",
-      }}>
-        {/* Notice Title */}
-        <div style={{
-          padding: "6px 12px",
-          background: "transparent",
-          marginBottom: 4,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: "#fff", letterSpacing: "2px", textTransform: "uppercase" }}>📢 학교 공지사항</span>
-          <a
-            href="https://www.kookmin.ac.kr/user/kmuNews/notice/index.do"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ fontSize: 10, color: theme.accent, textDecoration: "none" }}
-          >
-            더보기 →
-          </a>
-        </div>
-        {/* Notice Items */}
-        <div style={{
-          background: "rgba(30, 31, 38, 0.9)",
-          backdropFilter: "blur(10px)",
-          border: `1px solid ${theme.border}`,
-          borderRadius: 8,
-          overflow: "hidden",
-          position: "relative",
-        }}>
-          {noticeLoading && (
-            <div style={{ position: "absolute", top: 8, right: 8 }}>
-              <div style={{ width: 12, height: 12, border: `2px solid ${theme.accent}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-            </div>
-          )}
-          {notices.map((notice, i) => (
-            <a
-              key={i}
-              href={notice.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "10px 14px",
-                textDecoration: "none",
-                borderBottom: i < notices.length - 1 ? `1px solid ${theme.border}` : "none",
-                transition: "background 0.2s",
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(212, 160, 83, 0.1)"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-            >
-              <span style={{
-                fontSize: 12,
-                color: theme.text,
-                flex: 1,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                marginRight: 10,
-              }}>
-                {notice.title}
-              </span>
-              <span style={{ fontSize: 10, color: theme.textDim, flexShrink: 0 }}>{notice.date}</span>
-            </a>
-          ))}
-        </div>
-        {lastNoticeUpdate && (
-          <div style={{ fontSize: 9, color: theme.textDim, textAlign: "right", marginTop: 4 }}>
-            마지막 업데이트: {lastNoticeUpdate}
-          </div>
-        )}
-      </div>
 
       {/* Exhibition Poster - Right Side */}
       <div style={{
@@ -4838,19 +4753,6 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
     const rental = equipRentals.find(r => r.id === rentalId);
     if (rental) {
       addLog(`[반납완료] ${rental.studentName}의 기구 반납 완료 → ${rental.items.map(i => i.name).join(", ")}`, "equipment");
-      sendEmailNotification?.({
-        subject: `[반납완료] ${rental.studentName} · 기구 반납 완료`,
-        body: [
-          "기구 반납이 완료되었습니다.",
-          "",
-          "[반납 정보]",
-          `- 학생: ${rental.studentName} (${rental.studentId})`,
-          `- 대여 품목: ${rental.items?.map(i => i.name).join(", ")}`,
-          `- 반납 완료: ${ts()}`,
-          "",
-          "국민대학교 건축대학 실기실, 물품 예약 시스템",
-        ].join("\n"),
-      });
     }
   };
 
