@@ -1266,7 +1266,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
       justifyContent: "center",
       paddingBottom: 60,
       position: "relative",
-      overflow: "hidden"
+      overflow: "auto"
     }}>
       {/* Top Left - User Guide & Notices (Above Quick Links) */}
       <div style={{
