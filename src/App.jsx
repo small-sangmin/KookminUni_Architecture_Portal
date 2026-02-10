@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 
 // ════════════════════════════════════════════════════════════════
-//  국민대학교 건축대학 실기실, 물품 예약 시스템 v1.0
-//  Kookmin University Architecture Studio & Equipment Reservation System
+//  국민대학교 건축대학 포털사이트 v1.0
+//  Kookmin University Architecture Portal v1.0
 // ════════════════════════════════════════════════════════════════
 
 // ─── Editable Data (update here) ────────────────────────────────
@@ -18,12 +18,45 @@ const EDITABLE = {
     { id: "606", name: "사진실", floor: "6F", building: "복지관", equipment: "작업대 1개", rules: "조명 전원 OFF 후 퇴실" },
   ],
   equipment: [
-    { id: "001", name: "3D 프린터 (FDM)", category: "가공장비", available: 4, total: 5, deposit: false, maxDays: 1, icon: "🖨" },
-    { id: "002", name: "열선 커터", category: "수공구", available: 3, total: 3, deposit: false, maxDays: 1, icon: "🔥" },
-    { id: "003", name: "전동 드릴 세트", category: "수공구", available: 5, total: 8, deposit: false, maxDays: 2, icon: "🔧" },
-    { id: "004", name: "직소기", category: "수공구", available: 2, total: 3, deposit: false, maxDays: 1, icon: "🪚" },
-    { id: "005", name: "샌딩기", category: "수공구", available: 1, total: 2, deposit: false, maxDays: 1, icon: "🔨" },
-    { id: "006", name: "노트북", category: "전자제품", available: 6, total: 6, deposit: false, maxDays: 1, icon: "💻" },
+    // 전동 절단·가공 장비
+    { id: "001", name: "열선 커터", category: "전동 절단·가공", available: 4, total: 4, deposit: false, maxDays: 1, icon: "🔥" },
+    { id: "002", name: "리드선", category: "전동 절단·가공", available: 2, total: 2, deposit: false, maxDays: 1, icon: "🔌" },
+    { id: "003", name: "드릴", category: "전동 절단·가공", available: 11, total: 11, deposit: false, maxDays: 1, icon: "🔧" },
+    // 고정·보조 전동 장비
+    { id: "004", name: "직소", category: "고정·보조 전동", available: 7, total: 7, deposit: false, maxDays: 1, icon: "🪚" },
+    { id: "005", name: "그라인더", category: "고정·보조 전동", available: 1, total: 1, deposit: false, maxDays: 1, icon: "⚙️" },
+    { id: "006", name: "타카", category: "고정·보조 전동", available: 1, total: 1, deposit: false, maxDays: 1, icon: "📌" },
+    { id: "007", name: "샌딩기", category: "고정·보조 전동", available: 2, total: 2, deposit: false, maxDays: 1, icon: "🔨" },
+    // 계측·측정 장비
+    { id: "008", name: "수평계", category: "계측·측정", available: 1, total: 1, deposit: false, maxDays: 1, icon: "📏" },
+    { id: "009", name: "줄자", category: "계측·측정", available: 3, total: 3, deposit: false, maxDays: 1, icon: "📐" },
+    { id: "010", name: "레이저 줄자", category: "계측·측정", available: 1, total: 1, deposit: false, maxDays: 1, icon: "🔴" },
+    { id: "011", name: "레이저 측정기", category: "계측·측정", available: 1, total: 1, deposit: false, maxDays: 1, icon: "🔴" },
+    // 수공구
+    { id: "012", name: "십자 드라이버", category: "수공구", available: 5, total: 5, deposit: false, maxDays: 1, icon: "🪛" },
+    { id: "013", name: "일자 드라이버", category: "수공구", available: 2, total: 2, deposit: false, maxDays: 1, icon: "🪛" },
+    { id: "014", name: "쇠망치", category: "수공구", available: 2, total: 2, deposit: false, maxDays: 1, icon: "🔨" },
+    { id: "015", name: "고무망치", category: "수공구", available: 2, total: 2, deposit: false, maxDays: 1, icon: "🔨" },
+    { id: "016", name: "톱", category: "수공구", available: 2, total: 2, deposit: false, maxDays: 1, icon: "🪚" },
+    { id: "017", name: "톱날", category: "수공구", available: 2, total: 2, deposit: false, maxDays: 1, icon: "🪚" },
+    { id: "018", name: "니퍼", category: "수공구", available: 7, total: 7, deposit: false, maxDays: 1, icon: "✂️" },
+    { id: "019", name: "스패너", category: "수공구", available: 1, total: 1, deposit: false, maxDays: 1, icon: "🔧" },
+    // 절단·보조 소형 장비
+    { id: "020", name: "펀치", category: "절단·보조 소형", available: 1, total: 1, deposit: false, maxDays: 1, icon: "🔳" },
+    { id: "021", name: "실리콘 제거기", category: "절단·보조 소형", available: 1, total: 1, deposit: false, maxDays: 1, icon: "🧹" },
+    { id: "022", name: "일반 커터", category: "절단·보조 소형", available: 1, total: 1, deposit: false, maxDays: 1, icon: "🔪" },
+    { id: "023", name: "전지가위", category: "절단·보조 소형", available: 1, total: 1, deposit: false, maxDays: 1, icon: "✂️" },
+    // 작업 보조 장비
+    { id: "024", name: "사다리 (소형)", category: "작업 보조", available: 1, total: 1, deposit: false, maxDays: 1, icon: "🪜" },
+    { id: "025", name: "사다리 (중형)", category: "작업 보조", available: 1, total: 1, deposit: false, maxDays: 1, icon: "🪜" },
+    { id: "026", name: "사다리 (대형)", category: "작업 보조", available: 1, total: 1, deposit: false, maxDays: 1, icon: "🪜" },
+    { id: "027", name: "구르마", category: "작업 보조", available: 2, total: 2, deposit: false, maxDays: 1, icon: "🛒" },
+    // 청소 장비
+    { id: "028", name: "청소기", category: "청소", available: 1, total: 1, deposit: false, maxDays: 1, icon: "🧹" },
+    // 기타 장비
+    { id: "029", name: "집게형 장비", category: "기타", available: 1, total: 1, deposit: false, maxDays: 1, icon: "🔧" },
+    { id: "030", name: "전사다이", category: "기타", available: 1, total: 1, deposit: false, maxDays: 1, icon: "🔧" },
+    { id: "031", name: "건축학과 깃발", category: "기타", available: 1, total: 1, deposit: false, maxDays: 1, icon: "🚩" },
   ],
   equipmentReturnChecklist: [
     "외관 손상 여부 확인",
@@ -53,7 +86,7 @@ const EDITABLE = {
     },
   },
   emailNotify: {
-    url: "https://script.google.com/macros/s/AKfycbwNG0fBaeEa1fQXn-8zieyljXWeCscLnXQUN6UvvehUqPEtBHb0bBJTesu9QKUBTbn1Ug/exec",
+    url: "https://script.google.com/macros/s/AKfycbxytKXE1KSMUmuA3BBZ7lPdvrbQunIaJxiAopYh6cWi4ABr_SHOT2ISurah_v5JqLNr/exec",
     recipients: ["saku20392@kookmin.ac.kr"],
     enabled: true,
   },
@@ -140,35 +173,35 @@ const Icons = {
   upload: (p) => <I {...p} d={<><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><path d="M17 8l-5-5-5 5" /><path d="M12 3v12" /></>} />,
   file: (p) => <I {...p} d={<><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z" /><path d="M13 2v7h7" /></>} />,
   loading: (p) => <I {...p} d={<><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></>} style={{ animation: "spin 1s linear infinite", ...p?.style }} />,
+  sun: (p) => <I {...p} d={<><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></>} />,
+  moon: (p) => <I {...p} d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />,
 };
 
 // ─── Shared Styles ───────────────────────────────────────────────
+const darkColors = {
+  bg: "#1a1b1e", surface: "#222326", surfaceHover: "#2a2b2f",
+  card: "#252629", border: "#1c1e22", borderLight: "#252830",
+  text: "#e4e2de", textMuted: "#7a7d85", textDim: "#4a4d55",
+  accent: "#d4a053", accentDim: "#8b6b38",
+  accentBg: "rgba(212,160,83,0.08)", accentBorder: "rgba(212,160,83,0.2)",
+  blue: "#4a90d9", blueBg: "rgba(74,144,217,0.08)", blueBorder: "rgba(74,144,217,0.2)",
+  green: "#5cb87a", greenBg: "rgba(92,184,122,0.08)", greenBorder: "rgba(92,184,122,0.2)",
+  red: "#d45d5d", redBg: "rgba(212,93,93,0.08)", redBorder: "rgba(212,93,93,0.2)",
+  yellow: "#d4b34a", yellowBg: "rgba(212,179,74,0.08)", yellowBorder: "rgba(212,179,74,0.15)",
+};
+const lightColors = {
+  bg: "#f0f1f3", surface: "#e8e9ec", surfaceHover: "#dcdde0",
+  card: "#ffffff", border: "#d0d2d6", borderLight: "#c0c2c6",
+  text: "#1a1b1e", textMuted: "#5a5d65", textDim: "#9a9da5",
+  accent: "#b8862d", accentDim: "#8b6b38",
+  accentBg: "rgba(184,134,45,0.1)", accentBorder: "rgba(184,134,45,0.25)",
+  blue: "#2e73c0", blueBg: "rgba(46,115,192,0.1)", blueBorder: "rgba(46,115,192,0.25)",
+  green: "#3a9a58", greenBg: "rgba(58,154,88,0.1)", greenBorder: "rgba(58,154,88,0.25)",
+  red: "#c0392b", redBg: "rgba(192,57,43,0.08)", redBorder: "rgba(192,57,43,0.2)",
+  yellow: "#b89a2a", yellowBg: "rgba(184,154,42,0.1)", yellowBorder: "rgba(184,154,42,0.2)",
+};
 const theme = {
-  bg: "#1a1b1e",
-  surface: "#222326",
-  surfaceHover: "#2a2b2f",
-  card: "#252629",
-  border: "#1c1e22",
-  borderLight: "#252830",
-  text: "#e4e2de",
-  textMuted: "#7a7d85",
-  textDim: "#4a4d55",
-  accent: "#d4a053",
-  accentDim: "#8b6b38",
-  accentBg: "rgba(212,160,83,0.08)",
-  accentBorder: "rgba(212,160,83,0.2)",
-  blue: "#4a90d9",
-  blueBg: "rgba(74,144,217,0.08)",
-  blueBorder: "rgba(74,144,217,0.2)",
-  green: "#5cb87a",
-  greenBg: "rgba(92,184,122,0.08)",
-  greenBorder: "rgba(92,184,122,0.2)",
-  red: "#d45d5d",
-  redBg: "rgba(212,93,93,0.08)",
-  redBorder: "rgba(212,93,93,0.2)",
-  yellow: "#d4b34a",
-  yellowBg: "rgba(212,179,74,0.08)",
-  yellowBorder: "rgba(212,179,74,0.15)",
+  ...darkColors,
   font: "'DM Sans', 'Noto Sans KR', sans-serif",
   fontMono: "'JetBrains Mono', 'Fira Code', monospace",
   radius: 10,
@@ -223,7 +256,7 @@ const Button = ({ children, variant = "primary", disabled, onClick, style: st, s
 
 const Input = ({ label, ...props }) => (
   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-    {label && <label style={{ fontSize: 11, fontWeight: 600, color: "#fff", letterSpacing: "0.5px", textTransform: "uppercase" }}>{label}</label>}
+    {label && <label style={{ fontSize: 11, fontWeight: 600, color: theme.text, letterSpacing: "0.5px", textTransform: "uppercase" }}>{label}</label>}
     <input {...props} style={{ width: "100%", padding: "10px 14px", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: theme.radiusSm, color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s", height: 42, ...props.style }}
       onFocus={e => e.target.style.borderColor = theme.accent}
       onBlur={e => e.target.style.borderColor = theme.border}
@@ -288,11 +321,18 @@ export default function App() {
   const [rememberSession, setRememberSession] = useState(true);
   const [savedCredentials, setSavedCredentials] = useState(null);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  const [isDark, setIsDark] = useState(() => {
+    try { return localStorage.getItem("theme-mode") === "dark"; } catch { return false; }
+  });
+  const toggleDark = useCallback(() => setIsDark(p => !p), []);
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+  useEffect(() => {
+    try { localStorage.setItem("theme-mode", isDark ? "dark" : "light"); } catch { }
+  }, [isDark]);
 
   // ─── Data State (persistent) ───────────────────────────────────
   const [reservations, setReservations] = useState([]);
@@ -423,7 +463,17 @@ export default function App() {
         } else {
           store.set("exhibitionPosts", defaultExhibitionPosts);
         }
-        if (eqDB) setEquipmentDBRaw(eqDB);
+        if (eqDB) {
+          // 저장된 물품 DB의 ID 목록과 기본 물품 DB의 ID 목록이 다르면 코드가 업데이트된 것이므로 새 목록 사용
+          const savedIds = eqDB.map(e => e.id).sort().join(",");
+          const defaultIds = DEFAULT_EQUIPMENT_DB.map(e => e.id).sort().join(",");
+          if (savedIds !== defaultIds) {
+            setEquipmentDBRaw(DEFAULT_EQUIPMENT_DB);
+            store.set("equipmentDB", DEFAULT_EQUIPMENT_DB);
+          } else {
+            setEquipmentDBRaw(eqDB);
+          }
+        }
       } catch (error) {
         console.error("Initial data load failed:", error);
         setDataLoaded(true);
@@ -610,6 +660,7 @@ export default function App() {
         to: recipients,
         subject,
         body,
+        senderName: "건축대학 교학팀",
       };
       const res = await fetch(url, {
         method: "POST",
@@ -625,7 +676,7 @@ export default function App() {
           method: "POST",
           mode: "no-cors",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify({ action: "send_email", key: EDITABLE.apiKey, to: recipients, subject, body }),
+          body: JSON.stringify({ action: "send_email", key: EDITABLE.apiKey, to: recipients, subject, body, senderName: "건축대학 교학팀" }),
         });
         return { ok: true, opaque: true };
       } catch (err2) {
@@ -670,7 +721,7 @@ export default function App() {
               `- 반납 예정일: ${r.returnDate}`,
               "",
               "즉시 반납 안내 부탁드립니다.",
-              "국민대학교 건축대학 실기실, 물품 예약 시스템",
+              "국민대학교 건축대학 교학팀",
             ].join("\n"),
           });
         }
@@ -858,23 +909,26 @@ export default function App() {
     return (
       <div style={{ fontFamily: theme.font, background: theme.bg, color: theme.text, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: theme.accent, marginBottom: 8 }}>국민대학교 건축대학 실기실, 물품 예약 시스템</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: theme.accent, marginBottom: 8 }}>국민대학교 건축대학 포털사이트</div>
           <div style={{ fontSize: 13, color: theme.textMuted }}>데이터 로딩 중...</div>
         </div>
       </div>
     );
   }
 
+  // Apply theme colors based on dark/light mode
+  Object.assign(theme, isDark ? darkColors : lightColors);
+
   return (
-    <div style={{ fontFamily: theme.font, background: theme.bg, color: theme.text, minHeight: "100vh" }}>
+    <div style={{ fontFamily: theme.font, background: theme.bg, color: theme.text, minHeight: "100vh", transition: "background 0.3s, color 0.3s" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: ${theme.bg}; }
         ::-webkit-scrollbar-thumb { background: ${theme.border}; border-radius: 3px; }
-        ::selection { background: ${theme.accent}; color: #000; }
-        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.7); }
+        ::selection { background: ${theme.accent}; color: ${isDark ? '#000' : '#fff'}; }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(${isDark ? 0.7 : 0}); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
@@ -903,6 +957,7 @@ export default function App() {
             setCommunityPosts={setCommunityPosts}
             exhibitionPosts={exhibitionPosts}
             isMobile={isMobile}
+            isDark={isDark} toggleDark={toggleDark}
           />
         )}
         {page === "student" && (
@@ -921,6 +976,7 @@ export default function App() {
             printRequests={printRequests}
             updatePrintRequests={updatePrintRequests}
             isMobile={isMobile}
+            isDark={isDark} toggleDark={toggleDark}
           />
         )}
         {page === "worker" && (
@@ -936,6 +992,7 @@ export default function App() {
             printRequests={printRequests} updatePrintRequests={updatePrintRequests}
             visitCount={visitCount}
             isMobile={isMobile}
+            isDark={isDark} toggleDark={toggleDark}
           />
         )}
         {page === "admin" && (
@@ -954,6 +1011,7 @@ export default function App() {
             exhibitionPosts={exhibitionPosts} setExhibitionPosts={setExhibitionPosts}
             equipmentDB={equipmentDB} setEquipmentDB={setEquipmentDB}
             isMobile={isMobile}
+            isDark={isDark} toggleDark={toggleDark}
           />
         )}
       </div>
@@ -988,7 +1046,7 @@ export default function App() {
 // ════════════════════════════════════════════════════════════════
 //  LOGIN PAGE
 // ════════════════════════════════════════════════════════════════
-function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSession, onRememberSessionChange, blacklist, warnings, certificates, updateCertificates, inquiries, updateInquiries, savedCredentials, communityPosts, setCommunityPosts, exhibitionPosts, isMobile }) {
+function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSession, onRememberSessionChange, blacklist, warnings, certificates, updateCertificates, inquiries, updateInquiries, savedCredentials, communityPosts, setCommunityPosts, exhibitionPosts, isMobile, isDark, toggleDark }) {
   const [mode, setMode] = useState(() => savedCredentials?.role === "worker" ? "worker" : savedCredentials?.role === "admin" ? "admin" : "student");
   const [sid, setSid] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.id || "") : "");
   const [sname, setSname] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.name || "") : "");
@@ -1007,6 +1065,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
   const [certMajor, setCertMajor] = useState("");
   const [certEmail, setCertEmail] = useState("");
   const [showCertUpload, setShowCertUpload] = useState(false);
+  const [showSafetyInfo, setShowSafetyInfo] = useState(false);
   const [showInquiry, setShowInquiry] = useState(false);
   const [inquiryTitle, setInquiryTitle] = useState("");
   const [inquiryContent, setInquiryContent] = useState("");
@@ -1276,6 +1335,20 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
       position: "relative",
       overflow: "auto"
     }}>
+      {/* Theme Toggle */}
+      <button onClick={toggleDark} style={{
+        position: "fixed", top: 16, right: 16, zIndex: 100,
+        width: 36, height: 36, borderRadius: "50%",
+        background: theme.surface, border: `1px solid ${theme.border}`,
+        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+        color: theme.textMuted, transition: "all 0.2s",
+      }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent; e.currentTarget.style.color = theme.accent; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textMuted; }}
+      >
+        {isDark ? <Icons.sun size={16} /> : <Icons.moon size={16} />}
+      </button>
+
       {/* Top Left - User Guide & Notices (Above Quick Links) */}
       <div style={{
         position: "fixed",
@@ -1289,7 +1362,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
       }}>
         {/* Horizontal Guide Content */}
         <div style={{
-          background: "rgba(30, 31, 38, 0.95)",
+          background: theme.card,
           backdropFilter: "blur(10px)",
           border: `1px solid ${theme.border}`,
           borderRadius: 12,
@@ -1311,7 +1384,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                 fontSize: 11, fontWeight: 700,
                 display: "flex", alignItems: "center", justifyContent: "center"
               }}>1</span>
-              <span style={{ fontSize: 11, color: "#fff" }}>안전교육 수료증 제출</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>안전교육 수료증 제출</span>
             </div>
             <span style={{ color: theme.textDim, fontSize: 10 }}>→</span>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1321,7 +1394,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                 fontSize: 11, fontWeight: 700,
                 display: "flex", alignItems: "center", justifyContent: "center"
               }}>2</span>
-              <span style={{ fontSize: 11, color: "#fff" }}>학번/이름 입력 후 로그인</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>학번/이름 입력 후 로그인</span>
             </div>
             <span style={{ color: theme.textDim, fontSize: 10 }}>→</span>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1331,19 +1404,19 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                 fontSize: 11, fontWeight: 700,
                 display: "flex", alignItems: "center", justifyContent: "center"
               }}>3</span>
-              <span style={{ fontSize: 11, color: "#fff" }}>예약/대여/출력 이용</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>예약/대여/출력 이용</span>
             </div>
           </div>
 
           {/* Quick Info - Horizontal */}
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            <div style={{ fontSize: 11, color: "#fff", display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ fontSize: 11, color: theme.text, display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ color: theme.yellow }}>⏰</span> 평일 09:00~17:00
             </div>
-            <div style={{ fontSize: 11, color: "#fff", display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ fontSize: 11, color: theme.text, display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ color: theme.blue }}>📍</span> 복지관 602호실 교학팀
             </div>
-            <div style={{ fontSize: 11, color: "#fff", display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ fontSize: 11, color: theme.text, display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ color: theme.green }}>📞</span> 02-910-6525
             </div>
           </div>
@@ -1369,7 +1442,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
           marginBottom: 6,
           marginLeft: 4,
         }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: "#fff", letterSpacing: "2px", textTransform: "uppercase" }}>바로가기</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: theme.text, letterSpacing: "2px", textTransform: "uppercase" }}>바로가기</span>
         </div>
         {[
           { label: "국민대학교", url: "https://www.kookmin.ac.kr", icon: "🏫", color: "#4A90D9" },
@@ -1388,7 +1461,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               alignItems: "center",
               gap: 10,
               padding: "12px 16px",
-              background: "rgba(30, 31, 38, 0.9)",
+              background: theme.card,
               backdropFilter: "blur(10px)",
               border: `1px solid ${link.color}40`,
               borderLeft: `3px solid ${link.color}`,
@@ -1406,7 +1479,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               e.currentTarget.style.transform = "translateX(4px)";
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.background = "rgba(30, 31, 38, 0.9)";
+              e.currentTarget.style.background = theme.card;
               e.currentTarget.style.borderColor = `${link.color}40`;
               e.currentTarget.style.transform = "translateX(0)";
             }}
@@ -1427,7 +1500,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               alignItems: "center",
               gap: 10,
               padding: "12px 16px",
-              background: certHover ? "#FF950020" : "rgba(30, 31, 38, 0.9)",
+              background: certHover ? "#FF950020" : theme.card,
               backdropFilter: "blur(10px)",
               border: `1px solid ${certHover ? "#FF9500" : "#FF950040"}`,
               borderLeft: "3px solid #FF9500",
@@ -1455,7 +1528,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               top: "50%",
               transform: "translateY(-50%)",
               marginLeft: 12,
-              background: "rgba(30, 31, 38, 0.98)",
+              background: theme.card,
               backdropFilter: "blur(10px)",
               border: `1px solid ${theme.border}`,
               borderLeft: "3px solid #FF9500",
@@ -1484,7 +1557,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               alignItems: "center",
               gap: 10,
               padding: "12px 16px",
-              background: haedongHover ? "#FF6B6B20" : "rgba(30, 31, 38, 0.9)",
+              background: haedongHover ? "#FF6B6B20" : theme.card,
               backdropFilter: "blur(10px)",
               border: `1px solid ${haedongHover ? "#FF6B6B" : "#FF6B6B40"}`,
               borderLeft: "3px solid #FF6B6B",
@@ -1512,7 +1585,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               top: 0,
               marginLeft: 12,
               width: 320,
-              background: "rgba(30, 31, 38, 0.98)",
+              background: theme.card,
               backdropFilter: "blur(10px)",
               border: `1px solid ${theme.border}`,
               borderLeft: "3px solid #FF6B6B",
@@ -1542,7 +1615,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                       fontSize: 11, fontWeight: 700, flexShrink: 0,
                       display: "flex", alignItems: "center", justifyContent: "center"
                     }}>{idx + 1}</span>
-                    <span style={{ fontSize: 12, color: "#fff", lineHeight: 1.4 }}>{step}</span>
+                    <span style={{ fontSize: 12, color: theme.text, lineHeight: 1.4 }}>{step}</span>
                   </div>
                 ))}
               </div>
@@ -1584,7 +1657,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         <div style={{
           display: "flex",
           gap: 0,
-          background: "rgba(30, 31, 38, 0.9)",
+          background: theme.card,
           borderRadius: 8,
           padding: 4,
           border: `1px solid ${theme.border}`,
@@ -1633,14 +1706,14 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
             {(!exhibitionPosts || exhibitionPosts.length === 0) ? (
               <div style={{
                 padding: 30, textAlign: "center", color: theme.textDim, fontSize: 13,
-                background: "rgba(30, 31, 38, 0.9)", borderRadius: 10,
+                background: theme.card, borderRadius: 10,
                 border: `1px solid ${theme.border}`,
               }}>
                 등록된 전시회가 없습니다.
               </div>
             ) : (
               <div style={{
-                background: "rgba(30, 31, 38, 0.9)",
+                background: theme.card,
                 backdropFilter: "blur(10px)",
                 border: `1px solid ${theme.border}`,
                 borderRadius: 10,
@@ -1666,7 +1739,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                         <div style={{ fontSize: 20, fontWeight: 600, color: expandedExhId === exhPost.id ? theme.accent : theme.text, transition: "color 0.2s" }}>
                           {exhPost.title || "전시회"}
                         </div>
-                        <div style={{ fontSize: 10, color: "#fff", marginTop: 3 }}>
+                        <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 3 }}>
                           📅 {exhPost.dates || "미정"} · 📍 {exhPost.location || "미정"}
                         </div>
                       </div>
@@ -1709,11 +1782,11 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                           </div>
                         )}
                         {/* 상세 정보 */}
-                        <div style={{ padding: "12px 16px", background: "rgba(0,0,0,0.15)" }}>
+                        <div style={{ padding: "12px 16px", background: theme.surface }}>
                           <div style={{ fontSize: 18, color: theme.text, lineHeight: 1.6, marginBottom: 8 }}>
                             {exhPost.description || ""}
                           </div>
-                          <div style={{ fontSize: 17, color: "#fff", lineHeight: 1.5 }}>
+                          <div style={{ fontSize: 17, color: theme.text, lineHeight: 1.5 }}>
                             📅 {exhPost.dates || ""}<br />
                             📍 {exhPost.location || ""}
                           </div>
@@ -1741,7 +1814,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
           <>
             {/* New Post Input */}
             <div style={{
-              background: "rgba(30, 31, 38, 0.9)",
+              background: theme.card,
               backdropFilter: "blur(10px)",
               border: `1px solid ${theme.border}`,
               borderRadius: 10,
@@ -1807,7 +1880,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
 
             {/* Posts List */}
             <div style={{
-              background: "rgba(30, 31, 38, 0.9)",
+              background: theme.card,
               backdropFilter: "blur(10px)",
               border: `1px solid ${theme.border}`,
               borderRadius: 10,
@@ -2286,6 +2359,46 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
       />
 
       <div className="fade-in" style={{ width: "100%", maxWidth: isMobile ? "100%" : 420, position: "relative", zIndex: isCompactLayout ? 30 : 1, transform: isMobile ? "none" : `scale(${loginScale})`, transformOrigin: "center top", padding: isMobile ? "0 4px" : 0 }}>
+
+        {/* Mobile Guide Panel */}
+        {isMobile && (
+          <div style={{
+            background: theme.card,
+            border: `1px solid ${theme.border}`,
+            borderRadius: 12,
+            padding: "12px 16px",
+            marginBottom: 20,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <span style={{ fontSize: 16 }}>📖</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: theme.accent }}>이용 안내</span>
+              <div style={{ flex: 1, height: 1, background: theme.border, marginLeft: 6 }} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+              {[
+                { n: "1", t: "안전교육 수료증 제출" },
+                { n: "2", t: "학번/이름 입력 후 로그인" },
+                { n: "3", t: "예약/대여/출력 이용" },
+              ].map(s => (
+                <div key={s.n} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{
+                    width: 18, height: 18, borderRadius: "50%",
+                    background: theme.accentBg, color: theme.accent,
+                    fontSize: 10, fontWeight: 700,
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                  }}>{s.n}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{s.t}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 11, color: theme.text }}>
+              <span><span style={{ color: theme.yellow }}>⏰</span> 평일 09:00~17:00</span>
+              <span><span style={{ color: theme.blue }}>📍</span> 복지관 602호실</span>
+              <span><span style={{ color: theme.green }}>📞</span> 02-910-6525</span>
+            </div>
+          </div>
+        )}
+
         {/* Main Login Section */}
         <div>
           {/* Header */}
@@ -2336,7 +2449,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
           </div>
 
           {/* Login Form */}
-          <Card style={{ background: "rgba(18, 19, 24, 0.75)", backdropFilter: "blur(10px)", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
+          <Card style={{ background: theme.card, backdropFilter: "blur(10px)", border: `1px solid ${theme.border}` }}>
             {mode === "student" ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <Input label="학번" placeholder="예: 2021001" value={sid} onChange={e => setSid(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
@@ -2423,14 +2536,30 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                     <div style={{ fontSize: 13, fontWeight: 700, color: theme.blue }}>
                       안전교육 수료증 업로드
                     </div>
-                    {showCertUpload && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setShowCertUpload(false); }}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 2 }}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div
+                        onClick={(e) => { e.stopPropagation(); setShowSafetyInfo(true); }}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 4,
+                          padding: "4px 10px",
+                          background: "rgba(212,93,93,0.15)", border: `1px solid ${theme.red}`,
+                          borderRadius: theme.radiusSm, cursor: "pointer",
+                          transition: "all 0.2s", whiteSpace: "nowrap",
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = "rgba(212,93,93,0.25)"}
+                        onMouseLeave={e => e.currentTarget.style.background = "rgba(212,93,93,0.15)"}
                       >
-                        <Icons.x size={16} />
-                      </button>
-                    )}
+                        <span style={{ fontSize: 11, fontWeight: 700, color: theme.red }}>꼭 먼저 읽어주세요</span>
+                      </div>
+                      {showCertUpload && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setShowCertUpload(false); }}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 2 }}
+                        >
+                          <Icons.x size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {!showCertUpload ? (
@@ -2564,6 +2693,74 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                 </div>
               </div>
             </Card>
+          </div>
+        )}
+
+        {/* Safety Info Modal */}
+        {showSafetyInfo && (
+          <div style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 10000, padding: 20,
+          }} onClick={() => setShowSafetyInfo(false)}>
+            <div onClick={e => e.stopPropagation()} style={{
+              background: theme.card, borderRadius: theme.radius, border: `1px solid ${theme.border}`,
+              padding: 28, maxWidth: 480, width: "100%", maxHeight: "80vh", overflowY: "auto",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: theme.red }}>⚠️ 꼭 먼저 읽어주세요</div>
+                <button onClick={() => setShowSafetyInfo(false)} style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 4 }}>
+                  <Icons.x size={18} />
+                </button>
+              </div>
+
+              <div style={{ padding: "14px 16px", background: "rgba(212,93,93,0.12)", border: `1px solid ${theme.red}`, borderRadius: theme.radiusSm, marginBottom: 20 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: theme.red, marginBottom: 10 }}>❌ 안전교육 미이수자 ❌</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {[
+                    "출력실 사용 불가(출력X)",
+                    "건축대학 실기실 사용 불가",
+                    "건축대학 물품대여 불가",
+                    "철야불가",
+                    "교내 장학 대상자에서 제외",
+                    "졸업 논문 심사 시 제재",
+                    "일반근로 신청 제재",
+                  ].map((item, i) => (
+                    <div key={i} style={{ fontSize: 13, color: theme.red, fontWeight: 600, paddingLeft: 8 }}>- {item}</div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 8 }}>1. 대상</div>
+                <div style={{ fontSize: 13, color: theme.text, fontWeight: 600, paddingLeft: 12 }}>건축대학 소속 재학생 전체</div>
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 8 }}>2. 수강 방법</div>
+                <div style={{ paddingLeft: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 13, color: theme.text, fontWeight: 600, marginBottom: 4 }}>1. 연구실안전관리시스템 로그인 (ON국민 계정 사용)</div>
+                    <a
+                      href="https://safety.kookmin.ac.kr/UserHome/Index?LabNo=0"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontSize: 12, color: theme.blue, textDecoration: "underline", wordBreak: "break-all" }}
+                    >
+                      URL : https://safety.kookmin.ac.kr/UserHome/Index?LabNo=0
+                    </a>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, color: theme.text, fontWeight: 600 }}>2. 메인페이지에서 연구실안전교육 클릭 후 수강</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, color: theme.text, fontWeight: 600 }}>3. 안전교육이수증 다운 후, 업로드하기</div>
+                  </div>
+                </div>
+              </div>
+
+              <Button variant="secondary" size="md" onClick={() => setShowSafetyInfo(false)} style={{ width: "100%" }}>닫기</Button>
+            </div>
           </div>
         )}
 
@@ -2730,7 +2927,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
 // ════════════════════════════════════════════════════════════════
 //  STUDENT PORTAL
 // ════════════════════════════════════════════════════════════════
-function StudentPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, syncReservationToSheet, syncPrintToSheet, sendEmailNotification, warnings, inquiries, updateInquiries, printRequests, updatePrintRequests, isMobile }) {
+function StudentPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, syncReservationToSheet, syncPrintToSheet, sendEmailNotification, warnings, inquiries, updateInquiries, printRequests, updatePrintRequests, isMobile, isDark, toggleDark }) {
   const [tab, setTab] = useState("dashboard");
   const isSafe = user.safetyTrained;
   const myInquiries = inquiries?.filter(i => i.name === user.name) || [];
@@ -2761,7 +2958,10 @@ function StudentPortal({ user, onLogout, reservations, updateReservations, equip
             )}
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={onLogout}><Icons.logout size={15} /> 로그아웃</Button>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <Button variant="ghost" size="sm" onClick={toggleDark}>{isDark ? <Icons.sun size={15} /> : <Icons.moon size={15} />}</Button>
+          <Button variant="ghost" size="sm" onClick={onLogout}><Icons.logout size={15} /> 로그아웃</Button>
+        </div>
       </div>
 
       {/* Safety Warning */}
@@ -3117,7 +3317,7 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
           "- 이용 수칙을 준수해주세요.",
           "- 예약 변경/취소가 필요하면 근로학생 또는 관리자에게 문의해주세요.",
           "",
-          "국민대학교 건축대학 실기실, 물품 예약 시스템",
+          "국민대학교 건축대학 교학팀",
         ].join("\n"),
       });
       syncReservationToSheet?.(res);
@@ -3922,7 +4122,7 @@ function StudentHistory({ user, reservations, equipRentals, updateReservations, 
           "- 예약이 취소되어 해당 시간대는 다른 학생이 예약할 수 있습니다.",
           "- 다시 예약이 필요한 경우 새로 예약을 진행해주세요.",
           "",
-          "국민대학교 건축대학 실기실, 물품 예약 시스템",
+          "국민대학교 건축대학 교학팀",
         ].join("\n"),
       });
 
@@ -4166,7 +4366,7 @@ function StudentInquiries({ user, inquiries, updateInquiries }) {
 // ════════════════════════════════════════════════════════════════
 //  WORKER PORTAL
 // ════════════════════════════════════════════════════════════════
-function WorkerPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, logs, addLog, notifications, markNotifRead, markAllNotifsRead, unreadCount, sendEmailNotification, inquiries, updateInquiries, printRequests, updatePrintRequests, visitCount, isMobile }) {
+function WorkerPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, logs, addLog, notifications, markNotifRead, markAllNotifsRead, unreadCount, sendEmailNotification, inquiries, updateInquiries, printRequests, updatePrintRequests, visitCount, isMobile, isDark, toggleDark }) {
   const [tab, setTab] = useState("dashboard");
   const pendingInquiries = inquiries?.filter(i => i.status === "pending")?.length || 0;
   const pendingPrints = printRequests?.filter(p => p.status === "pending" || p.status === "processing")?.length || 0;
@@ -4183,7 +4383,10 @@ function WorkerPortal({ user, onLogout, reservations, updateReservations, equipR
             <Badge color="dim">{user.shift}</Badge>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={onLogout}><Icons.logout size={15} /> 나가기</Button>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <Button variant="ghost" size="sm" onClick={toggleDark}>{isDark ? <Icons.sun size={15} /> : <Icons.moon size={15} />}</Button>
+          <Button variant="ghost" size="sm" onClick={onLogout}><Icons.logout size={15} /> 나가기</Button>
+        </div>
       </div>
 
       <div style={{ paddingTop: 24 }}>
@@ -5172,7 +5375,7 @@ function LogViewer({ logs }) {
   };
 
   const exportText = () => {
-    const title = `국민대학교 건축대학 실기실, 물품 예약 시스템 일지\n내보내기 일시: ${ts()}\n${"═".repeat(60)}\n\n`;
+    const title = `국민대학교 건축대학 포털사이트 일지\n내보내기 일시: ${ts()}\n${"═".repeat(60)}\n\n`;
     const body = filtered.map(l => `[${l.time}] ${l.action}`).join("\n");
     const blob = new Blob([title + body], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -5247,7 +5450,7 @@ function LogViewer({ logs }) {
 // ════════════════════════════════════════════════════════════════
 //  ADMIN PORTAL
 // ════════════════════════════════════════════════════════════════
-function AdminPortal({ onLogout, reservations, updateReservations, workers, updateWorkers, logs, addLog, sheetConfig, updateSheetConfig, warnings, updateWarnings, blacklist, updateBlacklist, certificates, updateCertificates, sendEmailNotification, communityPosts, setCommunityPosts, exhibitionPosts, setExhibitionPosts, equipmentDB, setEquipmentDB, isMobile }) {
+function AdminPortal({ onLogout, reservations, updateReservations, workers, updateWorkers, logs, addLog, sheetConfig, updateSheetConfig, warnings, updateWarnings, blacklist, updateBlacklist, certificates, updateCertificates, sendEmailNotification, communityPosts, setCommunityPosts, exhibitionPosts, setExhibitionPosts, equipmentDB, setEquipmentDB, isMobile, isDark, toggleDark }) {
   const [tab, setTab] = useState("accounts");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -5276,6 +5479,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
   const [eqEditingId, setEqEditingId] = useState(null);
   const [eqDeleteConfirm, setEqDeleteConfirm] = useState(null);
   const [eqShowForm, setEqShowForm] = useState(false);
+  const [eqOpenCats, setEqOpenCats] = useState({});
   const resetEqForm = () => { setEqForm({ name: "", category: "수공구", available: 0, total: 0, deposit: false, maxDays: 1, icon: "" }); setEqEditingId(null); setEqShowForm(false); };
 
   const handlePosterUpload = (e) => {
@@ -5504,7 +5708,10 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
           <div style={{ fontSize: 18, fontWeight: 800, marginTop: 4 }}>관리자 설정</div>
           <Badge color="red" style={{ marginTop: 8 }}>관리자</Badge>
         </div>
-        <Button variant="ghost" size="sm" onClick={onLogout}><Icons.logout size={15} /> 로그아웃</Button>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <Button variant="ghost" size="sm" onClick={toggleDark}>{isDark ? <Icons.sun size={15} /> : <Icons.moon size={15} />}</Button>
+          <Button variant="ghost" size="sm" onClick={onLogout}><Icons.logout size={15} /> 로그아웃</Button>
+        </div>
       </div>
 
       <div style={{ paddingTop: 24 }}>
@@ -5682,7 +5889,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
               <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14, marginBottom: 14 }}>
                 <Input label="물품명" placeholder="예: 3D 프린터" value={eqForm.name} onChange={e => setEqForm(p => ({ ...p, name: e.target.value }))} />
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "#fff", letterSpacing: "0.5px", textTransform: "uppercase" }}>카테고리</label>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: theme.text, letterSpacing: "0.5px", textTransform: "uppercase" }}>카테고리</label>
                   <select value={eqForm.category} onChange={e => setEqForm(p => ({ ...p, category: e.target.value }))}
                     style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.surface, color: theme.text, fontSize: 13, fontFamily: theme.font }}>
                     {["가공장비", "수공구", "전자제품", "기타"].map(c => <option key={c} value={c}>{c}</option>)}
@@ -5720,48 +5927,77 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             </Card>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {equipmentDB.map(eq => (
-              <Card key={eq.id} style={{ padding: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <div style={{ fontSize: 32, width: 44, textAlign: "center" }}>{eq.icon}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>{eq.name}</div>
-                      <Badge color="dim" style={{ fontSize: 10 }}>{eq.category}</Badge>
-                    </div>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <Badge color={eq.available > 0 ? "green" : "red"} style={{ fontSize: 10 }}>가용 {eq.available}/{eq.total}</Badge>
-                      <Badge color="blue" style={{ fontSize: 10 }}>최대 {eq.maxDays}일</Badge>
-                      {eq.deposit && <Badge color="yellow" style={{ fontSize: 10 }}>보증금</Badge>}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <Button variant="ghost" size="sm" onClick={() => {
-                      setEqForm({ name: eq.name, category: eq.category, available: eq.available, total: eq.total, deposit: eq.deposit, maxDays: eq.maxDays, icon: eq.icon });
-                      setEqEditingId(eq.id);
-                      setEqShowForm(true);
-                    }}><Icons.edit size={14} /></Button>
-                    {eqDeleteConfirm === eq.id ? (
-                      <>
-                        <Button size="sm" style={{ background: theme.red, color: "#fff" }} onClick={() => {
-                          setEquipmentDB(prev => prev.filter(e => e.id !== eq.id));
-                          addLog(`[관리자] 물품 삭제: "${eq.name}"`, "admin");
-                          setEqDeleteConfirm(null);
-                        }}>삭제</Button>
-                        <Button variant="ghost" size="sm" onClick={() => setEqDeleteConfirm(null)}>취소</Button>
-                      </>
-                    ) : (
-                      <Button variant="ghost" size="sm" style={{ color: theme.red }} onClick={() => setEqDeleteConfirm(eq.id)}><Icons.x size={14} /></Button>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            ))}
-            {equipmentDB.length === 0 && (
+          {(() => {
+            const cats = [...new Set(equipmentDB.map(e => e.category))];
+            const toggleCat = (cat) => setEqOpenCats(prev => ({ ...prev, [cat]: !prev[cat] }));
+            return cats.length === 0 ? (
               <Empty icon={<Icons.tool size={32} />} text="등록된 물품이 없습니다" />
-            )}
-          </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {cats.map(cat => {
+                  const items = equipmentDB.filter(e => e.category === cat);
+                  const isOpen = !!eqOpenCats[cat];
+                  return (
+                    <div key={cat}>
+                      <div
+                        onClick={() => toggleCat(cat)}
+                        style={{
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          padding: "14px 18px", background: theme.surface, borderRadius: theme.radius,
+                          border: `1px solid ${isOpen ? theme.accent : theme.border}`,
+                          cursor: "pointer", transition: "all 0.2s",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: isOpen ? theme.accent : theme.text }}>{cat}</div>
+                          <Badge color={isOpen ? "accent" : "dim"} style={{ fontSize: 10 }}>{items.length}개</Badge>
+                        </div>
+                        <span style={{ fontSize: 12, color: theme.textDim, transition: "transform 0.2s", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+                      </div>
+                      {isOpen && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, paddingLeft: 12 }}>
+                          {items.map(eq => (
+                            <Card key={eq.id} style={{ padding: 14 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                                <div style={{ fontSize: 28, width: 40, textAlign: "center" }}>{eq.icon}</div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 4 }}>{eq.name}</div>
+                                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                    <Badge color={eq.available > 0 ? "green" : "red"} style={{ fontSize: 10 }}>가용 {eq.available}/{eq.total}</Badge>
+                                    <Badge color="blue" style={{ fontSize: 10 }}>최대 {eq.maxDays}일</Badge>
+                                    {eq.deposit && <Badge color="yellow" style={{ fontSize: 10 }}>보증금</Badge>}
+                                  </div>
+                                </div>
+                                <div style={{ display: "flex", gap: 6 }}>
+                                  <Button variant="ghost" size="sm" onClick={() => {
+                                    setEqForm({ name: eq.name, category: eq.category, available: eq.available, total: eq.total, deposit: eq.deposit, maxDays: eq.maxDays, icon: eq.icon });
+                                    setEqEditingId(eq.id);
+                                    setEqShowForm(true);
+                                  }}><Icons.edit size={14} /></Button>
+                                  {eqDeleteConfirm === eq.id ? (
+                                    <>
+                                      <Button size="sm" style={{ background: theme.red, color: "#fff" }} onClick={() => {
+                                        setEquipmentDB(prev => prev.filter(e => e.id !== eq.id));
+                                        addLog(`[관리자] 물품 삭제: "${eq.name}"`, "admin");
+                                        setEqDeleteConfirm(null);
+                                      }}>삭제</Button>
+                                      <Button variant="ghost" size="sm" onClick={() => setEqDeleteConfirm(null)}>취소</Button>
+                                    </>
+                                  ) : (
+                                    <Button variant="ghost" size="sm" style={{ color: theme.red }} onClick={() => setEqDeleteConfirm(eq.id)}><Icons.x size={14} /></Button>
+                                  )}
+                                </div>
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 

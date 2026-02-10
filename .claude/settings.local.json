@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npx vite build)",
-      "WebFetch(domain:www.kookmin.ac.kr)"
+      "WebFetch(domain:www.kookmin.ac.kr)",
+      "Bash(python3 -c \"import os; os.remove\\(''건축대학_관리시스템_v1.jsx''\\)\")",
+      "Bash(ls:*)"
     ]
   }
 }
