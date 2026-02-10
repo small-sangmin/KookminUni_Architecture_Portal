@@ -8,6 +8,7 @@ if (!window.storage) {
   const SERVER_PREFIX = "portal";
   const MIGRATION_FLAG_KEY = "__server_migrated_v1__";
   const STORAGE_TIMEOUT_MS = 10000;
+  const STORAGE_SET_TIMEOUT_TOKEN = "__set_timeout__";
   const serverKey = (key) => `${SERVER_PREFIX}/${key}`;
   const withTimeout = (promise, fallbackValue) =>
     Promise.race([
@@ -27,15 +28,21 @@ if (!window.storage) {
       return { value: JSON.stringify(fromServer) };
     },
     async set(key, value) {
-      // Firebase에 직접 저장 (타임아웃 없이 완료까지 대기)
+      // Firebase 쓰기가 지연되면 fallback으로 전환해 무한 대기를 막는다.
       try {
-        const ok = await firebaseStore.set(serverKey(key), value);
-        if (ok) return true;
+        const ok = await withTimeout(
+          firebaseStore.set(serverKey(key), value),
+          STORAGE_SET_TIMEOUT_TOKEN
+        );
+        if (ok === true) return true;
       } catch (e) {
         console.error("Firebase set failed:", e);
       }
       // Firebase 실패 시 localStorage fallback
-      try { localStorage.setItem(key, value); } catch {}
+      try {
+        if (value === null || value === undefined) localStorage.removeItem(key);
+        else localStorage.setItem(key, value);
+      } catch {}
       return true;
     },
     async list(prefix) {
@@ -80,5 +87,3 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <App />
   </React.StrictMode>
 );
-
-
