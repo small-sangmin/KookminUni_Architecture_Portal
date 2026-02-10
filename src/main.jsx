@@ -7,7 +7,7 @@ import firebaseStore from "./firebase";
 if (!window.storage) {
   const SERVER_PREFIX = "portal";
   const MIGRATION_FLAG_KEY = "__server_migrated_v1__";
-  const STORAGE_TIMEOUT_MS = 2000;
+  const STORAGE_TIMEOUT_MS = 10000;
   const serverKey = (key) => `${SERVER_PREFIX}/${key}`;
   const withTimeout = (promise, fallbackValue) =>
     Promise.race([
@@ -27,9 +27,15 @@ if (!window.storage) {
       return { value: JSON.stringify(fromServer) };
     },
     async set(key, value) {
-      const ok = await withTimeout(firebaseStore.set(serverKey(key), value), false);
-      if (ok) return true;
-      localStorage.setItem(key, value);
+      // Firebase에 직접 저장 (타임아웃 없이 완료까지 대기)
+      try {
+        const ok = await firebaseStore.set(serverKey(key), value);
+        if (ok) return true;
+      } catch (e) {
+        console.error("Firebase set failed:", e);
+      }
+      // Firebase 실패 시 localStorage fallback
+      try { localStorage.setItem(key, value); } catch {}
       return true;
     },
     async list(prefix) {

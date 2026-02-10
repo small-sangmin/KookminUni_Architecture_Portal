@@ -1278,26 +1278,36 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
     try {
       const reader = new FileReader();
       reader.onload = async () => {
-        const base64 = reader.result;
-        const sid = certSid.trim();
-        // base64 파일은 별도 키에 저장 (certificates 객체를 가볍게 유지)
-        await store.set(`certFile_${sid}`, base64);
-        const certMeta = {
-          studentId: sid,
-          studentName: certSname.trim(),
-          studentYear: certYear.trim(),
-          studentMajor: certMajor.trim(),
-          studentEmail: certEmail.trim(),
-          fileName: uploadFile.name,
-          fileSize: uploadFile.size,
-          fileType: uploadFile.type,
-          uploadDate: new Date().toISOString(),
-        };
-        updateCertificates?.(prev => ({ ...prev, [sid]: certMeta }));
-        setUploading(false);
-        setUploadSuccess("✅ 업로드 완료!");
-        setShowUploadConfirm(true);
-        setUploadFile(null);
+        try {
+          const base64 = reader.result;
+          const sid = certSid.trim();
+          const certMeta = {
+            studentId: sid,
+            studentName: certSname.trim(),
+            studentYear: certYear.trim(),
+            studentMajor: certMajor.trim(),
+            studentEmail: certEmail.trim(),
+            fileName: uploadFile.name,
+            fileSize: uploadFile.size,
+            fileType: uploadFile.type,
+            uploadDate: new Date().toISOString(),
+          };
+          // Firebase에 파일과 메타데이터를 확실히 저장 (await)
+          const updatedCerts = { ...(certificates || {}), [sid]: certMeta };
+          await Promise.all([
+            store.set(`certFile_${sid}`, base64),
+            store.set("certificates", updatedCerts),
+          ]);
+          // React 상태도 업데이트
+          updateCertificates?.(() => updatedCerts);
+          setUploading(false);
+          setUploadSuccess("✅ 업로드 완료!");
+          setShowUploadConfirm(true);
+          setUploadFile(null);
+        } catch (err) {
+          setUploading(false);
+          setError("서버 저장 실패: " + (err?.message || "알 수 없는 오류"));
+        }
       };
       reader.onerror = () => {
         setUploading(false);
