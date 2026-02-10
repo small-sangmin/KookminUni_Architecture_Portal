@@ -11,36 +11,34 @@ const EDITABLE = {
 
   ],
   rooms: [
-    { id: "R101", name: "모형제작실", floor: "6F", building: "복지관", equipment: "목공 기계, 집진기, 톱날", rules: "반드시 보호장구 착용" },
-    { id: "R102", name: "3D프린팅실", floor: "6F", building: "복지관", equipment: "프린터 3대", rules: "프린터 사용 후 노즐 청소 필수" },
-    { id: "R201", name: "캐드실", floor: "6F", building: "복지관", equipment: "3D Modeling 가능한 컴퓨터 다수 보유", rules: "사용후 정리 후 퇴실" },
-    { id: "R202", name: "레이저커팅실", floor: "6F", building: "복지관", equipment: "레이저 커터 1대", rules: "환기 필수, 가연성 재료 주의" },
-    { id: "R203", name: "사진실", floor: "6F", building: "복지관", equipment: "작업대 1개", rules: "조명 전원 OFF 후 퇴실" },
+    { id: "60x", name: "모형제작실", floor: "6F", building: "복지관", equipment: "목공 기계, 집진기, 톱날", rules: "반드시 보호장구 착용" },
+    { id: "60x", name: "3D프린팅", floor: "6F", building: "복지관", equipment: "프린터 3대", rules: "프린터 사용 후 노즐 청소 필수" },
+    { id: "604", name: "캐드실", floor: "6F", building: "복지관", equipment: "3D Modeling 가능한 컴퓨터 다수 보유", rules: "사용후 정리 후 퇴실" },
+    { id: "60x", name: "레이저커팅실", floor: "6F", building: "복지관", equipment: "레이저 커터 1대", rules: "환기 필수, 가연성 재료 주의" },
+    { id: "60x", name: "사진실", floor: "6F", building: "복지관", equipment: "작업대 1개", rules: "조명 전원 OFF 후 퇴실" },
   ],
   equipment: [
-    { id: "E002", name: "3D 프린터 (FDM)", category: "가공장비", available: 4, total: 5, deposit: false, maxDays: 1, icon: "🖨" },
-    { id: "E003", name: "열선 커터", category: "수공구", available: 3, total: 3, deposit: false, maxDays: 1, icon: "🔥" },
-    { id: "E004", name: "전동 드릴 세트", category: "수공구", available: 5, total: 8, deposit: false, maxDays: 2, icon: "🔧" },
-    { id: "E005", name: "직소기", category: "수공구", available: 2, total: 3, deposit: false, maxDays: 1, icon: "🪚" },
-    { id: "E006", name: "샌딩기", category: "수공구", available: 1, total: 2, deposit: false, maxDays: 1, icon: "🔨" },
-    { id: "E007", name: "노트북", category: "전자제품", available: 6, total: 6, deposit: false, maxDays: 1, icon: "💻" },
+    { id: "001", name: "3D 프린터 (FDM)", category: "가공장비", available: 4, total: 5, deposit: false, maxDays: 1, icon: "🖨" },
+    { id: "002", name: "열선 커터", category: "수공구", available: 3, total: 3, deposit: false, maxDays: 1, icon: "🔥" },
+    { id: "003", name: "전동 드릴 세트", category: "수공구", available: 5, total: 8, deposit: false, maxDays: 2, icon: "🔧" },
+    { id: "004", name: "직소기", category: "수공구", available: 2, total: 3, deposit: false, maxDays: 1, icon: "🪚" },
+    { id: "005", name: "샌딩기", category: "수공구", available: 1, total: 2, deposit: false, maxDays: 1, icon: "🔨" },
+    { id: "006", name: "노트북", category: "전자제품", available: 6, total: 6, deposit: false, maxDays: 1, icon: "💻" },
   ],
   equipmentReturnChecklist: [
     "외관 손상 여부 확인",
     "부속/케이블/소모품 포함 여부 확인",
-    "동작 테스트",
-    "대여 기록 서명",
   ],
   timeSlots: [
-    { id: "T1", label: "09:00–10:00", start: 9 }, { id: "T2", label: "10:00–11:00", start: 10 },
-    { id: "T3", label: "11:00–12:00", start: 11 }, { id: "T4", label: "12:00–13:00", start: 12 },
-    { id: "T5", label: "13:00–14:00", start: 13 }, { id: "T6", label: "14:00–15:00", start: 14 },
-    { id: "T7", label: "15:00–16:00", start: 15 }, { id: "T8", label: "16:00–17:00", start: 16 },
+    { id: "01", label: "09:00–10:00", start: 9 }, { id: "02", label: "10:00–11:00", start: 10 },
+    { id: "03", label: "11:00–12:00", start: 11 }, { id: "04", label: "12:00–13:00", start: 12 },
+    { id: "05", label: "13:00–14:00", start: 13 }, { id: "06", label: "14:00–15:00", start: 14 },
+    { id: "07", label: "15:00–16:00", start: 15 }, { id: "08", label: "16:00–17:00", start: 16 },
   ],
   workers: [
-    { id: "W001", name: "근로학생A", shift: "오전 (09–13시)", username: "worker1", password: "1234" },
-    { id: "W002", name: "근로학생B", shift: "오후 (13–18시)", username: "worker2", password: "1234" },
-    { id: "W003", name: "근로학생C", shift: "야간 (18–21시)", username: "worker3", password: "1234" },
+    { id: "001", name: "근로학생A", shift: "오전 (09–13시)", username: "worker1", password: "1234" },
+    { id: "002", name: "근로학생B", shift: "오후 (13–18시)", username: "worker2", password: "1234" },
+    { id: "003", name: "근로학생C", shift: "야간 (18–21시)", username: "worker3", password: "1234" },
   ],
   safetySheet: {
     url: "https://script.google.com/macros/s/AKfycbwTbgP51KGhGWIFY8oODXg1XUA3Q2lYEKvCgMD24Aqvwz12wKlhT7yZkvY3zvlievjFrg/exec",
@@ -2401,18 +2399,6 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
             )}
           </Card>
 
-          {/* Reset */}
-          <div style={{ textAlign: "center", marginTop: 20 }}>
-            {!showReset ? (
-              <button onClick={() => setShowReset(true)} style={{ background: "none", border: "none", color: theme.textDim, fontSize: 12, cursor: "pointer", fontFamily: theme.font }}>데이터 초기화</button>
-            ) : (
-              <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center" }}>
-                <span style={{ fontSize: 12, color: theme.red }}>모든 데이터가 삭제됩니다</span>
-                <Button size="sm" variant="danger" onClick={() => { onReset(); setShowReset(false); }}>확인</Button>
-                <Button size="sm" variant="ghost" onClick={() => setShowReset(false)}>취소</Button>
-              </div>
-            )}
-          </div>
 
 
         </div>
@@ -3261,9 +3247,9 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
               {/* Date & Time */}
               <SectionTitle icon={<Icons.calendar size={16} color={theme.accent} />}>날짜 및 시간 선택</SectionTitle>
               <Card style={{ marginBottom: 24 }}>
-                <div style={{ display: "flex", gap: 16, marginBottom: 18, flexWrap: "wrap" }}>
-                  <Input label="예약 날짜" type="date" value={selectedDate} onChange={e => { setSelectedDate(e.target.value); setSelectedSlots([]); }} style={{ maxWidth: 180 }} />
-                  <Input label="사용 인원" type="number" min="1" max="30" value={members} onChange={e => setMembers(e.target.value)} style={{ maxWidth: 100 }} />
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "auto auto", gap: 12, marginBottom: 18 }}>
+                  <Input label="예약 날짜" type="date" value={selectedDate} onChange={e => { setSelectedDate(e.target.value); setSelectedSlots([]); }} />
+                  <Input label="사용 인원" type="number" min="1" max="30" value={members} onChange={e => setMembers(e.target.value)} />
                 </div>
 
                 <label style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "0.5px", textTransform: "uppercase", display: "block", marginBottom: 10 }}>시간대 선택 (복수 가능)</label>
@@ -3481,11 +3467,9 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
                 {/* Return Info */}
                 <SectionTitle icon={<Icons.calendar size={16} color={theme.accent} />}>반납 정보</SectionTitle>
                 <Card style={{ marginBottom: 24 }}>
-                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                    <Input label="반납 예정일" type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} style={{ maxWidth: 180 }} />
-                    <div style={{ flex: 1, minWidth: 200 }}>
-                      <Input label="비고 (선택)" placeholder="예: 수업용, 팀프로젝트 등" value={note} onChange={e => setNote(e.target.value)} />
-                    </div>
+                  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "auto 1fr", gap: 12 }}>
+                    <Input label="반납 예정일" type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} />
+                    <Input label="비고 (선택)" placeholder="예: 수업용, 팀프로젝트 등" value={note} onChange={e => setNote(e.target.value)} />
                   </div>
                 </Card>
 
