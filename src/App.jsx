@@ -11,11 +11,11 @@ const EDITABLE = {
 
   ],
   rooms: [
-    { id: "60x", name: "모형제작실", floor: "6F", building: "복지관", equipment: "목공 기계, 집진기, 톱날", rules: "반드시 보호장구 착용" },
-    { id: "60x", name: "3D프린팅", floor: "6F", building: "복지관", equipment: "프린터 3대", rules: "프린터 사용 후 노즐 청소 필수" },
+    { id: "601", name: "모형제작실", floor: "6F", building: "복지관", equipment: "목공 기계, 집진기, 톱날", rules: "반드시 보호장구 착용" },
+    { id: "602", name: "3D프린팅", floor: "6F", building: "복지관", equipment: "프린터 3대", rules: "프린터 사용 후 노즐 청소 필수" },
     { id: "604", name: "캐드실", floor: "6F", building: "복지관", equipment: "3D Modeling 가능한 컴퓨터 다수 보유", rules: "사용후 정리 후 퇴실" },
-    { id: "60x", name: "레이저커팅실", floor: "6F", building: "복지관", equipment: "레이저 커터 1대", rules: "환기 필수, 가연성 재료 주의" },
-    { id: "60x", name: "사진실", floor: "6F", building: "복지관", equipment: "작업대 1개", rules: "조명 전원 OFF 후 퇴실" },
+    { id: "605", name: "레이저커팅실", floor: "6F", building: "복지관", equipment: "레이저 커터 1대", rules: "환기 필수, 가연성 재료 주의" },
+    { id: "606", name: "사진실", floor: "6F", building: "복지관", equipment: "작업대 1개", rules: "조명 전원 OFF 후 퇴실" },
   ],
   equipment: [
     { id: "001", name: "3D 프린터 (FDM)", category: "가공장비", available: 4, total: 5, deposit: false, maxDays: 1, icon: "🖨" },
@@ -3247,9 +3247,9 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
               {/* Date & Time */}
               <SectionTitle icon={<Icons.calendar size={16} color={theme.accent} />}>날짜 및 시간 선택</SectionTitle>
               <Card style={{ marginBottom: 24 }}>
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "auto auto", gap: 12, marginBottom: 18 }}>
-                  <Input label="예약 날짜" type="date" value={selectedDate} onChange={e => { setSelectedDate(e.target.value); setSelectedSlots([]); }} />
-                  <Input label="사용 인원" type="number" min="1" max="30" value={members} onChange={e => setMembers(e.target.value)} />
+                <div style={{ display: "flex", gap: 16, marginBottom: 18, flexWrap: "wrap" }}>
+                  <Input label="예약 날짜" type="date" value={selectedDate} onChange={e => { setSelectedDate(e.target.value); setSelectedSlots([]); }} style={{ maxWidth: 180 }} />
+                  <Input label="사용 인원" type="number" min="1" max="30" value={members} onChange={e => setMembers(e.target.value)} style={{ maxWidth: 100 }} />
                 </div>
 
                 <label style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "0.5px", textTransform: "uppercase", display: "block", marginBottom: 10 }}>시간대 선택 (복수 가능)</label>
@@ -3467,9 +3467,11 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
                 {/* Return Info */}
                 <SectionTitle icon={<Icons.calendar size={16} color={theme.accent} />}>반납 정보</SectionTitle>
                 <Card style={{ marginBottom: 24 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "auto 1fr", gap: 12 }}>
-                    <Input label="반납 예정일" type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} />
-                    <Input label="비고 (선택)" placeholder="예: 수업용, 팀프로젝트 등" value={note} onChange={e => setNote(e.target.value)} />
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                    <Input label="반납 예정일" type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} style={{ maxWidth: 180 }} />
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <Input label="비고 (선택)" placeholder="예: 수업용, 팀프로젝트 등" value={note} onChange={e => setNote(e.target.value)} />
+                    </div>
                   </div>
                 </Card>
 
