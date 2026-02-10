@@ -43,29 +43,30 @@ const EDITABLE = {
     { id: "W003", name: "근로학생C", shift: "야간 (18–21시)", username: "worker3", password: "1234" },
   ],
   safetySheet: {
-    url: "https://script.google.com/macros/s/AKfycbwZCS76_LkUPqBEbXMACCX6DM9Z-cOorwQAGNE_DL3nCO_cQaSa-9kJUd5_FV0A_VgQ6w/exec",
-    sheetName: "안전교육이수자 명단",
+    url: "https://script.google.com/macros/s/AKfycbwTbgP51KGhGWIFY8oODXg1XUA3Q2lYEKvCgMD24Aqvwz12wKlhT7yZkvY3zvlievjFrg/exec",
+    sheetName: "시트1",
     columns: {
       studentId: "학번",
       studentName: "이름",
       year: "학년",
       dept: "전공",
       safetyTrained: "안전교육",
-      email: "1열",
+      email: "이메일",
     },
   },
   emailNotify: {
-    url: "https://script.google.com/macros/s/AKfycbxYcNb5hLoMbLzDchdZFmlHiNCWBRcpfpqc18GTWRjYEoXgteGdneebp0iJWcM3exzPcA/exec",
-    recipients: ["samkim11300@gmail.com"],
+    url: "https://script.google.com/macros/s/AKfycbwNG0fBaeEa1fQXn-8zieyljXWeCscLnXQUN6UvvehUqPEtBHb0bBJTesu9QKUBTbn1Ug/exec",
+    recipients: ["saku20392@kookmin.ac.kr"],
     enabled: true,
   },
   adminAccount: { username: "admin", password: "admin1234", name: "관리자" },
+  apiKey: "kmu-arch-2026-secret",  // Apps Script 검증용 API 키 (배포 시 동일한 키를 Apps Script에도 설정)
 };
 
 // ─── Data Constants (do not edit below) ─────────────────────────
 const STUDENTS_DB = EDITABLE.students;
 const ROOMS = EDITABLE.rooms;
-const EQUIPMENT_DB = EDITABLE.equipment;
+const DEFAULT_EQUIPMENT_DB = EDITABLE.equipment;
 const TIME_SLOTS = EDITABLE.timeSlots;
 const DEFAULT_WORKERS = EDITABLE.workers;
 const ADMIN_ACCOUNT = EDITABLE.adminAccount;
@@ -74,12 +75,12 @@ const ADMIN_ACCOUNT = EDITABLE.adminAccount;
 const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const ts = () => {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
 };
 const dateStr = () => new Date().toISOString().split("T")[0];
 const tomorrow = () => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split("T")[0]; };
 const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().split("T")[0]; };
-const formatDate = (d) => { if (!d) return ""; const [y,m,dd] = d.split("-"); return `${m}/${dd}`; };
+const formatDate = (d) => { if (!d) return ""; const [y, m, dd] = d.split("-"); return `${m}/${dd}`; };
 
 // ─── Storage Layer ───────────────────────────────────────────────
 const store = {
@@ -102,45 +103,45 @@ const store = {
 // ─── SVG Icons ───────────────────────────────────────────────────
 const I = ({ d, size = 18, color = "currentColor", sw = 1.8 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", flexShrink: 0 }}>
-    {typeof d === "string" ? <path d={d}/> : d}
+    {typeof d === "string" ? <path d={d} /> : d}
   </svg>
 );
 
 const Icons = {
-  door: (p) => <I {...p} d={<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><circle cx="15" cy="12" r="1" fill="currentColor"/></>}/>,
-  tool: (p) => <I {...p} d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>,
-  check: (p) => <I {...p} d="M20 6L9 17l-5-5"/>,
-  x: (p) => <I {...p} d="M18 6L6 18M6 6l12 12"/>,
-  bell: (p) => <I {...p} d={<><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></>}/>,
-  lock: (p) => <I {...p} d={<><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></>}/>,
-  unlock: (p) => <I {...p} d={<><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></>}/>,
-  user: (p) => <I {...p} d={<><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></>}/>,
-  clock: (p) => <I {...p} d={<><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></>}/>,
-  calendar: (p) => <I {...p} d={<><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></>}/>,
-  log: (p) => <I {...p} d={<><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></>}/>,
-  home: (p) => <I {...p} d={<><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></>}/>,
-  download: (p) => <I {...p} d={<><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></>}/>,
-  search: (p) => <I {...p} d={<><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></>}/>,
-  alert: (p) => <I {...p} d={<><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4M12 17h.01"/></>}/>,
-  refresh: (p) => <I {...p} d={<><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></>}/>,
-  arrowLeft: (p) => <I {...p} d="M19 12H5M12 19l-7-7 7-7"/>,
-  list: (p) => <I {...p} d={<><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></>}/>,
-  grid: (p) => <I {...p} d={<><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></>}/>,
-  info: (p) => <I {...p} d={<><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></>}/>,
-  logout: (p) => <I {...p} d={<><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></>}/>,
-  history: (p) => <I {...p} d={<><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></>}/>,
-  filter: (p) => <I {...p} d="M22 3H2l8 9.46V19l4 2v-8.54L22 3"/>,
-  package: (p) => <I {...p} d={<><path d="M16.5 9.4l-9-5.19"/><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></>}/>,
-  shield: (p) => <I {...p} d={<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></>}/>,
-  edit: (p) => <I {...p} d={<><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></>}/>,
-  trash: (p) => <I {...p} d={<><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></>}/>,
-  plus: (p) => <I {...p} d="M12 5v14M5 12h14"/>,
-  users: (p) => <I {...p} d={<><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></>}/>,
-  eye: (p) => <I {...p} d={<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>}/>,
-  eyeOff: (p) => <I {...p} d={<><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19M1 1l22 22"/><path d="M14.12 14.12a3 3 0 11-4.24-4.24"/></>}/>,
-  upload: (p) => <I {...p} d={<><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></>}/>,
-  file: (p) => <I {...p} d={<><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M13 2v7h7"/></>}/>,
-  loading: (p) => <I {...p} d={<><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></>} style={{ animation: "spin 1s linear infinite", ...p?.style }}/>,
+  door: (p) => <I {...p} d={<><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18" /><circle cx="15" cy="12" r="1" fill="currentColor" /></>} />,
+  tool: (p) => <I {...p} d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />,
+  check: (p) => <I {...p} d="M20 6L9 17l-5-5" />,
+  x: (p) => <I {...p} d="M18 6L6 18M6 6l12 12" />,
+  bell: (p) => <I {...p} d={<><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" /></>} />,
+  lock: (p) => <I {...p} d={<><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></>} />,
+  unlock: (p) => <I {...p} d={<><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 019.9-1" /></>} />,
+  user: (p) => <I {...p} d={<><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></>} />,
+  clock: (p) => <I {...p} d={<><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>} />,
+  calendar: (p) => <I {...p} d={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>} />,
+  log: (p) => <I {...p} d={<><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6" /><path d="M16 13H8M16 17H8M10 9H8" /></>} />,
+  home: (p) => <I {...p} d={<><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><path d="M9 22V12h6v10" /></>} />,
+  download: (p) => <I {...p} d={<><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></>} />,
+  search: (p) => <I {...p} d={<><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></>} />,
+  alert: (p) => <I {...p} d={<><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><path d="M12 9v4M12 17h.01" /></>} />,
+  refresh: (p) => <I {...p} d={<><path d="M23 4v6h-6" /><path d="M1 20v-6h6" /><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" /></>} />,
+  arrowLeft: (p) => <I {...p} d="M19 12H5M12 19l-7-7 7-7" />,
+  list: (p) => <I {...p} d={<><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></>} />,
+  grid: (p) => <I {...p} d={<><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></>} />,
+  info: (p) => <I {...p} d={<><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></>} />,
+  logout: (p) => <I {...p} d={<><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></>} />,
+  history: (p) => <I {...p} d={<><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>} />,
+  filter: (p) => <I {...p} d="M22 3H2l8 9.46V19l4 2v-8.54L22 3" />,
+  package: (p) => <I {...p} d={<><path d="M16.5 9.4l-9-5.19" /><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" /><path d="M3.27 6.96L12 12.01l8.73-5.05" /><path d="M12 22.08V12" /></>} />,
+  shield: (p) => <I {...p} d={<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></>} />,
+  edit: (p) => <I {...p} d={<><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></>} />,
+  trash: (p) => <I {...p} d={<><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></>} />,
+  plus: (p) => <I {...p} d="M12 5v14M5 12h14" />,
+  users: (p) => <I {...p} d={<><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></>} />,
+  eye: (p) => <I {...p} d={<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></>} />,
+  eyeOff: (p) => <I {...p} d={<><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19M1 1l22 22" /><path d="M14.12 14.12a3 3 0 11-4.24-4.24" /></>} />,
+  upload: (p) => <I {...p} d={<><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><path d="M17 8l-5-5-5 5" /><path d="M12 3v12" /></>} />,
+  file: (p) => <I {...p} d={<><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z" /><path d="M13 2v7h7" /></>} />,
+  loading: (p) => <I {...p} d={<><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></>} style={{ animation: "spin 1s linear infinite", ...p?.style }} />,
 };
 
 // ─── Shared Styles ───────────────────────────────────────────────
@@ -197,8 +198,8 @@ const Card = ({ children, style: st, onClick, hover }) => (
     cursor: onClick ? "pointer" : "default",
     ...st
   }}
-  onMouseEnter={e => { if (hover || onClick) { e.currentTarget.style.borderColor = theme.borderLight; e.currentTarget.style.background = theme.surfaceHover; }}}
-  onMouseLeave={e => { if (hover || onClick) { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.card; }}}
+    onMouseEnter={e => { if (hover || onClick) { e.currentTarget.style.borderColor = theme.borderLight; e.currentTarget.style.background = theme.surfaceHover; } }}
+    onMouseLeave={e => { if (hover || onClick) { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.card; } }}
   >{children}</div>
 );
 
@@ -224,7 +225,7 @@ const Button = ({ children, variant = "primary", disabled, onClick, style: st, s
 
 const Input = ({ label, ...props }) => (
   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-    {label && <label style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "0.5px", textTransform: "uppercase" }}>{label}</label>}
+    {label && <label style={{ fontSize: 11, fontWeight: 600, color: "#fff", letterSpacing: "0.5px", textTransform: "uppercase" }}>{label}</label>}
     <input {...props} style={{ width: "100%", padding: "10px 14px", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: theme.radiusSm, color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s", height: 42, ...props.style }}
       onFocus={e => e.target.style.borderColor = theme.accent}
       onBlur={e => e.target.style.borderColor = theme.border}
@@ -248,7 +249,7 @@ const Empty = ({ icon, text }) => (
   </div>
 );
 
-const Divider = () => <div style={{ height: 1, background: theme.border, margin: "20px 0" }}/>;
+const Divider = () => <div style={{ height: 1, background: theme.border, margin: "20px 0" }} />;
 
 // ─── Tab Component ───────────────────────────────────────────────
 const Tabs = ({ tabs, active, onChange }) => (
@@ -295,9 +296,9 @@ export default function App() {
   const [logs, setLogs] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [workers, setWorkers] = useState(DEFAULT_WORKERS);
-  const [sheetConfig, setSheetConfig] = useState({ 
-    reservationWebhookUrl: "https://script.google.com/macros/s/AKfycbwr8VbFmyLslDO2Yts2mm3DyHgVCSYfAs1w-pymo_sNIXsQXXjc9kpqOKG-EaP66j8h/exec",
-    printWebhookUrl: "https://script.google.com/macros/s/AKfycbwr8VbFmyLslDO2Yts2mm3DyHgVCSYfAs1w-pymo_sNIXsQXXjc9kpqOKG-EaP66j8h/exec"
+  const [sheetConfig, setSheetConfig] = useState({
+    reservationWebhookUrl: "https://script.google.com/macros/s/AKfycbwyzzFFUQRLjITW6D6YVw4RzVoB4ye80-tb7Tsan4RspCPAIdq3pV4C9_ixeGp6Hdotpg/exec",
+    printWebhookUrl: "https://script.google.com/macros/s/AKfycbxoF7nFIP6neZjGegxwwMYZn5FIt2nXsoPsXUIsWxv5nqmcglf7i9K34PcgL2XutNwD/exec"
   });
   const [overdueFlags, setOverdueFlags] = useState({});
   const [warnings, setWarnings] = useState({});
@@ -311,13 +312,17 @@ export default function App() {
 
   // ─── Community & Exhibition (shared between LoginPage & AdminPortal) ──
   const defaultPosts = useMemo(() => [
-    { id: "c1", content: "레이저컷터 사용법 알려줄 분 계신가요?", createdAt: "2026-02-07T10:30:00", comments: [
-      { id: "cm1", content: "유튜브에 튜토리얼 많아요!", createdAt: "2026-02-07T11:00:00" },
-      { id: "cm2", content: "조교실에 문의하시면 교육받으실 수 있어요", createdAt: "2026-02-07T12:30:00" },
-    ] },
-    { id: "c2", content: "4학년 졸업전시 준비하시는 분들 화이팅!", createdAt: "2026-02-06T15:20:00", comments: [
-      { id: "cm3", content: "감사합니다 ㅠㅠ", createdAt: "2026-02-06T16:00:00" },
-    ] },
+    {
+      id: "c1", content: "레이저컷터 사용법 알려줄 분 계신가요?", createdAt: "2026-02-07T10:30:00", comments: [
+        { id: "cm1", content: "유튜브에 튜토리얼 많아요!", createdAt: "2026-02-07T11:00:00" },
+        { id: "cm2", content: "조교실에 문의하시면 교육받으실 수 있어요", createdAt: "2026-02-07T12:30:00" },
+      ]
+    },
+    {
+      id: "c2", content: "4학년 졸업전시 준비하시는 분들 화이팅!", createdAt: "2026-02-06T15:20:00", comments: [
+        { id: "cm3", content: "감사합니다 ㅠㅠ", createdAt: "2026-02-06T16:00:00" },
+      ]
+    },
     { id: "c3", content: "실기실 예약 시스템 너무 편하네요 ㅎㅎ", createdAt: "2026-02-05T09:15:00", comments: [] },
   ], []);
   const [communityPosts, setCommunityPostsRaw] = useState(defaultPosts);
@@ -342,6 +347,14 @@ export default function App() {
       return next;
     });
   }, []);
+  const [equipmentDB, setEquipmentDBRaw] = useState(DEFAULT_EQUIPMENT_DB);
+  const setEquipmentDB = useCallback((updater) => {
+    setEquipmentDBRaw(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      store.set("equipmentDB", next);
+      return next;
+    });
+  }, []);
 
   // ─── Load persisted data ───────────────────────────────────────
   useEffect(() => {
@@ -362,7 +375,7 @@ export default function App() {
         setDataLoaded(true);
 
         // 2단계: 나머지 데이터 백그라운드 로드 (화면 표시 후)
-        const [wk, warn, blk, certs, res, eq, lg, notif, sheet, overdue, inq, prints, visits, visitors, cmPosts, exhPosts, exhDataOld] = await Promise.all([
+        const [wk, warn, blk, certs, res, eq, lg, notif, sheet, overdue, inq, prints, visits, visitors, cmPosts, exhPosts, exhDataOld, eqDB] = await Promise.all([
           store.get("workers"),
           store.get("warnings"),
           store.get("blacklist"),
@@ -380,6 +393,7 @@ export default function App() {
           store.get("communityPosts"),
           store.get("exhibitionPosts"),
           store.get("exhibitionData"),
+          store.get("equipmentDB"),
         ]);
         if (wk) setWorkers(wk);
         if (warn) setWarnings(warn);
@@ -405,6 +419,7 @@ export default function App() {
         } else {
           store.set("exhibitionPosts", defaultExhibitionPosts);
         }
+        if (eqDB) setEquipmentDBRaw(eqDB);
       } catch (error) {
         console.error("Initial data load failed:", error);
         setDataLoaded(true);
@@ -513,7 +528,7 @@ export default function App() {
 
   const markNotifRead = useCallback((id) => {
     setNotifications(prev => {
-      const next = prev.map(n => n.id === id ? {...n, read: true} : n);
+      const next = prev.map(n => n.id === id ? { ...n, read: true } : n);
       persist("notifications", next);
       return next;
     });
@@ -521,7 +536,7 @@ export default function App() {
 
   const markAllNotifsRead = useCallback(() => {
     setNotifications(prev => {
-      const next = prev.map(n => ({...n, read: true}));
+      const next = prev.map(n => ({ ...n, read: true }));
       persist("notifications", next);
       return next;
     });
@@ -533,6 +548,7 @@ export default function App() {
     if (!url) return { ok: false, error: "연동 URL이 설정되지 않았습니다." };
     const payload = {
       action: "verify_student",
+      key: EDITABLE.apiKey,
       studentId: studentId?.trim(),
       studentName: studentName?.trim(),
       sheetName: cfg?.sheetName,
@@ -556,6 +572,7 @@ export default function App() {
       try {
         const params = new URLSearchParams({
           action: "verify_student",
+          key: EDITABLE.apiKey,
           studentId: payload.studentId || "",
           studentName: payload.studentName || "",
           sheetName: payload.sheetName || "",
@@ -585,6 +602,7 @@ export default function App() {
     try {
       const payload = {
         action: "send_email",
+        key: EDITABLE.apiKey,
         to: recipients,
         subject,
         body,
@@ -603,7 +621,7 @@ export default function App() {
           method: "POST",
           mode: "no-cors",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify({ action: "send_email", to: recipients, subject, body }),
+          body: JSON.stringify({ action: "send_email", key: EDITABLE.apiKey, to: recipients, subject, body }),
         });
         return { ok: true, opaque: true };
       } catch (err2) {
@@ -663,6 +681,7 @@ export default function App() {
     try {
       const payload = {
         event: "room_reservation",
+        key: EDITABLE.apiKey,
         data: {
           id: reservation.id,
           studentId: reservation.studentId,
@@ -687,8 +706,6 @@ export default function App() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return { ok: true };
     } catch (err) {
-      // CORS/Preflight issues are common with Google Apps Script webhooks.
-      // Fallback to no-cors + text/plain to allow request delivery.
       try {
         await fetch(url, {
           method: "POST",
@@ -696,6 +713,7 @@ export default function App() {
           headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify({
             event: "room_reservation",
+            key: EDITABLE.apiKey,
             data: {
               id: reservation.id,
               studentId: reservation.studentId,
@@ -728,6 +746,7 @@ export default function App() {
     try {
       const payload = {
         event: "print_request",
+        key: EDITABLE.apiKey,
         data: {
           id: printRequest.id,
           studentId: printRequest.studentId,
@@ -760,6 +779,7 @@ export default function App() {
           headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify({
             event: "print_request",
+            key: EDITABLE.apiKey,
             data: {
               id: printRequest.id,
               studentId: printRequest.studentId,
@@ -799,7 +819,7 @@ export default function App() {
     setPage(role);
     if (rememberSession) store.set("session", { user, role, page: role });
     else store.set("session", null);
-    
+
     // 학생 로그인 시 방문 횟수 증가 (로그인할 때마다 +1)
     if (role === "student" && user?.id) {
       const currentCount = await store.get("visitCount") || 0;
@@ -843,7 +863,7 @@ export default function App() {
 
   return (
     <div style={{ fontFamily: theme.font, background: theme.bg, color: theme.text, minHeight: "100vh" }}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         ::-webkit-scrollbar { width: 6px; }
@@ -885,6 +905,7 @@ export default function App() {
             user={currentUser} onLogout={handleLogout}
             reservations={reservations} updateReservations={updateReservations}
             equipRentals={equipRentals} updateEquipRentals={updateEquipRentals}
+            equipmentDB={equipmentDB} setEquipmentDB={setEquipmentDB}
             addLog={addLog} addNotification={addNotification}
             syncReservationToSheet={syncReservationToSheet}
             syncPrintToSheet={syncPrintToSheet}
@@ -924,13 +945,14 @@ export default function App() {
             sendEmailNotification={sendEmailNotification}
             communityPosts={communityPosts} setCommunityPosts={setCommunityPosts}
             exhibitionPosts={exhibitionPosts} setExhibitionPosts={setExhibitionPosts}
+            equipmentDB={equipmentDB} setEquipmentDB={setEquipmentDB}
           />
         )}
       </div>
-      
+
       {/* Global KMU Logo - Fixed at bottom (center for login, right for portals) */}
-      <img 
-        src="/kmu-logo.png" 
+      <img
+        src="/kmu-logo.png"
         alt="KMU Logo"
         style={{
           position: "fixed",
@@ -985,7 +1007,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
   const [inquirySubmitting, setInquirySubmitting] = useState(false);
   const [inquirySuccess, setInquirySuccess] = useState("");
   const fileInputRef = useRef(null);
-  
+
   // 전시회/커뮤니티 탭 상태
   const [rightPanelTab, setRightPanelTab] = useState("community"); // exhibition | community
   const [expandedExhId, setExpandedExhId] = useState(null); // 펼친 전시회 ID
@@ -1054,7 +1076,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         try {
           const res = await fetch(proxy + encodeURIComponent(targetUrl));
           if (res.ok) { html = await res.text(); break; }
-        } catch {}
+        } catch { }
       }
       if (!html) throw new Error("proxy failed");
 
@@ -1160,6 +1182,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
       safetyTrained: result?.safetyTrained ?? true,
       safetyDate: result?.student?.safetyDate || fallback?.safetyDate || null,
       warningCount: warnInfo?.count || 0,
+      email: result?.student?.email || "",
     };
     onLogin(student, "student");
   };
@@ -1236,11 +1259,11 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
   };
 
   return (
-    <div style={{ 
-      flex: 1, 
-      display: "flex", 
-      alignItems: "center", 
-      justifyContent: "center", 
+    <div style={{
+      flex: 1,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
       paddingBottom: 60,
       position: "relative",
       overflow: "hidden"
@@ -1267,51 +1290,51 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
             <span style={{ fontSize: 18 }}>📖</span>
             <span style={{ fontSize: 13, fontWeight: 700, color: theme.accent }}>이용 안내</span>
-            <div style={{ flex: 1, height: 1, background: theme.border, marginLeft: 8 }}/>
+            <div style={{ flex: 1, height: 1, background: theme.border, marginLeft: 8 }} />
           </div>
-          
+
           {/* Quick Start Steps - Horizontal */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ 
-                width: 20, height: 20, borderRadius: "50%", 
+              <span style={{
+                width: 20, height: 20, borderRadius: "50%",
                 background: theme.accentBg, color: theme.accent,
-                fontSize: 11, fontWeight: 700, 
+                fontSize: 11, fontWeight: 700,
                 display: "flex", alignItems: "center", justifyContent: "center"
               }}>1</span>
-              <span style={{ fontSize: 11, color: theme.textMuted }}>안전교육 수료증 제출</span>
+              <span style={{ fontSize: 11, color: "#fff" }}>안전교육 수료증 제출</span>
             </div>
             <span style={{ color: theme.textDim, fontSize: 10 }}>→</span>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ 
-                width: 20, height: 20, borderRadius: "50%", 
+              <span style={{
+                width: 20, height: 20, borderRadius: "50%",
                 background: theme.accentBg, color: theme.accent,
-                fontSize: 11, fontWeight: 700, 
+                fontSize: 11, fontWeight: 700,
                 display: "flex", alignItems: "center", justifyContent: "center"
               }}>2</span>
-              <span style={{ fontSize: 11, color: theme.textMuted }}>학번/이름 입력 후 로그인</span>
+              <span style={{ fontSize: 11, color: "#fff" }}>학번/이름 입력 후 로그인</span>
             </div>
             <span style={{ color: theme.textDim, fontSize: 10 }}>→</span>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ 
-                width: 20, height: 20, borderRadius: "50%", 
+              <span style={{
+                width: 20, height: 20, borderRadius: "50%",
                 background: theme.accentBg, color: theme.accent,
-                fontSize: 11, fontWeight: 700, 
+                fontSize: 11, fontWeight: 700,
                 display: "flex", alignItems: "center", justifyContent: "center"
               }}>3</span>
-              <span style={{ fontSize: 11, color: theme.textMuted }}>예약/대여/출력 이용</span>
+              <span style={{ fontSize: 11, color: "#fff" }}>예약/대여/출력 이용</span>
             </div>
           </div>
-          
+
           {/* Quick Info - Horizontal */}
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            <div style={{ fontSize: 11, color: theme.textMuted, display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ fontSize: 11, color: "#fff", display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ color: theme.yellow }}>⏰</span> 평일 09:00~17:00
             </div>
-            <div style={{ fontSize: 11, color: theme.textMuted, display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ fontSize: 11, color: "#fff", display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ color: theme.blue }}>📍</span> 복지관 602호실 교학팀
             </div>
-            <div style={{ fontSize: 11, color: theme.textMuted, display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ fontSize: 11, color: "#fff", display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ color: theme.green }}>📞</span> 02-910-6525
             </div>
           </div>
@@ -1337,7 +1360,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
           marginBottom: 6,
           marginLeft: 4,
         }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "2px", textTransform: "uppercase" }}>바로가기</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "#fff", letterSpacing: "2px", textTransform: "uppercase" }}>바로가기</span>
         </div>
         {[
           { label: "국민대학교", url: "https://www.kookmin.ac.kr", icon: "🏫", color: "#4A90D9" },
@@ -1383,7 +1406,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
             <span>{link.label}</span>
           </a>
         ))}
-        
+
         {/* 증명서 발급 with Tooltip */}
         <div style={{ position: "relative" }}>
           <a
@@ -1414,7 +1437,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
             <span style={{ fontSize: 16 }}>📄</span>
             <span>증명서 발급</span>
           </a>
-          
+
           {/* Tooltip */}
           {certHover && (
             <div style={{
@@ -1440,7 +1463,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
             </div>
           )}
         </div>
-        
+
         {/* 해동예약포털 with Tooltip */}
         <div style={{ position: "relative" }}>
           <a
@@ -1471,7 +1494,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
             <span style={{ fontSize: 16 }}>🗓️</span>
             <span>해동예약포털</span>
           </a>
-          
+
           {/* Tooltip */}
           {haedongHover && (
             <div style={{
@@ -1494,7 +1517,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                 <span style={{ fontSize: 16 }}>🗓️</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#FF6B6B" }}>해동예약포털 이용방법</span>
               </div>
-              
+
               {/* Steps */}
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
                 {[
@@ -1504,17 +1527,17 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                   "희망하는 날짜 조회 후 원하는 장비 예약하기",
                 ].map((step, idx) => (
                   <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                    <span style={{ 
-                      width: 20, height: 20, borderRadius: "50%", 
+                    <span style={{
+                      width: 20, height: 20, borderRadius: "50%",
                       background: "rgba(255, 107, 107, 0.2)", color: "#FF6B6B",
                       fontSize: 11, fontWeight: 700, flexShrink: 0,
                       display: "flex", alignItems: "center", justifyContent: "center"
                     }}>{idx + 1}</span>
-                    <span style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.4 }}>{step}</span>
+                    <span style={{ fontSize: 12, color: "#fff", lineHeight: 1.4 }}>{step}</span>
                   </div>
                 ))}
               </div>
-              
+
               {/* Warning */}
               <div style={{
                 background: "rgba(255, 193, 7, 0.1)",
@@ -1556,10 +1579,10 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
           justifyContent: "space-between",
           alignItems: "center",
         }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "2px", textTransform: "uppercase" }}>📢 학교 공지사항</span>
-          <a 
-            href="https://www.kookmin.ac.kr/user/kmuNews/notice/index.do" 
-            target="_blank" 
+          <span style={{ fontSize: 11, fontWeight: 600, color: "#fff", letterSpacing: "2px", textTransform: "uppercase" }}>📢 학교 공지사항</span>
+          <a
+            href="https://www.kookmin.ac.kr/user/kmuNews/notice/index.do"
+            target="_blank"
             rel="noopener noreferrer"
             style={{ fontSize: 10, color: theme.accent, textDecoration: "none" }}
           >
@@ -1577,7 +1600,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         }}>
           {noticeLoading && (
             <div style={{ position: "absolute", top: 8, right: 8 }}>
-              <div style={{ width: 12, height: 12, border: `2px solid ${theme.accent}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }}/>
+              <div style={{ width: 12, height: 12, border: `2px solid ${theme.accent}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
             </div>
           )}
           {notices.map((notice, i) => (
@@ -1598,12 +1621,12 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               onMouseEnter={e => e.currentTarget.style.background = "rgba(212, 160, 83, 0.1)"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}
             >
-              <span style={{ 
-                fontSize: 12, 
-                color: theme.text, 
-                flex: 1, 
-                overflow: "hidden", 
-                textOverflow: "ellipsis", 
+              <span style={{
+                fontSize: 12,
+                color: theme.text,
+                flex: 1,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
                 marginRight: 10,
               }}>
@@ -1716,7 +1739,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                       onMouseLeave={e => { if (expandedExhId !== exhPost.id) e.currentTarget.style.background = "transparent"; }}
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: expandedExhId === exhPost.id ? theme.accent : theme.text, transition: "color 0.2s" }}>
+                        <div style={{ fontSize: 20, fontWeight: 600, color: expandedExhId === exhPost.id ? theme.accent : theme.text, transition: "color 0.2s" }}>
                           {exhPost.title || "전시회"}
                         </div>
                         <div style={{ fontSize: 10, color: "#fff", marginTop: 3 }}>
@@ -1763,11 +1786,11 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                         )}
                         {/* 상세 정보 */}
                         <div style={{ padding: "12px 16px", background: "rgba(0,0,0,0.15)" }}>
-                          <div style={{ fontSize: 12, color: theme.text, lineHeight: 1.6, marginBottom: 8 }}>
+                          <div style={{ fontSize: 18, color: theme.text, lineHeight: 1.6, marginBottom: 8 }}>
                             {exhPost.description || ""}
                           </div>
-                          <div style={{ fontSize: 11, color: "#fff", lineHeight: 1.5 }}>
-                            📅 {exhPost.dates || ""}<br/>
+                          <div style={{ fontSize: 17, color: "#fff", lineHeight: 1.5 }}>
+                            📅 {exhPost.dates || ""}<br />
                             📍 {exhPost.location || ""}
                           </div>
                           {exhPost.instagramUrl && (
@@ -1869,7 +1892,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
             }}>
               {communityPosts.length === 0 ? (
                 <div style={{ padding: 30, textAlign: "center", color: theme.textDim, fontSize: 13 }}>
-                  아직 게시글이 없습니다.<br/>첫 번째 글을 작성해보세요!
+                  아직 게시글이 없습니다.<br />첫 번째 글을 작성해보세요!
                 </div>
               ) : (
                 communityPosts.map((post, idx) => (
@@ -2092,9 +2115,11 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                                       if (e.key === "Enter" && editingCommentContent.trim()) {
                                         setCommunityPosts(prev => prev.map(p =>
                                           p.id === post.id
-                                            ? { ...p, comments: p.comments.map(c =>
+                                            ? {
+                                              ...p, comments: p.comments.map(c =>
                                                 c.id === comment.id ? { ...c, content: editingCommentContent.trim() } : c
-                                              )}
+                                              )
+                                            }
                                             : p
                                         ));
                                         setEditingCommentId(null);
@@ -2127,9 +2152,11 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                                       if (!editingCommentContent.trim()) return;
                                       setCommunityPosts(prev => prev.map(p =>
                                         p.id === post.id
-                                          ? { ...p, comments: p.comments.map(c =>
+                                          ? {
+                                            ...p, comments: p.comments.map(c =>
                                               c.id === comment.id ? { ...c, content: editingCommentContent.trim() } : c
-                                            )}
+                                            )
+                                          }
                                           : p
                                       ));
                                       setEditingCommentId(null);
@@ -2245,9 +2272,9 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                                   content: newCommentContent.trim(),
                                   createdAt: new Date().toISOString(),
                                 };
-                                setCommunityPosts(prev => prev.map(p => 
-                                  p.id === post.id 
-                                    ? { ...p, comments: [...p.comments, newComment] } 
+                                setCommunityPosts(prev => prev.map(p =>
+                                  p.id === post.id
+                                    ? { ...p, comments: [...p.comments, newComment] }
                                     : p
                                 ));
                                 setNewCommentContent("");
@@ -2279,9 +2306,9 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                                 content: newCommentContent.trim(),
                                 createdAt: new Date().toISOString(),
                               };
-                              setCommunityPosts(prev => prev.map(p => 
-                                p.id === post.id 
-                                  ? { ...p, comments: [...p.comments, newComment] } 
+                              setCommunityPosts(prev => prev.map(p =>
+                                p.id === post.id
+                                  ? { ...p, comments: [...p.comments, newComment] }
                                   : p
                               ));
                               setNewCommentContent("");
@@ -2317,8 +2344,8 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
       </div>
 
       {/* Background Logo */}
-      <img 
-        src="/kmu-logo.svg" 
+      <img
+        src="/kmu-logo.svg"
         alt="KMU Logo"
         style={{
           position: "absolute",
@@ -2333,7 +2360,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
           objectFit: "contain"
         }}
       />
-      
+
       <div className="fade-in" style={{ width: "100%", maxWidth: 420, position: "relative", zIndex: isCompactLayout ? 30 : 1, transform: `scale(${loginScale})`, transformOrigin: "center top" }}>
         {/* Main Login Section */}
         <div>
@@ -2342,7 +2369,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
             <div style={{ fontSize: 13, fontWeight: 600, color: theme.accent, letterSpacing: "3px", textTransform: "uppercase", marginBottom: 12 }}>The Best School of Architecture</div>
             <h1 style={{ fontSize: 28, fontWeight: 800, color: theme.text, lineHeight: 1.3, letterSpacing: "-0.5px" }}>국민대 건축대학 포털사이트</h1>
             <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 8 }}>Kookmin University School of Architecture Portal</div>
-            
+
             {/* Feature Boxes */}
             <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 20 }}>
               <div style={{
@@ -2369,9 +2396,9 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
           {/* Role Switch */}
           <div style={{ display: "flex", gap: 2, background: theme.surface, borderRadius: theme.radius, padding: 3, marginBottom: 24, border: `1px solid ${theme.border}` }}>
             {[
-              { id: "student", label: "학생", icon: <Icons.user size={15}/> },
-              { id: "worker", label: "근로학생", icon: <Icons.tool size={15}/> },
-              { id: "admin", label: "관리자", icon: <Icons.shield size={15}/> },
+              { id: "student", label: "학생", icon: <Icons.user size={15} /> },
+              { id: "worker", label: "근로학생", icon: <Icons.tool size={15} /> },
+              { id: "admin", label: "관리자", icon: <Icons.shield size={15} /> },
             ].map(r => (
               <button key={r.id} onClick={() => { setMode(r.id); setError(""); setWUser(""); setWPass(""); }} style={{
                 flex: 1, padding: "11px 8px", borderRadius: 8, border: "none", cursor: "pointer",
@@ -2388,11 +2415,11 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
           <Card style={{ background: "rgba(18, 19, 24, 0.75)", backdropFilter: "blur(10px)", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
             {mode === "student" ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <Input label="학번" placeholder="예: 2021001" value={sid} onChange={e => setSid(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()}/>
-                <Input label="이름" placeholder="예: 김건축" value={sname} onChange={e => setSname(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()}/>
+                <Input label="학번" placeholder="예: 2021001" value={sid} onChange={e => setSid(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
+                <Input label="이름" placeholder="예: 김건축" value={sname} onChange={e => setSname(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
                 {error && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: theme.radiusSm, background: theme.redBg, border: `1px solid ${theme.redBorder}`, color: theme.red, fontSize: 13 }}>
-                    <Icons.alert size={16}/> {error}
+                    <Icons.alert size={16} /> {error}
                   </div>
                 )}
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: theme.textMuted }}>
@@ -2410,7 +2437,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <Input label="아이디" placeholder={mode === "admin" ? "관리자 아이디" : "근로학생 아이디"} value={wUser} onChange={e => setWUser(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()}/>
+                <Input label="아이디" placeholder={mode === "admin" ? "관리자 아이디" : "근로학생 아이디"} value={wUser} onChange={e => setWUser(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <label style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "0.5px", textTransform: "uppercase" }}>비밀번호</label>
                   <div style={{ position: "relative" }}>
@@ -2423,13 +2450,13 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                       onBlur={e => e.target.style.borderColor = theme.border}
                     />
                     <button onClick={() => setShowPass(!showPass)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 2 }}>
-                      {showPass ? <Icons.eyeOff size={16}/> : <Icons.eye size={16}/>}
+                      {showPass ? <Icons.eyeOff size={16} /> : <Icons.eye size={16} />}
                     </button>
                   </div>
                 </div>
                 {error && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: theme.radiusSm, background: theme.redBg, border: `1px solid ${theme.redBorder}`, color: theme.red, fontSize: 13 }}>
-                    <Icons.alert size={16}/> {error}
+                    <Icons.alert size={16} /> {error}
                   </div>
                 )}
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: theme.textMuted }}>
@@ -2467,33 +2494,33 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         {/* Safety Certificate Upload Banner (Student Mode Only) */}
         {mode === "student" && (
           <div style={{ marginTop: 16, width: "100%" }}>
-            <Card 
+            <Card
               onClick={() => !showCertUpload && setShowCertUpload(true)}
               hover={!showCertUpload}
-              style={{ 
-                background: showCertUpload ? theme.blueBg : theme.surfaceHover, 
+              style={{
+                background: showCertUpload ? theme.blueBg : theme.surfaceHover,
                 borderColor: showCertUpload ? theme.blueBorder : theme.border,
                 cursor: showCertUpload ? "default" : "pointer",
                 transition: "all 0.3s ease",
               }}
             >
               <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                <Icons.upload size={20} color={theme.blue}/>
+                <Icons.upload size={20} color={theme.blue} />
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: theme.blue }}>
                       안전교육 수료증 업로드
                     </div>
                     {showCertUpload && (
-                      <button 
+                      <button
                         onClick={(e) => { e.stopPropagation(); setShowCertUpload(false); }}
                         style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 2 }}
                       >
-                        <Icons.x size={16}/>
+                        <Icons.x size={16} />
                       </button>
                     )}
                   </div>
-                  
+
                   {!showCertUpload ? (
                     <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.5 }}>
                       안전교육 수료증을 업로드하려면 클릭하세요
@@ -2505,16 +2532,16 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                          <Input 
-                            label="학번" 
-                            placeholder="예: 2021001" 
-                            value={certSid} 
+                          <Input
+                            label="학번"
+                            placeholder="예: 2021001"
+                            value={certSid}
                             onChange={e => setCertSid(e.target.value)}
                           />
-                          <Input 
-                            label="이름" 
-                            placeholder="예: 김건축" 
-                            value={certSname} 
+                          <Input
+                            label="이름"
+                            placeholder="예: 김건축"
+                            value={certSname}
                             onChange={e => setCertSname(e.target.value)}
                           />
                         </div>
@@ -2535,8 +2562,8 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                               onBlur={e => e.target.style.borderColor = theme.border}
                             >
                               <option value="">선택</option>
-                              <option value="설계">설계</option>
-                              <option value="시스템">시스템</option>
+                              <option value="5년제">5년제</option>
+                              <option value="4년제">4년제</option>
                             </select>
                           </div>
                         </div>
@@ -2546,56 +2573,56 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                           value={certEmail}
                           onChange={e => setCertEmail(e.target.value)}
                         />
-                        <input 
+                        <input
                           ref={fileInputRef}
-                          type="file" 
-                          accept="image/*,.pdf" 
-                          onChange={handleFileUpload} 
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={handleFileUpload}
                           style={{ display: "none" }}
                         />
-                        <button 
+                        <button
                           onClick={() => fileInputRef.current?.click()}
                           disabled={uploading}
-                          style={{ 
-                            display: "flex", 
-                            alignItems: "center", 
-                            gap: 8, 
-                            cursor: uploading ? "not-allowed" : "pointer", 
-                            padding: "10px 16px", 
-                            background: theme.surface, 
-                            border: `1px solid ${theme.border}`, 
-                            borderRadius: theme.radiusSm, 
-                            fontSize: 13, 
-                            color: theme.text, 
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            cursor: uploading ? "not-allowed" : "pointer",
+                            padding: "10px 16px",
+                            background: theme.surface,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: theme.radiusSm,
+                            fontSize: 13,
+                            color: theme.text,
                             transition: "all 0.2s",
                             fontFamily: theme.font,
                             width: "100%",
                             justifyContent: "flex-start",
                             opacity: uploading ? 0.5 : 1
                           }}
-                          onMouseEnter={e => { if (!uploading) { e.currentTarget.style.borderColor = theme.blue; e.currentTarget.style.background = theme.surfaceHover; }}}
-                          onMouseLeave={e => { if (!uploading) { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.surface; }}}
+                          onMouseEnter={e => { if (!uploading) { e.currentTarget.style.borderColor = theme.blue; e.currentTarget.style.background = theme.surfaceHover; } }}
+                          onMouseLeave={e => { if (!uploading) { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.surface; } }}
                         >
-                          <Icons.file size={16}/>
+                          <Icons.file size={16} />
                           {uploadFile ? uploadFile.name : "파일 선택"}
                         </button>
                         {uploadFile && (
-                          <button 
+                          <button
                             onClick={handleConfirmUpload}
                             disabled={uploading}
-                            style={{ 
-                              display: "flex", 
-                              alignItems: "center", 
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
                               justifyContent: "center",
-                              gap: 8, 
-                              cursor: uploading ? "not-allowed" : "pointer", 
-                              padding: "12px 16px", 
-                              background: theme.blue, 
-                              border: "none", 
-                              borderRadius: theme.radiusSm, 
-                              fontSize: 13, 
+                              gap: 8,
+                              cursor: uploading ? "not-allowed" : "pointer",
+                              padding: "12px 16px",
+                              background: theme.blue,
+                              border: "none",
+                              borderRadius: theme.radiusSm,
+                              fontSize: 13,
                               fontWeight: 600,
-                              color: "#fff", 
+                              color: "#fff",
                               transition: "all 0.2s",
                               fontFamily: theme.font,
                               width: "100%",
@@ -2604,18 +2631,18 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                             onMouseEnter={e => { if (!uploading) e.currentTarget.style.opacity = "0.9"; }}
                             onMouseLeave={e => { if (!uploading) e.currentTarget.style.opacity = "1"; }}
                           >
-                            {uploading ? <Icons.loading size={16}/> : <Icons.upload size={16}/>}
+                            {uploading ? <Icons.loading size={16} /> : <Icons.upload size={16} />}
                             {uploading ? "업로드 중..." : "업로드"}
                           </button>
                         )}
                         {uploadSuccess && (
                           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: theme.radiusSm, background: theme.greenBg, border: `1px solid ${theme.greenBorder}`, color: theme.green, fontSize: 12 }}>
-                            <Icons.check size={14}/> {uploadSuccess}
+                            <Icons.check size={14} /> {uploadSuccess}
                           </div>
                         )}
                         {certificates?.[certSid.trim()] && certSid.trim() && (
                           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: theme.radiusSm, background: theme.accentBg, border: `1px solid ${theme.accentBorder}`, color: theme.accent, fontSize: 11 }}>
-                            <Icons.file size={14}/>
+                            <Icons.file size={14} />
                             기존 업로드: {certificates[certSid.trim()].fileName} ({new Date(certificates[certSid.trim()].uploadDate).toLocaleDateString()})
                           </div>
                         )}
@@ -2648,14 +2675,14 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               textAlign: "center",
               boxShadow: "0 20px 60px rgba(0,0,0,0.5)"
             }}>
-              <div style={{ 
-                width: 60, height: 60, 
-                borderRadius: "50%", 
-                background: theme.greenBg, 
+              <div style={{
+                width: 60, height: 60,
+                borderRadius: "50%",
+                background: theme.greenBg,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 margin: "0 auto 20px"
               }}>
-                <Icons.check size={28} color={theme.green}/>
+                <Icons.check size={28} color={theme.green} />
               </div>
               <div style={{ fontSize: 18, fontWeight: 700, color: theme.text, marginBottom: 12 }}>
                 업로드 완료
@@ -2663,8 +2690,8 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               <div style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, marginBottom: 24 }}>
                 교학팀에서 확인 후, 적어주신 이메일 주소로 확인 메일 보내드리겠습니다.
               </div>
-              <Button 
-                variant="primary" 
+              <Button
+                variant="primary"
                 onClick={() => setShowUploadConfirm(false)}
                 style={{ width: "100%" }}
               >
@@ -2676,33 +2703,33 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
 
         {/* Inquiry Banner */}
         <div style={{ marginTop: 12 }}>
-          <Card 
+          <Card
             onClick={() => !showInquiry && setShowInquiry(true)}
             hover={!showInquiry}
-            style={{ 
-              background: showInquiry ? theme.accentBg : theme.surfaceHover, 
+            style={{
+              background: showInquiry ? theme.accentBg : theme.surfaceHover,
               borderColor: showInquiry ? theme.accentBorder : theme.border,
               cursor: showInquiry ? "default" : "pointer",
               transition: "all 0.3s ease",
             }}
           >
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-              <Icons.file size={20} color={theme.accent}/>
+              <Icons.file size={20} color={theme.accent} />
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: theme.accent }}>
                     문의사항
                   </div>
                   {showInquiry && (
-                    <button 
+                    <button
                       onClick={(e) => { e.stopPropagation(); setShowInquiry(false); }}
                       style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 2 }}
                     >
-                      <Icons.x size={16}/>
+                      <Icons.x size={16} />
                     </button>
                   )}
                 </div>
-                
+
                 {!showInquiry ? (
                   <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.5 }}>
                     비로그인 문의 (로그인 가능한 학생은 "문의 내역" 탭을 이용해주세요)
@@ -2720,23 +2747,23 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                        <Input 
-                          label="이름 *" 
-                          placeholder="이름을 입력하세요" 
-                          value={inquiryName} 
+                        <Input
+                          label="이름 *"
+                          placeholder="이름을 입력하세요"
+                          value={inquiryName}
                           onChange={e => setInquiryName(e.target.value)}
                         />
-                        <Input 
-                          label="연락처 *" 
-                          placeholder="전화번호 또는 이메일" 
-                          value={inquiryContact} 
+                        <Input
+                          label="연락처 *"
+                          placeholder="전화번호 또는 이메일"
+                          value={inquiryContact}
                           onChange={e => setInquiryContact(e.target.value)}
                         />
                       </div>
-                      <Input 
-                        label="제목" 
-                        placeholder="문의 제목을 입력하세요" 
-                        value={inquiryTitle} 
+                      <Input
+                        label="제목"
+                        placeholder="문의 제목을 입력하세요"
+                        value={inquiryTitle}
                         onChange={e => setInquiryTitle(e.target.value)}
                       />
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -2745,17 +2772,17 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                           placeholder="문의 내용을 자세히 작성해주세요"
                           value={inquiryContent}
                           onChange={e => setInquiryContent(e.target.value)}
-                          style={{ 
-                            width: "100%", 
-                            padding: "10px 14px", 
-                            background: theme.surface, 
-                            border: `1px solid ${theme.border}`, 
-                            borderRadius: theme.radiusSm, 
-                            color: theme.text, 
-                            fontSize: 14, 
-                            fontFamily: theme.font, 
-                            outline: "none", 
-                            boxSizing: "border-box", 
+                          style={{
+                            width: "100%",
+                            padding: "10px 14px",
+                            background: theme.surface,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: theme.radiusSm,
+                            color: theme.text,
+                            fontSize: 14,
+                            fontFamily: theme.font,
+                            outline: "none",
+                            boxSizing: "border-box",
                             transition: "border-color 0.2s",
                             minHeight: 100,
                             resize: "vertical"
@@ -2773,7 +2800,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                       </Button>
                       {inquirySuccess && (
                         <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: theme.radiusSm, background: theme.greenBg, border: `1px solid ${theme.greenBorder}`, color: theme.green, fontSize: 12 }}>
-                          <Icons.check size={14}/> {inquirySuccess}
+                          <Icons.check size={14} /> {inquirySuccess}
                         </div>
                       )}
                     </div>
@@ -2791,11 +2818,17 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
 // ════════════════════════════════════════════════════════════════
 //  STUDENT PORTAL
 // ════════════════════════════════════════════════════════════════
-function StudentPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, addLog, addNotification, syncReservationToSheet, syncPrintToSheet, sendEmailNotification, warnings, inquiries, updateInquiries, printRequests, updatePrintRequests }) {
-  const [tab, setTab] = useState("room");
+function StudentPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, syncReservationToSheet, syncPrintToSheet, sendEmailNotification, warnings, inquiries, updateInquiries, printRequests, updatePrintRequests }) {
+  const [tab, setTab] = useState("dashboard");
   const isSafe = user.safetyTrained;
   const myInquiries = inquiries?.filter(i => i.name === user.name) || [];
   const myPrintRequests = printRequests?.filter(p => p.studentId === user.id) || [];
+  const today = new Date().toISOString().slice(0, 10);
+  const myReservations = reservations?.filter(r => r.studentId === user.id) || [];
+  const upcomingReservations = myReservations.filter(r => r.date >= today && r.status === "approved").sort((a, b) => a.date.localeCompare(b.date));
+  const myRentals = equipRentals?.filter(r => r.studentId === user.id) || [];
+  const activeRentals = myRentals.filter(r => r.status !== "returned");
+  const pendingPrints = myPrintRequests.filter(p => p.status === "pending" || p.status === "processing");
 
   return (
     <div className="fade-in" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -2810,20 +2843,20 @@ function StudentPortal({ user, onLogout, reservations, updateReservations, equip
             <Badge color={isSafe ? "green" : "red"}>{isSafe ? "안전교육 이수 ✓" : "안전교육 미이수 ✗"}</Badge>
             {warnings?.[user.id] && (
               <Badge color="orange">
-                <Icons.alert size={12} style={{ marginRight: 4 }}/>
+                <Icons.alert size={12} style={{ marginRight: 4 }} />
                 경고 {warnings[user.id].count || 1}회
               </Badge>
             )}
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={onLogout}><Icons.logout size={15}/> 로그아웃</Button>
+        <Button variant="ghost" size="sm" onClick={onLogout}><Icons.logout size={15} /> 로그아웃</Button>
       </div>
 
       {/* Safety Warning */}
       {!isSafe && (
         <Card style={{ marginTop: 20, background: theme.redBg, borderColor: theme.redBorder }}>
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <Icons.alert size={20} color={theme.red}/>
+            <Icons.alert size={20} color={theme.red} />
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: theme.red }}>안전교육 미이수</div>
               <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 4, lineHeight: 1.6 }}>
@@ -2840,18 +2873,245 @@ function StudentPortal({ user, onLogout, reservations, updateReservations, equip
           <div style={{ paddingTop: 24 }}>
             <Tabs
               tabs={[
-                { id: "room", label: "실기실 예약", icon: <Icons.door size={15}/> },
-                { id: "equipment", label: "물품 대여", icon: <Icons.tool size={15}/> },
-                { id: "print", label: "출력 신청", icon: <Icons.file size={15}/>, badge: myPrintRequests.filter(p => p.status === "pending" || p.status === "processing").length },
-                { id: "history", label: "내 이용내역", icon: <Icons.history size={15}/> },
-                { id: "inquiries", label: "문의 내역", icon: <Icons.file size={15}/>, badges: [
-                  { count: myInquiries.filter(i => i.status === "pending").length, color: theme.red },
-                  { count: myInquiries.filter(i => i.status === "answered").length, color: theme.green },
-                ] },
+                { id: "dashboard", label: "대시보드", icon: <Icons.grid size={15} /> },
+                { id: "room", label: "실기실 예약", icon: <Icons.door size={15} /> },
+                { id: "equipment", label: "물품 대여", icon: <Icons.tool size={15} /> },
+                { id: "print", label: "출력 신청", icon: <Icons.file size={15} />, badge: myPrintRequests.filter(p => p.status === "pending" || p.status === "processing").length },
+                { id: "history", label: "내 이용내역", icon: <Icons.history size={15} /> },
+                {
+                  id: "inquiries", label: "문의 내역", icon: <Icons.file size={15} />, badges: [
+                    { count: myInquiries.filter(i => i.status === "pending").length, color: theme.red },
+                    { count: myInquiries.filter(i => i.status === "answered").length, color: theme.green },
+                  ]
+                },
               ]}
               active={tab} onChange={setTab}
             />
           </div>
+
+          {tab === "dashboard" && (
+            <div style={{ paddingTop: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* 실기실 예약 현황 */}
+              <Card style={{ padding: 0, overflow: "hidden" }}>
+                <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${theme.border}` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: theme.accentBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Icons.door size={18} color={theme.accent} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>실기실 예약</div>
+                      <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>
+                        예정된 예약 <span style={{ color: theme.accent, fontWeight: 700 }}>{upcomingReservations.length}</span>건
+                      </div>
+                    </div>
+                  </div>
+                  <Button size="sm" onClick={() => setTab("room")}>예약하기 →</Button>
+                </div>
+                <div style={{ padding: "14px 20px" }}>
+                  {upcomingReservations.length === 0 ? (
+                    <div style={{ fontSize: 12, color: theme.textDim, textAlign: "center", padding: "8px 0" }}>예정된 예약이 없습니다</div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {upcomingReservations.slice(0, 3).map(r => (
+                        <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: theme.surface, borderRadius: 8, border: `1px solid ${theme.border}` }}>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>{r.roomName}</div>
+                            <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>
+                              📅 {r.date} · ⏰ {r.slotLabels?.[0] || ""}{r.slotLabels?.length > 1 ? ` 외 ${r.slotLabels.length - 1}타임` : ""}
+                            </div>
+                          </div>
+                          <Badge color="green">승인</Badge>
+                        </div>
+                      ))}
+                      {upcomingReservations.length > 3 && (
+                        <div style={{ fontSize: 11, color: theme.textDim, textAlign: "center" }}>외 {upcomingReservations.length - 3}건 더</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* 물품 대여 현황 */}
+              <Card style={{ padding: 0, overflow: "hidden" }}>
+                <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${theme.border}` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: theme.blueBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Icons.tool size={18} color={theme.blue} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>물품 대여</div>
+                      <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>
+                        대여 중 <span style={{ color: theme.blue, fontWeight: 700 }}>{activeRentals.length}</span>건
+                      </div>
+                    </div>
+                  </div>
+                  <Button size="sm" onClick={() => setTab("equipment")}>대여하기 →</Button>
+                </div>
+                <div style={{ padding: "14px 20px" }}>
+                  {activeRentals.length === 0 ? (
+                    <div style={{ fontSize: 12, color: theme.textDim, textAlign: "center", padding: "8px 0" }}>대여 중인 물품이 없습니다</div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {activeRentals.slice(0, 3).map(r => (
+                        <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: theme.surface, borderRadius: 8, border: `1px solid ${theme.border}` }}>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>
+                              {r.items?.map(i => `${i.icon} ${i.name}`).join(", ") || "물품"}
+                            </div>
+                            <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>
+                              반납 예정: {r.returnDate || "미정"}
+                            </div>
+                          </div>
+                          <Badge color={r.status === "pending_pickup" ? "yellow" : "blue"}>
+                            {r.status === "pending_pickup" ? "수령 대기" : r.status === "ready" ? "수령 완료" : r.status}
+                          </Badge>
+                        </div>
+                      ))}
+                      {activeRentals.length > 3 && (
+                        <div style={{ fontSize: 11, color: theme.textDim, textAlign: "center" }}>외 {activeRentals.length - 3}건 더</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* 출력 신청 현황 */}
+              <Card style={{ padding: 0, overflow: "hidden" }}>
+                <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${theme.border}` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: theme.greenBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Icons.file size={18} color={theme.green} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>출력 신청</div>
+                      <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>
+                        진행 중 <span style={{ color: theme.green, fontWeight: 700 }}>{pendingPrints.length}</span>건
+                      </div>
+                    </div>
+                  </div>
+                  <Button size="sm" onClick={() => setTab("print")}>신청하기 →</Button>
+                </div>
+                <div style={{ padding: "14px 20px" }}>
+                  {pendingPrints.length === 0 ? (
+                    <div style={{ fontSize: 12, color: theme.textDim, textAlign: "center", padding: "8px 0" }}>진행 중인 출력 신청이 없습니다</div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {pendingPrints.slice(0, 3).map(p => (
+                        <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: theme.surface, borderRadius: 8, border: `1px solid ${theme.border}` }}>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>
+                              {p.paperSize} {p.colorMode === "BW" ? "흑백" : "컬러"} × {p.copies}부
+                            </div>
+                            <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>
+                              💰 {(p.totalPrice || 0).toLocaleString()}원 · {new Date(p.createdAt).toLocaleDateString("ko-KR")}
+                            </div>
+                          </div>
+                          <Badge color={p.status === "pending" ? "yellow" : "blue"}>
+                            {p.status === "pending" ? "대기" : "처리 중"}
+                          </Badge>
+                        </div>
+                      ))}
+                      {pendingPrints.length > 3 && (
+                        <div style={{ fontSize: 11, color: theme.textDim, textAlign: "center" }}>외 {pendingPrints.length - 3}건 더</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* ── 내 이용내역 ── */}
+              {(() => {
+                const allHistory = [...myReservations.map(r => ({ ...r, sortTime: r.createdAt })), ...myRentals.map(r => ({ ...r, sortTime: r.createdAt }))].sort((a, b) => b.sortTime.localeCompare(a.sortTime));
+                return (
+                  <Card style={{ padding: 0, overflow: "hidden" }}>
+                    <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${theme.border}` }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 8, background: theme.surface, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <Icons.history size={18} color={theme.textMuted} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>내 이용내역</div>
+                          <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>
+                            총 <span style={{ fontWeight: 700 }}>{allHistory.length}</span>건
+                          </div>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => setTab("history")}>전체보기 →</Button>
+                    </div>
+                    <div style={{ padding: "14px 20px" }}>
+                      {allHistory.length === 0 ? (
+                        <div style={{ fontSize: 12, color: theme.textDim, textAlign: "center", padding: "8px 0" }}>이용내역이 없습니다</div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {allHistory.slice(0, 4).map(item => (
+                            <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: theme.surface, borderRadius: 6, border: `1px solid ${theme.border}` }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <Badge color={item.type === "room" ? "blue" : "accent"} style={{ fontSize: 10 }}>{item.type === "room" ? "실기실" : "기구대여"}</Badge>
+                                <div>
+                                  <div style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>
+                                    {item.type === "room" ? item.roomName : item.items?.map(i => `${i.icon} ${i.name}`).join(", ")}
+                                  </div>
+                                  <div style={{ fontSize: 10, color: theme.textMuted }}>
+                                    {item.type === "room" ? `${item.date} · ${item.slotLabels?.[0] || ""}${item.slotLabels?.length > 1 ? ` 외 ${item.slotLabels.length - 1}` : ""}` : `반납: ${item.returnDate || "미정"}`}
+                                  </div>
+                                </div>
+                              </div>
+                              <Badge color={item.status === "approved" ? "green" : item.status === "cancelled" || item.status === "rejected" ? "red" : item.status === "returned" ? "dim" : "yellow"} style={{ fontSize: 10 }}>
+                                {item.status === "approved" ? "승인" : item.status === "pending_pickup" ? "수령대기" : item.status === "ready" ? "수령완료" : item.status === "cancelled" ? "취소" : item.status === "rejected" ? "반려" : item.status === "returned" ? "반납" : "대기"}
+                              </Badge>
+                            </div>
+                          ))}
+                          {allHistory.length > 4 && (
+                            <div style={{ fontSize: 11, color: theme.textDim, textAlign: "center", paddingTop: 4 }}>외 {allHistory.length - 4}건 더</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                );
+              })()}
+
+              {/* ── 문의 내역 ── */}
+              <Card style={{ padding: 0, overflow: "hidden" }}>
+                <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${theme.border}` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: theme.surface, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Icons.file size={18} color={theme.textMuted} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>문의 내역</div>
+                      <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>
+                        대기 <span style={{ color: theme.red, fontWeight: 700 }}>{myInquiries.filter(i => i.status === "pending").length}</span>건 · 답변 <span style={{ color: theme.green, fontWeight: 700 }}>{myInquiries.filter(i => i.status === "answered").length}</span>건
+                      </div>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => setTab("inquiries")}>전체보기 →</Button>
+                </div>
+                <div style={{ padding: "14px 20px" }}>
+                  {myInquiries.length === 0 ? (
+                    <div style={{ fontSize: 12, color: theme.textDim, textAlign: "center", padding: "8px 0" }}>문의 내역이 없습니다</div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {myInquiries.slice(0, 4).map(inq => (
+                        <div key={inq.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: theme.surface, borderRadius: 6, border: `1px solid ${theme.border}` }}>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{inq.title}</div>
+                            <div style={{ fontSize: 10, color: theme.textMuted }}>{inq.createdAt}</div>
+                          </div>
+                          <Badge color={inq.status === "answered" ? "green" : "yellow"} style={{ fontSize: 10 }}>
+                            {inq.status === "answered" ? "답변완료" : "대기중"}
+                          </Badge>
+                        </div>
+                      ))}
+                      {myInquiries.length > 4 && (
+                        <div style={{ fontSize: 11, color: theme.textDim, textAlign: "center", paddingTop: 4 }}>외 {myInquiries.length - 4}건 더</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </div>
+          )}
 
           {tab === "room" && (
             <RoomReservation
@@ -2865,16 +3125,16 @@ function StudentPortal({ user, onLogout, reservations, updateReservations, equip
             />
           )}
           {tab === "equipment" && (
-            <EquipmentRental user={user} equipRentals={equipRentals} updateEquipRentals={updateEquipRentals} addLog={addLog} addNotification={addNotification}/>
+            <EquipmentRental user={user} equipRentals={equipRentals} updateEquipRentals={updateEquipRentals} equipmentDB={equipmentDB} setEquipmentDB={setEquipmentDB} addLog={addLog} addNotification={addNotification} sendEmailNotification={sendEmailNotification} />
           )}
           {tab === "print" && (
-            <PrintRequest user={user} printRequests={myPrintRequests} updatePrintRequests={updatePrintRequests} addLog={addLog} addNotification={addNotification} syncPrintToSheet={syncPrintToSheet}/>
+            <PrintRequest user={user} printRequests={myPrintRequests} updatePrintRequests={updatePrintRequests} addLog={addLog} addNotification={addNotification} syncPrintToSheet={syncPrintToSheet} sendEmailNotification={sendEmailNotification} />
           )}
           {tab === "history" && (
-            <StudentHistory user={user} reservations={reservations} equipRentals={equipRentals} updateReservations={updateReservations} sendEmailNotification={sendEmailNotification} addLog={addLog} addNotification={addNotification}/>
+            <StudentHistory user={user} reservations={reservations} equipRentals={equipRentals} updateReservations={updateReservations} sendEmailNotification={sendEmailNotification} addLog={addLog} addNotification={addNotification} />
           )}
           {tab === "inquiries" && (
-            <StudentInquiries user={user} inquiries={myInquiries} updateInquiries={updateInquiries}/>
+            <StudentInquiries user={user} inquiries={myInquiries} updateInquiries={updateInquiries} />
           )}
         </>
       )}
@@ -2924,8 +3184,9 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
       };
       updateReservations(prev => [res, ...prev]);
       addLog(`[자동승인] ${user.name}(${user.id}) → ${room.name} 예약 | ${selectedDate} ${slotLabels.join(", ")} | ${res.purpose}`, "reservation", { studentId: user.id, roomId: selectedRoom });
-      addNotification(`🏠 실기실 예약: ${user.name} → ${room.name} (${formatDate(selectedDate)} ${slotLabels[0]}${slotLabels.length > 1 ? ` 외 ${slotLabels.length-1}건` : ""})`, "room");
+      addNotification(`🏠 실기실 예약: ${user.name} → ${room.name} (${formatDate(selectedDate)} ${slotLabels[0]}${slotLabels.length > 1 ? ` 외 ${slotLabels.length - 1}건` : ""})`, "room");
       sendEmailNotification({
+        to: user.email || undefined,
         subject: `[실기실 예약 확정] ${user.name} · ${room.name}`,
         body: [
           "국민대학교 건축대학 실기실 예약이 확정되었습니다.",
@@ -2960,14 +3221,14 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
       {success && (
         <Card style={{ marginBottom: 20, background: theme.greenBg, borderColor: theme.greenBorder }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Icons.check size={20} color={theme.green}/>
+            <Icons.check size={20} color={theme.green} />
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: theme.green }}>예약 신청 완료!</div>
               <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 2 }}>
                 {success.roomName} · {success.date} · {success.slotLabels.join(", ")}
               </div>
             </div>
-            <Button variant="ghost" size="sm" style={{ marginLeft: "auto" }} onClick={() => setSuccess(null)}><Icons.x size={14}/></Button>
+            <Button variant="ghost" size="sm" style={{ marginLeft: "auto" }} onClick={() => setSuccess(null)}><Icons.x size={14} /></Button>
           </div>
         </Card>
       )}
@@ -2975,7 +3236,7 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
       {error && (
         <Card style={{ marginBottom: 20, background: theme.redBg, borderColor: theme.redBorder }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Icons.alert size={18} color={theme.red}/>
+            <Icons.alert size={18} color={theme.red} />
             <div style={{ fontSize: 13, color: theme.red }}>{error}</div>
           </div>
         </Card>
@@ -2985,13 +3246,13 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
       <div style={{ display: "flex", gap: 24, minHeight: 500 }}>
         {/* Left: Room List (Vertical) */}
         <div style={{ width: 280, flexShrink: 0 }}>
-          <SectionTitle icon={<Icons.door size={16} color={theme.accent}/>}>실기실 선택</SectionTitle>
+          <SectionTitle icon={<Icons.door size={16} color={theme.accent} />}>실기실 선택</SectionTitle>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {ROOMS.map(room => {
               const sel = selectedRoom === room.id;
-              const todayBookings = reservations.filter(r => 
-                r.roomId === room.id && 
-                r.date === selectedDate && 
+              const todayBookings = reservations.filter(r =>
+                r.roomId === room.id &&
+                r.date === selectedDate &&
                 !["cancelled", "rejected"].includes(r.status)
               ).length;
               return (
@@ -3020,11 +3281,11 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
         {/* Right: Reservation Details */}
         <div style={{ flex: 1 }}>
           {!selectedRoom ? (
-            <div style={{ 
-              height: "100%", 
-              display: "flex", 
+            <div style={{
+              height: "100%",
+              display: "flex",
               flexDirection: "column",
-              alignItems: "center", 
+              alignItems: "center",
               justifyContent: "center",
               background: theme.surface,
               borderRadius: 16,
@@ -3034,7 +3295,7 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
               <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.5 }}>🏠</div>
               <div style={{ fontSize: 16, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>실기실을 선택해주세요</div>
               <div style={{ fontSize: 13, color: theme.textDim, textAlign: "center" }}>
-                왼쪽 목록에서 원하는 실기실을 클릭하면<br/>예약 정보를 입력할 수 있습니다
+                왼쪽 목록에서 원하는 실기실을 클릭하면<br />예약 정보를 입력할 수 있습니다
               </div>
             </div>
           ) : (
@@ -3051,7 +3312,7 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
                         <div style={{ fontSize: 12, color: theme.textDim, marginTop: 6 }}>🔧 {room?.equipment}</div>
                       </div>
                       <Button variant="ghost" size="sm" onClick={() => setSelectedRoom(null)}>
-                        <Icons.x size={14}/> 다른 실기실
+                        <Icons.x size={14} /> 다른 실기실
                       </Button>
                     </div>
                   </Card>
@@ -3064,18 +3325,18 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
                 return room?.rules && (
                   <Card style={{ marginBottom: 20, background: theme.yellowBg, borderColor: theme.yellowBorder, padding: 14 }}>
                     <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: theme.yellow }}>
-                      <Icons.alert size={16}/> <strong>이용 수칙:</strong> {room.rules}
+                      <Icons.alert size={16} /> <strong>이용 수칙:</strong> {room.rules}
                     </div>
                   </Card>
                 );
               })()}
 
               {/* Date & Time */}
-              <SectionTitle icon={<Icons.calendar size={16} color={theme.accent}/>}>날짜 및 시간 선택</SectionTitle>
+              <SectionTitle icon={<Icons.calendar size={16} color={theme.accent} />}>날짜 및 시간 선택</SectionTitle>
               <Card style={{ marginBottom: 24 }}>
                 <div style={{ display: "flex", gap: 16, marginBottom: 18, flexWrap: "wrap" }}>
-                  <Input label="예약 날짜" type="date" value={selectedDate} onChange={e => { setSelectedDate(e.target.value); setSelectedSlots([]); }} style={{ maxWidth: 180 }}/>
-                  <Input label="사용 인원" type="number" min="1" max="30" value={members} onChange={e => setMembers(e.target.value)} style={{ maxWidth: 100 }}/>
+                  <Input label="예약 날짜" type="date" value={selectedDate} onChange={e => { setSelectedDate(e.target.value); setSelectedSlots([]); }} style={{ maxWidth: 180 }} />
+                  <Input label="사용 인원" type="number" min="1" max="30" value={members} onChange={e => setMembers(e.target.value)} style={{ maxWidth: 100 }} />
                 </div>
 
                 <label style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "0.5px", textTransform: "uppercase", display: "block", marginBottom: 10 }}>시간대 선택 (복수 가능)</label>
@@ -3105,9 +3366,9 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
               </Card>
 
               {/* Purpose */}
-              <SectionTitle icon={<Icons.info size={16} color={theme.accent}/>}>사용 목적</SectionTitle>
+              <SectionTitle icon={<Icons.info size={16} color={theme.accent} />}>사용 목적</SectionTitle>
               <Card style={{ marginBottom: 24 }}>
-                <Input placeholder="예: 졸업작품 모형 제작, 스터디 그룹 작업 등" value={purpose} onChange={e => setPurpose(e.target.value)}/>
+                <Input placeholder="예: 졸업작품 모형 제작, 스터디 그룹 작업 등" value={purpose} onChange={e => setPurpose(e.target.value)} />
               </Card>
 
               {/* Summary & Submit */}
@@ -3139,35 +3400,42 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
 }
 
 // ─── Equipment Rental ────────────────────────────────────────────
-function EquipmentRental({ user, equipRentals, updateEquipRentals, addLog, addNotification }) {
-  const [selected, setSelected] = useState([]);
+function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, sendEmailNotification }) {
+  const [selected, setSelected] = useState(null);
   const [returnDate, setReturnDate] = useState(addDays(3));
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(null);
   const [filterCat, setFilterCat] = useState("전체");
 
-  const categories = ["전체", ...new Set(EQUIPMENT_DB.map(e => e.category))];
-  const filtered = filterCat === "전체" ? EQUIPMENT_DB : EQUIPMENT_DB.filter(e => e.category === filterCat);
+  const categories = ["전체", ...new Set(equipmentDB.map(e => e.category))];
+  const filtered = filterCat === "전체" ? equipmentDB : equipmentDB.filter(e => e.category === filterCat);
 
-  const toggleEquip = (id) => setSelected(prev => prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]);
+  const toggleEquip = (id) => setSelected(prev => prev === id ? null : id);
 
   const handleSubmit = () => {
-    if (selected.length === 0) return;
+    if (!selected) return;
     setSubmitting(true);
     setTimeout(() => {
-      const items = selected.map(id => EQUIPMENT_DB.find(e => e.id === id)).filter(Boolean);
+      const item = equipmentDB.find(e => e.id === selected);
+      if (!item) return;
       const rental = {
-        id: uid(), type: "equipment", studentId: user.id, studentName: user.name, studentDept: user.dept,
-        items: items.map(i => ({ id: i.id, name: i.name, icon: i.icon })),
+        id: uid(), type: "equipment", studentId: user.id, studentName: user.name, studentDept: user.dept, studentEmail: user.email || "",
+        items: [{ id: item.id, name: item.name, icon: item.icon }],
         returnDate, note: note || "", status: "pending_pickup", createdAt: ts(),
       };
       updateEquipRentals(prev => [rental, ...prev]);
-      addLog(`[기구대여] ${user.name}(${user.id}) → ${items.map(i => i.name).join(", ")} | 반납: ${returnDate}`, "equipment", { studentId: user.id });
-      addNotification(`🔧 기구대여 요청: ${user.name} → ${items.map(i => i.name).join(", ")}`, "equipment", true);
+      setEquipmentDB(prev => prev.map(e => e.id === item.id ? { ...e, available: Math.max(0, e.available - 1) } : e));
+      addLog(`[기구대여] ${user.name}(${user.id}) → ${item.name} | 반납: ${returnDate}`, "equipment", { studentId: user.id });
+      addNotification(`🔧 기구대여 요청: ${user.name} → ${item.name}`, "equipment", true);
+      sendEmailNotification?.({
+        to: user.email || undefined,
+        subject: `[물품 대여 신청] ${user.name} · ${item.name}`,
+        body: `물품 대여 신청이 접수되었습니다.\n\n- 학생: ${user.name} (${user.id})\n- 물품: ${item.icon} ${item.name}\n- 반납 예정일: ${returnDate}\n- 비고: ${note || "없음"}\n\n교학팀에서 수령해주세요.`,
+      });
       setSuccess(rental);
       setSubmitting(false);
-      setSelected([]);
+      setSelected(null);
       setNote("");
     }, 800);
   };
@@ -3177,21 +3445,21 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, addLog, addNo
       {success && (
         <Card style={{ marginBottom: 20, background: theme.greenBg, borderColor: theme.greenBorder }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Icons.check size={20} color={theme.green}/>
+            <Icons.check size={20} color={theme.green} />
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: theme.green }}>대여 신청 완료!</div>
               <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 2 }}>
                 {success.items.map(i => i.name).join(", ")} · 반납 {success.returnDate}
               </div>
             </div>
-            <Button variant="ghost" size="sm" style={{ marginLeft: "auto" }} onClick={() => setSuccess(null)}><Icons.x size={14}/></Button>
+            <Button variant="ghost" size="sm" style={{ marginLeft: "auto" }} onClick={() => setSuccess(null)}><Icons.x size={14} /></Button>
           </div>
         </Card>
       )}
 
       <Card style={{ marginBottom: 20, padding: 14, background: theme.blueBg, borderColor: theme.blueBorder }}>
         <div style={{ fontSize: 13, color: theme.blue, display: "flex", alignItems: "center", gap: 8 }}>
-          <Icons.bell size={16}/> 신청 완료 시 근로학생에게 즉시 알림이 전송됩니다. 교학팀에서 수령해주세요.
+          <Icons.bell size={16} /> 신청 완료 시 근로학생에게 즉시 알림이 전송됩니다. 교학팀에서 수령해주세요.
         </div>
       </Card>
 
@@ -3199,8 +3467,8 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, addLog, addNo
       <div style={{ display: "flex", gap: 24, minHeight: 500 }}>
         {/* Left: Equipment List */}
         <div style={{ width: 320, flexShrink: 0 }}>
-          <SectionTitle icon={<Icons.tool size={16} color={theme.accent}/>}>물품 선택</SectionTitle>
-          
+          <SectionTitle icon={<Icons.tool size={16} color={theme.accent} />}>물품 선택</SectionTitle>
+
           {/* Category Filter */}
           <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
             {categories.map(c => (
@@ -3216,12 +3484,12 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, addLog, addNo
           {/* Equipment Items */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 450, overflowY: "auto", paddingRight: 4 }}>
             {filtered.map(eq => {
-              const sel = selected.includes(eq.id);
+              const sel = selected === eq.id;
               const soldOut = eq.available === 0;
               return (
                 <Card key={eq.id} onClick={() => !soldOut && toggleEquip(eq.id)} style={{
                   padding: 14, cursor: soldOut ? "not-allowed" : "pointer", opacity: soldOut ? 0.4 : 1,
-                  borderColor: sel ? theme.accent : theme.border, 
+                  borderColor: sel ? theme.accent : theme.border,
                   background: sel ? theme.accentBg : theme.card,
                   borderLeft: sel ? `3px solid ${theme.accent}` : `3px solid transparent`,
                   display: "flex", alignItems: "center", gap: 12,
@@ -3235,7 +3503,7 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, addLog, addNo
                       <Badge color="dim" style={{ fontSize: 10 }}>최대 {eq.maxDays}일</Badge>
                     </div>
                   </div>
-                  {sel && <div style={{ color: theme.accent }}><Icons.check size={20}/></div>}
+                  {sel && <div style={{ color: theme.accent }}><Icons.check size={20} /></div>}
                 </Card>
               );
             })}
@@ -3244,12 +3512,12 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, addLog, addNo
 
         {/* Right: Details Panel */}
         <div style={{ flex: 1 }}>
-          {selected.length === 0 ? (
-            <div style={{ 
-              height: "100%", 
-              display: "flex", 
+          {!selected ? (
+            <div style={{
+              height: "100%",
+              display: "flex",
               flexDirection: "column",
-              alignItems: "center", 
+              alignItems: "center",
               justifyContent: "center",
               background: theme.surface,
               borderRadius: 16,
@@ -3259,96 +3527,56 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, addLog, addNo
               <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.5 }}>🔧</div>
               <div style={{ fontSize: 16, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>물품을 선택해주세요</div>
               <div style={{ fontSize: 13, color: theme.textDim, textAlign: "center" }}>
-                왼쪽 목록에서 대여할 물품을 클릭하면<br/>대여 정보를 입력할 수 있습니다
+                왼쪽 목록에서 대여할 물품을 클릭하면<br />대여 정보를 입력할 수 있습니다
               </div>
             </div>
-          ) : (
-            <div>
-              {/* Selected Items Summary */}
-              <Card style={{ marginBottom: 20, padding: 20, background: theme.accentBg, borderColor: theme.accent }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: theme.accent }}>선택한 물품 ({selected.length}개)</div>
-                  <Button variant="ghost" size="sm" onClick={() => setSelected([])}>
-                    <Icons.x size={14}/> 전체 해제
-                  </Button>
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                  {selected.map(id => {
-                    const eq = EQUIPMENT_DB.find(e => e.id === id);
-                    return eq && (
-                      <div key={id} style={{
-                        display: "flex", alignItems: "center", gap: 8,
-                        padding: "8px 12px", background: theme.card, borderRadius: 8,
-                        border: `1px solid ${theme.border}`,
-                      }}>
-                        <span style={{ fontSize: 20 }}>{eq.icon}</span>
-                        <span style={{ fontSize: 13, color: theme.text, fontWeight: 500 }}>{eq.name}</span>
-                        <button onClick={(e) => { e.stopPropagation(); toggleEquip(id); }} style={{
-                          background: "none", border: "none", cursor: "pointer", padding: 2,
-                          color: theme.textDim, display: "flex", alignItems: "center",
-                        }}>
-                          <Icons.x size={14}/>
-                        </button>
+          ) : (() => {
+            const eq = equipmentDB.find(e => e.id === selected);
+            if (!eq) return null;
+            return (
+              <div>
+                {/* Equipment Details */}
+                <SectionTitle icon={<Icons.info size={16} color={theme.accent} />}>물품 상세 정보</SectionTitle>
+                <Card style={{ marginBottom: 20 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, padding: 12, background: theme.surface, borderRadius: 8 }}>
+                    <div style={{ fontSize: 32, width: 50, textAlign: "center" }}>{eq.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: theme.text, marginBottom: 4 }}>{eq.name}</div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <Badge color="dim">재고 {eq.available}/{eq.total}</Badge>
+                        <Badge color="blue">최대 {eq.maxDays}일 대여</Badge>
+                        {eq.deposit && <Badge color="yellow">보증금 필요</Badge>}
                       </div>
-                    );
-                  })}
-                </div>
-              </Card>
-
-              {/* Equipment Details */}
-              <SectionTitle icon={<Icons.info size={16} color={theme.accent}/>}>물품 상세 정보</SectionTitle>
-              <Card style={{ marginBottom: 20 }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {selected.map(id => {
-                    const eq = EQUIPMENT_DB.find(e => e.id === id);
-                    return eq && (
-                      <div key={id} style={{
-                        display: "flex", alignItems: "center", gap: 14,
-                        padding: 12, background: theme.surface, borderRadius: 8,
-                      }}>
-                        <div style={{ fontSize: 32, width: 50, textAlign: "center" }}>{eq.icon}</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 15, fontWeight: 600, color: theme.text, marginBottom: 4 }}>{eq.name}</div>
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <Badge color="dim">재고 {eq.available}/{eq.total}</Badge>
-                            <Badge color="blue">최대 {eq.maxDays}일 대여</Badge>
-                            {eq.deposit && <Badge color="yellow">보증금 필요</Badge>}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </Card>
-
-              {/* Return Info */}
-              <SectionTitle icon={<Icons.calendar size={16} color={theme.accent}/>}>반납 정보</SectionTitle>
-              <Card style={{ marginBottom: 24 }}>
-                <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                  <Input label="반납 예정일" type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} style={{ maxWidth: 180 }}/>
-                  <div style={{ flex: 1, minWidth: 200 }}>
-                    <Input label="비고 (선택)" placeholder="예: 수업용, 팀프로젝트 등" value={note} onChange={e => setNote(e.target.value)}/>
+                    </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
 
-              {/* Summary */}
-              <Card style={{ marginBottom: 20, background: theme.surface, padding: 16 }}>
-                <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 8 }}>대여 요약</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-                  <Badge color="accent">{selected.length}개 물품</Badge>
-                  <Badge color="blue">반납: {returnDate}</Badge>
-                </div>
-                <div style={{ fontSize: 12, color: theme.textDim }}>
-                  물품: {selected.map(id => EQUIPMENT_DB.find(e => e.id === id)?.name).filter(Boolean).join(", ")}
-                </div>
-              </Card>
+                {/* Return Info */}
+                <SectionTitle icon={<Icons.calendar size={16} color={theme.accent} />}>반납 정보</SectionTitle>
+                <Card style={{ marginBottom: 24 }}>
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                    <Input label="반납 예정일" type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} style={{ maxWidth: 180 }} />
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <Input label="비고 (선택)" placeholder="예: 수업용, 팀프로젝트 등" value={note} onChange={e => setNote(e.target.value)} />
+                    </div>
+                  </div>
+                </Card>
 
-              <Button size="lg" onClick={handleSubmit} disabled={submitting} style={{ width: "100%", justifyContent: "center", marginBottom: 40 }}>
-                {submitting ? "신청 중..." : `기구 ${selected.length}건 대여 신청`}
-              </Button>
-            </div>
-          )}
+                {/* Summary */}
+                <Card style={{ marginBottom: 20, background: theme.surface, padding: 16 }}>
+                  <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 8 }}>대여 요약</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                    <Badge color="accent">{eq.icon} {eq.name}</Badge>
+                    <Badge color="blue">반납: {returnDate}</Badge>
+                  </div>
+                </Card>
+
+                <Button size="lg" onClick={handleSubmit} disabled={submitting} style={{ width: "100%", justifyContent: "center", marginBottom: 40 }}>
+                  {submitting ? "신청 중..." : `${eq.name} 대여 신청`}
+                </Button>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
@@ -3371,7 +3599,7 @@ const PRINT_PRICES = {
 
 const KAKAO_BANK_ACCOUNT = "3333-12-3456789"; // 카카오뱅크 계좌번호 (예시)
 
-function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNotification, syncPrintToSheet }) {
+function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNotification, syncPrintToSheet, sendEmailNotification }) {
   const [paperSize, setPaperSize] = useState("A4");
   const [colorMode, setColorMode] = useState("BW");
   const [copies, setCopies] = useState(1);
@@ -3426,6 +3654,7 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
       studentId: user.id,
       studentName: user.name,
       studentDept: user.dept,
+      studentEmail: user.email || "",
       paperSize,
       colorMode,
       copies,
@@ -3443,9 +3672,16 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
     updatePrintRequests(prev => [newRequest, ...prev]);
     addLog(`출력 신청: ${paperSize} ${colorMode === "BW" ? "흑백" : "컬러"} ${copies}장`, "print", { studentId: user.id });
     addNotification(`🖨️ 새 출력 신청: ${user.name} - ${paperSize} ${copies}장`, "info", true);
-    
+
     // 구글 시트 연동
     await syncPrintToSheet?.(newRequest);
+
+    // 학생 이메일 알림
+    sendEmailNotification?.({
+      to: user.email || undefined,
+      subject: `[출력 신청 접수] ${user.name} · ${paperSize} ${copies}장`,
+      body: `출력 신청이 접수되었습니다.\n\n- 학생: ${user.name} (${user.id})\n- 용지: ${paperSize}\n- 색상: ${colorMode === "BW" ? "흑백" : "컬러"}\n- 매수: ${copies}장\n- 금액: ${totalPrice.toLocaleString()}원\n- 비고: ${note.trim() || "없음"}\n\n근로학생이 확인 후 출력해드립니다.`,
+    });
 
     // 초기화
     setPrintFile(null);
@@ -3465,7 +3701,7 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
       {/* 출력 가격표 안내 */}
       <Card style={{ marginBottom: 20, background: theme.surface }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-          <Icons.file size={20} color={theme.accent}/>
+          <Icons.file size={20} color={theme.accent} />
           <div style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>📋 출력 가격표 및 안내</div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginBottom: 16 }}>
@@ -3478,9 +3714,9 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
           ))}
         </div>
         <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.6 }}>
-          💳 <strong>송금 계좌:</strong> 카카오뱅크 {KAKAO_BANK_ACCOUNT}<br/>
-          ⏰ <strong>운영시간:</strong> 평일 10:00~17:00 (점심시간 12:00~13:00 제외)<br/>
-          📍 <strong>수령장소:</strong> 건축대학 출력실 (본관 3층)
+          💳 <strong>송금 계좌:</strong> 카카오뱅크 {KAKAO_BANK_ACCOUNT}<br />
+          ⏰ <strong>운영시간:</strong> 평일 10:00~17:00 (점심시간 12:00~13:00 제외)<br />
+          📍 <strong>수령장소:</strong> 건축대학 출력실 (복지관 6층)
         </div>
 
         {/* 내 출력 신청 내역 배너 */}
@@ -3613,7 +3849,7 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
       {/* 출력 신청 폼 */}
       <Card style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, color: theme.text }}>🖨️ 출력 신청</div>
-        
+
         {/* 용지 크기 */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>용지 크기</div>
@@ -3659,7 +3895,7 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
             <input type="number" value={copies} onChange={e => setCopies(Math.max(1, parseInt(e.target.value) || 1))} min={1} style={{
               width: 60, padding: "8px 12px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.surface,
               color: theme.text, fontSize: 16, fontWeight: 600, textAlign: "center", fontFamily: theme.font,
-            }}/>
+            }} />
             <button onClick={() => setCopies(copies + 1)} style={{
               width: 36, height: 36, borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.surface,
               color: theme.text, fontSize: 18, cursor: "pointer", fontFamily: theme.font,
@@ -3677,7 +3913,7 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
         {/* 출력 파일 업로드 */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>출력 파일 업로드 <span style={{ color: theme.red }}>*</span></div>
-          <input type="file" ref={printFileRef} onChange={handlePrintFileUpload} accept=".pdf,.jpg,.jpeg,.png,.ai,.psd,.dwg" style={{ display: "none" }}/>
+          <input type="file" ref={printFileRef} onChange={handlePrintFileUpload} accept=".pdf,.jpg,.jpeg,.png,.ai,.psd,.dwg" style={{ display: "none" }} />
           <button onClick={() => printFileRef.current?.click()} style={{
             width: "100%", padding: 16, borderRadius: 8, border: `2px dashed ${printFile ? theme.green : theme.border}`,
             background: printFile ? theme.greenBg : "transparent", color: printFile ? theme.green : theme.textMuted,
@@ -3693,7 +3929,7 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
           <div style={{ fontSize: 11, color: theme.yellow, marginBottom: 8, padding: "8px 12px", background: theme.yellowBg, borderRadius: 6 }}>
             💡 카카오뱅크 {KAKAO_BANK_ACCOUNT}로 {totalPrice.toLocaleString()}원을 송금한 후 캡처해주세요
           </div>
-          <input type="file" ref={paymentFileRef} onChange={handlePaymentUpload} accept=".jpg,.jpeg,.png" style={{ display: "none" }}/>
+          <input type="file" ref={paymentFileRef} onChange={handlePaymentUpload} accept=".jpg,.jpeg,.png" style={{ display: "none" }} />
           <button onClick={() => paymentFileRef.current?.click()} style={{
             width: "100%", padding: 16, borderRadius: 8, border: `2px dashed ${paymentProof ? theme.green : theme.border}`,
             background: paymentProof ? theme.greenBg : "transparent", color: paymentProof ? theme.green : theme.textMuted,
@@ -3709,12 +3945,12 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
           <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="예: 양면출력 / 특정 페이지만 / 두껍게 출력 등" style={{
             width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.surface,
             color: theme.text, fontSize: 13, fontFamily: theme.font, resize: "none", minHeight: 60,
-          }}/>
+          }} />
         </div>
 
         {/* 긴급 수령 */}
         <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, cursor: "pointer" }}>
-          <input type="checkbox" checked={urgentPickup} onChange={e => setUrgentPickup(e.target.checked)} style={{ width: 18, height: 18 }}/>
+          <input type="checkbox" checked={urgentPickup} onChange={e => setUrgentPickup(e.target.checked)} style={{ width: 18, height: 18 }} />
           <span style={{ fontSize: 13, color: theme.text }}>🚨 긴급 수령 요청 (가능한 빨리 출력 요청)</span>
         </label>
 
@@ -3748,14 +3984,15 @@ function StudentHistory({ user, reservations, equipRentals, updateReservations, 
   const handleCancelReservation = (item) => {
     setCancelling(true);
     setTimeout(() => {
-      updateReservations(prev => 
+      updateReservations(prev =>
         prev.map(r => r.id === item.id ? { ...r, status: "cancelled", cancelledAt: new Date().toISOString().replace('T', ' ').slice(0, 19) } : r)
       );
       addLog?.(`[예약취소] ${user.name}(${user.id}) → ${item.roomName} | ${item.date} ${item.slotLabels?.join(", ")} 예약을 취소했습니다.`, "reservation", { studentId: user.id, roomId: item.roomId });
       addNotification?.(`❌ 예약 취소: ${user.name} → ${item.roomName} (${item.date})`, "room");
-      
+
       // 취소 확인 이메일 발송
       sendEmailNotification?.({
+        to: user.email || undefined,
         subject: `[실기실 예약 취소] ${user.name} · ${item.roomName}`,
         body: [
           "국민대학교 건축대학 실기실 예약이 취소되었습니다.",
@@ -3784,11 +4021,11 @@ function StudentHistory({ user, reservations, equipRentals, updateReservations, 
 
   return (
     <div className="fade-in">
-      <SectionTitle icon={<Icons.history size={16} color={theme.accent}/>}>이용 내역
+      <SectionTitle icon={<Icons.history size={16} color={theme.accent} />}>이용 내역
         <Badge color="dim">{all.length}건</Badge>
       </SectionTitle>
       {all.length === 0 ? (
-        <Empty icon={<Icons.calendar size={32}/>} text="아직 이용 내역이 없습니다"/>
+        <Empty icon={<Icons.calendar size={32} />} text="아직 이용 내역이 없습니다" />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {all.map(item => (
@@ -3816,7 +4053,7 @@ function StudentHistory({ user, reservations, equipRentals, updateReservations, 
                         </>
                       ) : (
                         <Button variant="ghost" size="sm" style={{ color: theme.red, borderColor: theme.red }} onClick={() => setCancelConfirm(item.id)}>
-                          <Icons.x size={14}/> 예약 취소
+                          <Icons.x size={14} /> 예약 취소
                         </Button>
                       )}
                     </div>
@@ -3871,7 +4108,7 @@ function StudentInquiries({ user, inquiries, updateInquiries }) {
 
   return (
     <div className="fade-in">
-      <SectionTitle icon={<Icons.file size={16} color={theme.accent}/>}>내 문의 내역
+      <SectionTitle icon={<Icons.file size={16} color={theme.accent} />}>내 문의 내역
         <Badge color="dim">{inquiries.length}건</Badge>
         <Button variant="primary" size="sm" style={{ marginLeft: "auto" }} onClick={() => setShowForm(!showForm)}>
           {showForm ? "취소" : "+ 문의 작성"}
@@ -3880,7 +4117,7 @@ function StudentInquiries({ user, inquiries, updateInquiries }) {
 
       {success && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 14px", borderRadius: theme.radiusSm, background: theme.greenBg, border: `1px solid ${theme.greenBorder}`, color: theme.green, fontSize: 13, marginBottom: 16 }}>
-          <Icons.check size={16}/> {success}
+          <Icons.check size={16} /> {success}
         </div>
       )}
 
@@ -3888,10 +4125,10 @@ function StudentInquiries({ user, inquiries, updateInquiries }) {
         <Card style={{ marginBottom: 16, background: theme.accentBg, borderColor: theme.accentBorder }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: theme.accent, marginBottom: 12 }}>새 문의 작성</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <Input 
-              label="제목" 
-              placeholder="문의 제목을 입력하세요" 
-              value={inquiryTitle} 
+            <Input
+              label="제목"
+              placeholder="문의 제목을 입력하세요"
+              value={inquiryTitle}
               onChange={e => setInquiryTitle(e.target.value)}
             />
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -3900,17 +4137,17 @@ function StudentInquiries({ user, inquiries, updateInquiries }) {
                 placeholder="문의 내용을 자세히 작성해주세요"
                 value={inquiryContent}
                 onChange={e => setInquiryContent(e.target.value)}
-                style={{ 
-                  width: "100%", 
-                  padding: "10px 14px", 
-                  background: theme.surface, 
-                  border: `1px solid ${theme.border}`, 
-                  borderRadius: theme.radiusSm, 
-                  color: theme.text, 
-                  fontSize: 14, 
-                  fontFamily: theme.font, 
-                  outline: "none", 
-                  boxSizing: "border-box", 
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  background: theme.surface,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: theme.radiusSm,
+                  color: theme.text,
+                  fontSize: 14,
+                  fontFamily: theme.font,
+                  outline: "none",
+                  boxSizing: "border-box",
                   transition: "border-color 0.2s",
                   minHeight: 100,
                   resize: "vertical"
@@ -3921,8 +4158,8 @@ function StudentInquiries({ user, inquiries, updateInquiries }) {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <Button variant="ghost" onClick={() => setShowForm(false)}>취소</Button>
-              <Button 
-                variant="primary" 
+              <Button
+                variant="primary"
                 onClick={handleSubmit}
                 disabled={!inquiryTitle.trim() || !inquiryContent.trim() || submitting}
               >
@@ -3932,14 +4169,14 @@ function StudentInquiries({ user, inquiries, updateInquiries }) {
           </div>
         </Card>
       )}
-      
+
       {inquiries.length === 0 && !showForm ? (
-        <Empty icon={<Icons.file size={32}/>} text="등록한 문의가 없습니다"/>
+        <Empty icon={<Icons.file size={32} />} text="등록한 문의가 없습니다" />
       ) : inquiries.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {inquiries.map(inquiry => (
-            <Card 
-              key={inquiry.id} 
+            <Card
+              key={inquiry.id}
               style={{ padding: 16, cursor: "pointer" }}
               hover
               onClick={() => setSelectedInquiry(inquiry)}
@@ -3976,10 +4213,10 @@ function StudentInquiries({ user, inquiries, updateInquiries }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div style={{ fontSize: 16, fontWeight: 700 }}>{selectedInquiry.title}</div>
               <button onClick={() => setSelectedInquiry(null)} style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDim }}>
-                <Icons.x size={20}/>
+                <Icons.x size={20} />
               </button>
             </div>
-            
+
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, color: theme.textDim, marginBottom: 8 }}>
                 {selectedInquiry.createdAt} · {selectedInquiry.contact}
@@ -4033,16 +4270,16 @@ function WorkerPortal({ user, onLogout, reservations, updateReservations, equipR
             <Badge color="dim">{user.shift}</Badge>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={onLogout}><Icons.logout size={15}/> 나가기</Button>
+        <Button variant="ghost" size="sm" onClick={onLogout}><Icons.logout size={15} /> 나가기</Button>
       </div>
 
       <div style={{ paddingTop: 24 }}>
         <Tabs
           tabs={[
-            { id: "dashboard", label: "대시보드", icon: <Icons.home size={15}/>, badge: unreadCount },
-            { id: "print", label: "출력 관리", icon: <Icons.file size={15}/>, badge: pendingPrints },
-            { id: "inquiries", label: "문의", icon: <Icons.file size={15}/>, badge: pendingInquiries },
-            { id: "logs", label: "일지", icon: <Icons.log size={15}/> },
+            { id: "dashboard", label: "대시보드", icon: <Icons.home size={15} />, badge: unreadCount },
+            { id: "print", label: "출력 관리", icon: <Icons.file size={15} />, badge: pendingPrints },
+            { id: "inquiries", label: "문의", icon: <Icons.file size={15} />, badge: pendingInquiries },
+            { id: "logs", label: "일지", icon: <Icons.log size={15} /> },
           ]}
           active={tab} onChange={setTab}
         />
@@ -4060,20 +4297,20 @@ function WorkerPortal({ user, onLogout, reservations, updateReservations, equipR
         />
       )}
       {tab === "print" && (
-        <PrintManagement printRequests={printRequests} updatePrintRequests={updatePrintRequests} addLog={addLog} workerName={user.name}/>
+        <PrintManagement printRequests={printRequests} updatePrintRequests={updatePrintRequests} addLog={addLog} workerName={user.name} sendEmailNotification={sendEmailNotification} />
       )}
       {tab === "inquiries" && (
-        <InquiriesPanel inquiries={inquiries} updateInquiries={updateInquiries} workerName={user.name} addLog={addLog}/>
+        <InquiriesPanel inquiries={inquiries} updateInquiries={updateInquiries} workerName={user.name} addLog={addLog} />
       )}
       {tab === "logs" && (
-        <LogViewer logs={logs} addLog={addLog}/>
+        <LogViewer logs={logs} addLog={addLog} />
       )}
     </div>
   );
 }
 
 // ─── Print Management (출력 관리) ────────────────────────────────
-function PrintManagement({ printRequests, updatePrintRequests, addLog, workerName }) {
+function PrintManagement({ printRequests, updatePrintRequests, addLog, workerName, sendEmailNotification }) {
   const [filter, setFilter] = useState("pending"); // pending | processing | completed | all
   const [selectedRequest, setSelectedRequest] = useState(null);
 
@@ -4085,12 +4322,20 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
   });
 
   const handleStatusChange = (requestId, newStatus) => {
-    updatePrintRequests(prev => prev.map(p => 
-      p.id === requestId 
-        ? { ...p, status: newStatus, completedAt: newStatus === "completed" ? ts() : p.completedAt, processedBy: workerName } 
+    const req = (printRequests || []).find(p => p.id === requestId);
+    updatePrintRequests(prev => prev.map(p =>
+      p.id === requestId
+        ? { ...p, status: newStatus, completedAt: newStatus === "completed" ? ts() : p.completedAt, processedBy: workerName }
         : p
     ));
     addLog(`출력 상태 변경: ${newStatus}`, "print", { requestId });
+    if (newStatus === "completed" && req?.studentEmail) {
+      sendEmailNotification?.({
+        to: req.studentEmail,
+        subject: `[출력 완료] ${req.studentName}님 · ${req.paperSize} ${req.copies}장`,
+        body: `출력이 완료되었습니다.\n\n- 용지: ${req.paperSize}\n- 색상: ${req.colorMode === "BW" ? "흑백" : "컬러"}\n- 매수: ${req.copies}장\n- 금액: ${(req.totalPrice || 0).toLocaleString()}원\n\n건축대학 출력실(복지관 6층)에서 수령해주세요.`,
+      });
+    }
   };
 
   const pendingCount = (printRequests || []).filter(p => p.status === "pending").length;
@@ -4139,7 +4384,7 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
           </div>
         ) : (
           filtered.map(req => (
-            <Card key={req.id} style={{ 
+            <Card key={req.id} style={{
               padding: 16, cursor: "pointer",
               borderColor: req.urgentPickup ? theme.red : (req.status === "pending" ? theme.yellow : theme.border),
               background: req.urgentPickup ? theme.redBg : theme.card,
@@ -4184,7 +4429,7 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>송금 캡처</div>
                     {req.paymentProof?.data && (
-                      <img src={req.paymentProof.data} alt="송금 캡처" style={{ maxWidth: 200, borderRadius: 8, border: `1px solid ${theme.border}` }}/>
+                      <img src={req.paymentProof.data} alt="송금 캡처" style={{ maxWidth: 200, borderRadius: 8, border: `1px solid ${theme.border}` }} />
                     )}
                   </div>
 
@@ -4230,9 +4475,9 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
 
   const handleAnswer = (inquiryId) => {
     if (!answerText.trim()) return;
-    updateInquiries(prev => prev.map(i => 
-      i.id === inquiryId 
-        ? { ...i, status: "answered", answer: { text: answerText.trim(), answeredBy: workerName, answeredAt: ts() } } 
+    updateInquiries(prev => prev.map(i =>
+      i.id === inquiryId
+        ? { ...i, status: "answered", answer: { text: answerText.trim(), answeredBy: workerName, answeredAt: ts() } }
         : i
     ));
     addLog(`[문의답변] "${selectedInquiry?.title}" 답변 완료 (${workerName})`, "inquiry");
@@ -4241,9 +4486,9 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
   };
 
   const handleMarkComplete = (inquiryId) => {
-    updateInquiries(prev => prev.map(i => 
-      i.id === inquiryId 
-        ? { ...i, status: "answered", answer: { text: "연락처로 직접 답변 완료", answeredBy: workerName, answeredAt: ts() } } 
+    updateInquiries(prev => prev.map(i =>
+      i.id === inquiryId
+        ? { ...i, status: "answered", answer: { text: "연락처로 직접 답변 완료", answeredBy: workerName, answeredAt: ts() } }
         : i
     ));
     addLog(`[문의완료] "${selectedInquiry?.title}" 연락 완료 처리 (${workerName})`, "inquiry");
@@ -4258,7 +4503,7 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
 
   return (
     <div className="fade-in" style={{ paddingTop: 24 }}>
-      <SectionTitle icon={<Icons.file size={16} color={theme.accent}/>}>
+      <SectionTitle icon={<Icons.file size={16} color={theme.accent} />}>
         문의 관리
         <Badge color="accent">{(inquiries || []).filter(i => i.status === "pending").length}건 대기</Badge>
       </SectionTitle>
@@ -4291,12 +4536,12 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
       </div>
 
       {filtered.length === 0 ? (
-        <Empty icon={<Icons.file size={32}/>} text="문의가 없습니다"/>
+        <Empty icon={<Icons.file size={32} />} text="문의가 없습니다" />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {filtered.map(inquiry => (
-            <Card 
-              key={inquiry.id} 
+            <Card
+              key={inquiry.id}
               style={{ padding: 16, cursor: "pointer" }}
               hover
               onClick={() => setSelectedInquiry(inquiry)}
@@ -4322,19 +4567,19 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
 
       {/* Detail Modal */}
       {selectedInquiry && (
-        <div style={{ 
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, 
-          background: "rgba(0,0,0,0.7)", 
-          display: "flex", alignItems: "center", justifyContent: "center", 
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.7)",
+          display: "flex", alignItems: "center", justifyContent: "center",
           zIndex: 2000,
           padding: 20
         }} onClick={() => setSelectedInquiry(null)}>
-          <div 
-            style={{ 
-              background: theme.card, 
-              borderRadius: theme.radius, 
-              padding: 24, 
-              maxWidth: 500, 
+          <div
+            style={{
+              background: theme.card,
+              borderRadius: theme.radius,
+              padding: 24,
+              maxWidth: 500,
               width: "100%",
               maxHeight: "80vh",
               overflow: "auto",
@@ -4351,11 +4596,11 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
                   </Badge>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedInquiry(null)}
                 style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 4 }}
               >
-                <Icons.x size={18}/>
+                <Icons.x size={18} />
               </button>
             </div>
 
@@ -4363,10 +4608,10 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
               작성자: {selectedInquiry.name} | 연락처: {selectedInquiry.contact || "없음"} | {selectedInquiry.createdAt}
             </div>
 
-            <div style={{ 
-              padding: 16, 
-              background: theme.surface, 
-              borderRadius: theme.radiusSm, 
+            <div style={{
+              padding: 16,
+              background: theme.surface,
+              borderRadius: theme.radiusSm,
               marginBottom: 16,
               fontSize: 14,
               color: theme.text,
@@ -4377,12 +4622,12 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
             </div>
 
             {selectedInquiry.status === "answered" && (
-              <div style={{ 
-                padding: 16, 
-                background: theme.greenBg, 
+              <div style={{
+                padding: 16,
+                background: theme.greenBg,
                 border: `1px solid ${theme.greenBorder}`,
-                borderRadius: theme.radiusSm, 
-                marginBottom: 16 
+                borderRadius: theme.radiusSm,
+                marginBottom: 16
               }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: theme.green, marginBottom: 8 }}>
                   답변 ({selectedInquiry.answeredBy} · {selectedInquiry.answeredAt})
@@ -4402,16 +4647,16 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
                   placeholder="답변을 입력하세요"
                   value={answerText}
                   onChange={e => setAnswerText(e.target.value)}
-                  style={{ 
-                    width: "100%", 
-                    padding: "10px 14px", 
-                    background: theme.surface, 
-                    border: `1px solid ${theme.border}`, 
-                    borderRadius: theme.radiusSm, 
-                    color: theme.text, 
-                    fontSize: 14, 
-                    fontFamily: theme.font, 
-                    outline: "none", 
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    background: theme.surface,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: theme.radiusSm,
+                    color: theme.text,
+                    fontSize: 14,
+                    fontFamily: theme.font,
+                    outline: "none",
                     boxSizing: "border-box",
                     minHeight: 100,
                     resize: "vertical"
@@ -4424,7 +4669,7 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
               <div style={{ padding: 16, background: theme.yellowBg, border: `1px solid ${theme.yellowBorder}`, borderRadius: theme.radiusSm, marginBottom: 16 }}>
                 <div style={{ fontSize: 13, color: theme.yellow, fontWeight: 600, marginBottom: 6 }}>📞 비로그인 문의</div>
                 <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.5, marginBottom: 12 }}>
-                  비로그인 문의는 연락처로 직접 연락해주세요.<br/>
+                  비로그인 문의는 연락처로 직접 연락해주세요.<br />
                   연락처: <strong style={{ color: theme.text }}>{selectedInquiry.contact || "없음"}</strong>
                 </div>
                 <Button variant="primary" onClick={() => handleMarkComplete(selectedInquiry.id)}>
@@ -4488,27 +4733,27 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
 
   // 체크리스트 완료 상태
   const checklistItems = [
-    { key: "pending", label: "승인 대기 예약 처리", icon: <Icons.calendar size={16}/>, count: pendingRes.length, done: pendingRes.length === 0 },
-    { key: "rental", label: "물품 수령/반납 처리", icon: <Icons.package size={16}/>, count: activeRentals.length, done: activeRentals.length === 0 },
-    { key: "print", label: "출력 대기 처리", icon: <Icons.file size={16}/>, count: pendingPrints, done: pendingPrints === 0 },
-    { key: "cleanup", label: "실기실 정리 확인", icon: <Icons.check size={16}/>, count: todayUsedRooms.filter(r => !roomCleanup[r.id]).length, done: allRoomsChecked },
+    { key: "pending", label: "승인 대기 예약 처리", icon: <Icons.calendar size={16} />, count: pendingRes.length, done: pendingRes.length === 0 },
+    { key: "rental", label: "물품 수령/반납 처리", icon: <Icons.package size={16} />, count: activeRentals.length, done: activeRentals.length === 0 },
+    { key: "print", label: "출력 대기 처리", icon: <Icons.file size={16} />, count: pendingPrints, done: pendingPrints === 0 },
+    { key: "cleanup", label: "실기실 정리 확인", icon: <Icons.check size={16} />, count: todayUsedRooms.filter(r => !roomCleanup[r.id]).length, done: allRoomsChecked },
   ];
   const doneCount = checklistItems.filter(c => c.done).length;
-  
+
   // 통계 데이터 계산
   const totalReservations = reservations.length;
   const completedReservations = reservations.filter(r => r.status === "approved" || r.status === "completed").length;
   const cancelledReservations = reservations.filter(r => r.status === "cancelled" || r.status === "rejected").length;
   const totalRentals = equipRentals.length;
   const returnedRentals = equipRentals.filter(r => r.status === "returned").length;
-  
+
   // 실기실별 예약 통계
   const roomStats = ROOMS.map(room => ({
     name: room.name.replace("실기실 ", ""),
     count: reservations.filter(r => r.roomId === room.id && r.status === "approved").length
   }));
   const maxRoomCount = Math.max(...roomStats.map(r => r.count), 1);
-  
+
   // 최근 7일 예약 통계
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
@@ -4528,14 +4773,14 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     let offset = 0;
-    
+
     return (
       <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-        <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke={theme.surface} strokeWidth={strokeWidth}/>
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={theme.surface} strokeWidth={strokeWidth} />
         {data.map((d, i) => {
           const dashLength = (d.value / total) * circumference;
           const segment = (
-            <circle key={i} cx={size/2} cy={size/2} r={radius} fill="none" stroke={d.color} strokeWidth={strokeWidth}
+            <circle key={i} cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={d.color} strokeWidth={strokeWidth}
               strokeDasharray={`${dashLength} ${circumference - dashLength}`}
               strokeDashoffset={-offset}
               style={{ transition: "stroke-dasharray 0.5s, stroke-dashoffset 0.5s" }}
@@ -4554,12 +4799,12 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
     const radius = (size - 8) / 2;
     const circumference = 2 * Math.PI * radius;
     const dashLength = (percentage / 100) * circumference;
-    
+
     return (
       <div style={{ position: "relative", width: size, height: size }}>
         <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-          <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke={theme.surface} strokeWidth={4}/>
-          <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke={color} strokeWidth={4}
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={theme.surface} strokeWidth={4} />
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth={4}
             strokeDasharray={`${dashLength} ${circumference - dashLength}`}
             strokeLinecap="round"
           />
@@ -4578,11 +4823,18 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
     const rental = equipRentals.find(r => r.id === rentalId);
     if (rental) {
       addLog(`[준비완료] ${rental.studentName}의 기구대여 준비 완료 → ${rental.items.map(i => i.name).join(", ")}`, "equipment");
+      if (rental.studentEmail) {
+        sendEmailNotification?.({
+          to: rental.studentEmail,
+          subject: `[물품 준비 완료] ${rental.studentName}님 · ${rental.items.map(i => i.name).join(", ")}`,
+          body: `물품 대여 준비가 완료되었습니다.\n\n- 물품: ${rental.items.map(i => `${i.icon} ${i.name}`).join(", ")}\n- 반납 예정일: ${rental.returnDate || "미정"}\n\n교학팀에서 수령해주세요.`,
+        });
+      }
     }
   };
 
   const markEquipReturned = (rentalId) => {
-    updateEquipRentals(prev => prev.map(r => r.id === rentalId ? {...r, status: "returned", returnedAt: ts()} : r));
+    updateEquipRentals(prev => prev.map(r => r.id === rentalId ? { ...r, status: "returned", returnedAt: ts() } : r));
     const rental = equipRentals.find(r => r.id === rentalId);
     if (rental) {
       addLog(`[반납완료] ${rental.studentName}의 기구 반납 완료 → ${rental.items.map(i => i.name).join(", ")}`, "equipment");
@@ -4640,13 +4892,13 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ width: 8, height: 8, borderRadius: 4, background: theme.green }}/>
+            <span style={{ width: 8, height: 8, borderRadius: 4, background: theme.green }} />
             <span style={{ fontSize: 12, color: theme.textMuted }}>실시간</span>
           </div>
           {/* 알림 벨 */}
           <div style={{ position: "relative" }}>
             <button onClick={() => setShowNotifPopup(!showNotifPopup)} style={{ width: 40, height: 40, borderRadius: "50%", border: "none", background: showNotifPopup ? theme.accent : theme.surface, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", transition: "all 0.2s" }}>
-              <Icons.bell size={18} color={showNotifPopup ? "#fff" : theme.textMuted}/>
+              <Icons.bell size={18} color={showNotifPopup ? "#fff" : theme.textMuted} />
               {unreadCount > 0 && (
                 <span style={{ position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, background: theme.red, color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", border: `2px solid ${theme.bg}` }}>
                   {unreadCount > 99 ? "99+" : unreadCount}
@@ -4667,7 +4919,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
                 <div style={{ maxHeight: 320, overflowY: "auto" }}>
                   {notifications.length === 0 ? (
                     <div style={{ padding: "40px 20px", textAlign: "center" }}>
-                      <Icons.bell size={32} color={theme.textDim}/>
+                      <Icons.bell size={32} color={theme.textDim} />
                       <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 12 }}>알림이 없습니다</div>
                     </div>
                   ) : (
@@ -4676,7 +4928,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
                         onMouseEnter={e => e.currentTarget.style.background = theme.surfaceHover}
                         onMouseLeave={e => e.currentTarget.style.background = !n.read ? (n.urgent ? "rgba(212,93,93,0.06)" : "rgba(212,160,83,0.06)") : "transparent"}>
                         <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                          {!n.read && <div style={{ width: 8, height: 8, borderRadius: 4, background: n.urgent ? theme.red : theme.accent, marginTop: 5, flexShrink: 0 }}/>}
+                          {!n.read && <div style={{ width: 8, height: 8, borderRadius: 4, background: n.urgent ? theme.red : theme.accent, marginTop: 5, flexShrink: 0 }} />}
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 13, color: theme.text, lineHeight: 1.5 }}>{n.text}</div>
                             <div style={{ fontSize: 11, color: theme.textDim, marginTop: 4 }}>{n.time}</div>
@@ -4697,12 +4949,12 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
         {/* 체크리스트 헤더 */}
         <div style={{ padding: "16px 20px", borderBottom: `1px solid ${theme.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Icons.shield size={18} color={doneCount === 4 ? theme.green : theme.accent}/>
+            <Icons.shield size={18} color={doneCount === 4 ? theme.green : theme.accent} />
             <span style={{ fontSize: 16, fontWeight: 800, color: theme.text }}>퇴근 전 체크리스트</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 80, height: 6, borderRadius: 3, background: theme.surface, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${(doneCount / 4) * 100}%`, background: doneCount === 4 ? theme.green : theme.accent, borderRadius: 3, transition: "width 0.3s" }}/>
+              <div style={{ height: "100%", width: `${(doneCount / 4) * 100}%`, background: doneCount === 4 ? theme.green : theme.accent, borderRadius: 3, transition: "width 0.3s" }} />
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, color: doneCount === 4 ? theme.green : theme.accent, fontFamily: theme.fontMono }}>{doneCount}/4</span>
           </div>
@@ -4730,7 +4982,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
                 display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "all 0.2s"
               }}>
-                {item.done && <Icons.check size={14} color={theme.green}/>}
+                {item.done && <Icons.check size={14} color={theme.green} />}
               </div>
               {/* 아이콘 + 라벨 */}
               <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
@@ -4759,7 +5011,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
                 {item.key === "pending" && (
                   pendingRes.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "20px 0", color: theme.textDim, fontSize: 13 }}>
-                      <Icons.check size={24} color={theme.green}/><div style={{ marginTop: 8 }}>모든 예약이 처리되었습니다</div>
+                      <Icons.check size={24} color={theme.green} /><div style={{ marginTop: 8 }}>모든 예약이 처리되었습니다</div>
                     </div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -4785,7 +5037,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
                 {item.key === "rental" && (
                   activeRentals.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "20px 0", color: theme.textDim, fontSize: 13 }}>
-                      <Icons.check size={24} color={theme.green}/><div style={{ marginTop: 8 }}>진행 중인 대여가 없습니다</div>
+                      <Icons.check size={24} color={theme.green} /><div style={{ marginTop: 8 }}>진행 중인 대여가 없습니다</div>
                     </div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -4806,7 +5058,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
                               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                                 {(rental.returnChecklist || EDITABLE.equipmentReturnChecklist.map(label => ({ label, done: false }))).map((cl, cidx) => (
                                   <label key={cidx} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: theme.textMuted, cursor: "pointer" }}>
-                                    <input type="checkbox" checked={!!cl.done} onChange={() => toggleChecklistItem(rental.id, cidx)}/>
+                                    <input type="checkbox" checked={!!cl.done} onChange={() => toggleChecklistItem(rental.id, cidx)} />
                                     {cl.label}
                                   </label>
                                 ))}
@@ -4827,12 +5079,12 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
                 {item.key === "print" && (
                   pendingPrints === 0 ? (
                     <div style={{ textAlign: "center", padding: "20px 0", color: theme.textDim, fontSize: 13 }}>
-                      <Icons.check size={24} color={theme.green}/><div style={{ marginTop: 8 }}>대기 중인 출력이 없습니다</div>
+                      <Icons.check size={24} color={theme.green} /><div style={{ marginTop: 8 }}>대기 중인 출력이 없습니다</div>
                     </div>
                   ) : (
                     <div style={{ padding: 14, background: theme.card, borderRadius: theme.radiusSm, border: `1px solid ${theme.yellowBorder}` }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: theme.yellow }}>
-                        <Icons.alert size={16}/>
+                        <Icons.alert size={16} />
                         <span style={{ fontWeight: 600 }}>{pendingPrints}건의 출력 요청이 대기 중입니다.</span>
                       </div>
                       <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 6 }}>출력 대기 탭에서 처리해주세요.</div>
@@ -4844,7 +5096,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
                 {item.key === "cleanup" && (
                   todayUsedRooms.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "20px 0", color: theme.textDim, fontSize: 13 }}>
-                      <Icons.check size={24} color={theme.green}/><div style={{ marginTop: 8 }}>오늘 사용된 실기실이 없습니다</div>
+                      <Icons.check size={24} color={theme.green} /><div style={{ marginTop: 8 }}>오늘 사용된 실기실이 없습니다</div>
                     </div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -4857,7 +5109,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
                             borderRadius: theme.radiusSm, border: `1px solid ${roomCleanup[room.id] ? theme.greenBorder : theme.border}`,
                             transition: "all 0.2s",
                           }}>
-                          <input type="checkbox" checked={!!roomCleanup[room.id]} readOnly style={{ accentColor: theme.green }}/>
+                          <input type="checkbox" checked={!!roomCleanup[room.id]} readOnly style={{ accentColor: theme.green }} />
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 13, fontWeight: 600, color: roomCleanup[room.id] ? theme.green : theme.text }}>{room.name}</div>
                             <div style={{ fontSize: 11, color: theme.textDim }}>{room.floor} · {room.building}</div>
@@ -4877,10 +5129,10 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
       {/* ═══ 간단 요약 카드 ═══ */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 20 }}>
         {[
-          { label: "오늘 예약", value: todayRes.filter(r => r.date === today).length, icon: <Icons.calendar size={15} color={theme.accent}/>, color: theme.accent },
-          { label: "총 예약", value: totalReservations, icon: <Icons.list size={15} color={theme.blue}/>, color: theme.blue },
-          { label: "물품 대여", value: totalRentals, icon: <Icons.package size={15} color={theme.yellow}/>, color: theme.yellow },
-          { label: "방문자", value: visitCount || 0, icon: <Icons.users size={15} color={theme.green}/>, color: theme.green },
+          { label: "오늘 예약", value: todayRes.filter(r => r.date === today).length, icon: <Icons.calendar size={15} color={theme.accent} />, color: theme.accent },
+          { label: "총 예약", value: totalReservations, icon: <Icons.list size={15} color={theme.blue} />, color: theme.blue },
+          { label: "물품 대여", value: totalRentals, icon: <Icons.package size={15} color={theme.yellow} />, color: theme.yellow },
+          { label: "방문자", value: visitCount || 0, icon: <Icons.users size={15} color={theme.green} />, color: theme.green },
         ].map((stat, i) => (
           <Card key={i} style={{ padding: "14px 16px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -4899,7 +5151,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
           style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", marginBottom: analyticsOpen ? 12 : 0, padding: "8px 0" }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 700, color: theme.text }}>
-            <Icons.grid size={16} color={theme.accent}/>
+            <Icons.grid size={16} color={theme.accent} />
             Analytics
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -4918,13 +5170,13 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
               </div>
               <div style={{ display: "flex", flexDirection: "column", height: 140, position: "relative" }}>
                 <div style={{ position: "absolute", left: 0, top: 0, bottom: 24, display: "flex", flexDirection: "column", justifyContent: "space-between", fontSize: 10, color: theme.textDim }}>
-                  <span>{maxDailyCount}</span><span>{Math.round(maxDailyCount/2)}</span><span>0</span>
+                  <span>{maxDailyCount}</span><span>{Math.round(maxDailyCount / 2)}</span><span>0</span>
                 </div>
                 <div style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "space-around", marginLeft: 24 }}>
                   {dailyStats.map((d, i) => (
                     <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, height: "100%" }}>
                       <div style={{ flex: 1, display: "flex", alignItems: "flex-end", width: "100%", justifyContent: "center" }}>
-                        <div style={{ width: "70%", height: `${Math.max((d.count / maxDailyCount) * 100, 5)}%`, background: d.date === today ? theme.accent : theme.blue, borderRadius: "4px 4px 0 0", transition: "height 0.3s", minHeight: 4 }}/>
+                        <div style={{ width: "70%", height: `${Math.max((d.count / maxDailyCount) * 100, 5)}%`, background: d.date === today ? theme.accent : theme.blue, borderRadius: "4px 4px 0 0", transition: "height 0.3s", minHeight: 4 }} />
                       </div>
                     </div>
                   ))}
@@ -4943,11 +5195,11 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
                 <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>예약 현황</div>
               </div>
               <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
-                <DonutChart data={[ { value: completedReservations, color: theme.green }, { value: pendingRes.length, color: theme.yellow }, { value: cancelledReservations, color: theme.red } ]} size={60} strokeWidth={8}/>
+                <DonutChart data={[{ value: completedReservations, color: theme.green }, { value: pendingRes.length, color: theme.yellow }, { value: cancelledReservations, color: theme.red }]} size={60} strokeWidth={8} />
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}><span style={{ width: 8, height: 8, borderRadius: 4, background: theme.green }}/><span style={{ color: theme.textMuted }}>승인 {completedReservations}</span></div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}><span style={{ width: 8, height: 8, borderRadius: 4, background: theme.yellow }}/><span style={{ color: theme.textMuted }}>대기 {pendingRes.length}</span></div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}><span style={{ width: 8, height: 8, borderRadius: 4, background: theme.red }}/><span style={{ color: theme.textMuted }}>취소 {cancelledReservations}</span></div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}><span style={{ width: 8, height: 8, borderRadius: 4, background: theme.green }} /><span style={{ color: theme.textMuted }}>승인 {completedReservations}</span></div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}><span style={{ width: 8, height: 8, borderRadius: 4, background: theme.yellow }} /><span style={{ color: theme.textMuted }}>대기 {pendingRes.length}</span></div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}><span style={{ width: 8, height: 8, borderRadius: 4, background: theme.red }} /><span style={{ color: theme.textMuted }}>취소 {cancelledReservations}</span></div>
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -4958,7 +5210,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
                       <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>{room.count}</span>
                     </div>
                     <div style={{ height: 4, background: theme.surface, borderRadius: 2, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${(room.count / maxRoomCount) * 100}%`, background: `linear-gradient(90deg, ${theme.accent}, ${theme.yellow})`, borderRadius: 2, transition: "width 0.3s" }}/>
+                      <div style={{ height: "100%", width: `${(room.count / maxRoomCount) * 100}%`, background: `linear-gradient(90deg, ${theme.accent}, ${theme.yellow})`, borderRadius: 2, transition: "width 0.3s" }} />
                     </div>
                   </div>
                 ))}
@@ -4969,10 +5221,10 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
       </div>
 
       {/* ═══ 활성 예약 ═══ */}
-      <SectionTitle icon={<Icons.calendar size={16} color={theme.accent}/>}>활성 예약</SectionTitle>
+      <SectionTitle icon={<Icons.calendar size={16} color={theme.accent} />}>활성 예약</SectionTitle>
       <Card style={{ padding: 0, overflow: "hidden", maxHeight: 350, overflowY: "auto" }}>
         {todayRes.length === 0 ? (
-          <Empty icon={<Icons.calendar size={28}/>} text="승인된 예약이 없습니다"/>
+          <Empty icon={<Icons.calendar size={28} />} text="승인된 예약이 없습니다" />
         ) : (
           todayRes.map((res, i) => (
             <div key={res.id} style={{ padding: "14px 18px", borderBottom: i < todayRes.length - 1 ? `1px solid ${theme.border}` : "none" }}>
@@ -5032,7 +5284,7 @@ function LogViewer({ logs }) {
     <div className="fade-in">
       <Card style={{ marginBottom: 20, background: theme.greenBg, borderColor: theme.greenBorder, padding: 14 }}>
         <div style={{ fontSize: 13, color: theme.green, display: "flex", alignItems: "center", gap: 8 }}>
-          <Icons.check size={16}/> 모든 일지는 시스템에 의해 자동 생성됩니다. 수기 작성이 필요 없습니다.
+          <Icons.check size={16} /> 모든 일지는 시스템에 의해 자동 생성됩니다. 수기 작성이 필요 없습니다.
         </div>
       </Card>
 
@@ -5051,13 +5303,13 @@ function LogViewer({ logs }) {
         <div style={{ flex: 1, minWidth: 150 }}>
           <div style={{ position: "relative" }}>
             <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="검색..."
-              style={{ width: "100%", padding: "7px 12px 7px 32px", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: theme.radiusSm, color: theme.text, fontSize: 13, fontFamily: theme.font, outline: "none", boxSizing: "border-box" }}/>
-            <div style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: theme.textDim }}><Icons.search size={14}/></div>
+              style={{ width: "100%", padding: "7px 12px 7px 32px", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: theme.radiusSm, color: theme.text, fontSize: 13, fontFamily: theme.font, outline: "none", boxSizing: "border-box" }} />
+            <div style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: theme.textDim }}><Icons.search size={14} /></div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <Button variant="secondary" size="sm" onClick={exportCSV}><Icons.download size={14}/> CSV</Button>
-          <Button variant="secondary" size="sm" onClick={exportText}><Icons.download size={14}/> TXT</Button>
+          <Button variant="secondary" size="sm" onClick={exportCSV}><Icons.download size={14} /> CSV</Button>
+          <Button variant="secondary" size="sm" onClick={exportText}><Icons.download size={14} /> TXT</Button>
         </div>
       </div>
 
@@ -5069,7 +5321,7 @@ function LogViewer({ logs }) {
       {/* Log List */}
       <Card style={{ padding: 0, overflow: "hidden" }}>
         {filtered.length === 0 ? (
-          <Empty icon={<Icons.log size={28}/>} text="일지가 없습니다"/>
+          <Empty icon={<Icons.log size={28} />} text="일지가 없습니다" />
         ) : (
           <div style={{ maxHeight: 500, overflowY: "auto" }}>
             {filtered.map((log, i) => (
@@ -5094,7 +5346,7 @@ function LogViewer({ logs }) {
 // ════════════════════════════════════════════════════════════════
 //  ADMIN PORTAL
 // ════════════════════════════════════════════════════════════════
-function AdminPortal({ onLogout, reservations, updateReservations, workers, updateWorkers, logs, addLog, sheetConfig, updateSheetConfig, warnings, updateWarnings, blacklist, updateBlacklist, certificates, updateCertificates, sendEmailNotification, communityPosts, setCommunityPosts, exhibitionPosts, setExhibitionPosts }) {
+function AdminPortal({ onLogout, reservations, updateReservations, workers, updateWorkers, logs, addLog, sheetConfig, updateSheetConfig, warnings, updateWarnings, blacklist, updateBlacklist, certificates, updateCertificates, sendEmailNotification, communityPosts, setCommunityPosts, exhibitionPosts, setExhibitionPosts, equipmentDB, setEquipmentDB }) {
   const [tab, setTab] = useState("accounts");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -5118,6 +5370,12 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
   const [cmDeleteConfirm, setCmDeleteConfirm] = useState(null);
   const [cmExpandedPostId, setCmExpandedPostId] = useState(null);
   const [cmCommentDeleteConfirm, setCmCommentDeleteConfirm] = useState(null);
+  // 물품 관리 상태
+  const [eqForm, setEqForm] = useState({ name: "", category: "수공구", available: 0, total: 0, deposit: false, maxDays: 1, icon: "" });
+  const [eqEditingId, setEqEditingId] = useState(null);
+  const [eqDeleteConfirm, setEqDeleteConfirm] = useState(null);
+  const [eqShowForm, setEqShowForm] = useState(false);
+  const resetEqForm = () => { setEqForm({ name: "", category: "수공구", available: 0, total: 0, deposit: false, maxDays: 1, icon: "" }); setEqEditingId(null); setEqShowForm(false); };
 
   const handlePosterUpload = (e) => {
     const file = e.target.files?.[0];
@@ -5290,7 +5548,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
         delete next[cert.studentId];
         return next;
       });
-      
+
       // 승인 이메일 발송
       if (cert.studentEmail && sendEmailNotification) {
         sendEmailNotification({
@@ -5299,7 +5557,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
           body: `안녕하세요, ${cert.studentName}님.\n\n교학팀에서 안전교육 수료증 확인을 완료하였습니다.\n\n해당 메일을 받으신 시점부터 포털 로그인이 가능합니다.\n\n감사합니다.\n국민대학교 건축대학 교학팀`
         });
       }
-      
+
       addLog(`[관리자] 수료증 승인: ${cert.studentName}(${cert.studentId})`, "admin");
       setCertModal(null);
       setApproving(false);
@@ -5345,18 +5603,19 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
           <div style={{ fontSize: 18, fontWeight: 800, marginTop: 4 }}>관리자 설정</div>
           <Badge color="red" style={{ marginTop: 8 }}>관리자</Badge>
         </div>
-        <Button variant="ghost" size="sm" onClick={onLogout}><Icons.logout size={15}/> 로그아웃</Button>
+        <Button variant="ghost" size="sm" onClick={onLogout}><Icons.logout size={15} /> 로그아웃</Button>
       </div>
 
       <div style={{ paddingTop: 24 }}>
         <Tabs
           tabs={[
-            { id: "accounts", label: "근로학생 계정", icon: <Icons.users size={15}/> },
-            { id: "discipline", label: "경고/블랙리스트", icon: <Icons.alert size={15}/> },
-            { id: "certificates", label: "수료증 관리", icon: <Icons.file size={15}/>, badge: certificateCount },
-            { id: "community", label: "커뮤니티/전시", icon: <Icons.edit size={15}/>, badge: communityPosts?.length || 0 },
-            { id: "adminLog", label: "관리 이력", icon: <Icons.log size={15}/> },
-            { id: "integration", label: "연동 설정", icon: <Icons.refresh size={15}/> },
+            { id: "accounts", label: "근로학생 계정", icon: <Icons.users size={15} /> },
+            { id: "discipline", label: "경고/블랙리스트", icon: <Icons.alert size={15} /> },
+            { id: "certificates", label: "수료증 관리", icon: <Icons.file size={15} />, badge: certificateCount },
+            { id: "equipment", label: "물품 관리", icon: <Icons.tool size={15} />, badge: equipmentDB.length },
+            { id: "community", label: "커뮤니티/전시", icon: <Icons.edit size={15} />, badge: communityPosts?.length || 0 },
+            { id: "adminLog", label: "관리 이력", icon: <Icons.log size={15} /> },
+            { id: "integration", label: "연동 설정", icon: <Icons.refresh size={15} /> },
           ]}
           active={tab} onChange={setTab}
         />
@@ -5366,26 +5625,26 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
             <div style={{ fontSize: 13, color: theme.textMuted }}>등록된 계정: <strong style={{ color: theme.text }}>{workers.length}명</strong></div>
-            <Button size="sm" onClick={() => { resetForm(); setShowForm(true); }}><Icons.plus size={14}/> 계정 추가</Button>
+            <Button size="sm" onClick={() => { resetForm(); setShowForm(true); }}><Icons.plus size={14} /> 계정 추가</Button>
           </div>
 
           {/* Form */}
           {showForm && (
             <Card style={{ marginBottom: 20, borderColor: theme.accentBorder }}>
-              <SectionTitle icon={editingId ? <Icons.edit size={16} color={theme.accent}/> : <Icons.plus size={16} color={theme.accent}/>}>
+              <SectionTitle icon={editingId ? <Icons.edit size={16} color={theme.accent} /> : <Icons.plus size={16} color={theme.accent} />}>
                 {editingId ? "계정 수정" : "새 근로학생 계정"}
               </SectionTitle>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-                <Input label="이름" placeholder="예: 홍길동" value={formData.name} onChange={e => setFormData(p => ({...p, name: e.target.value}))}/>
-                <Input label="근무시간" placeholder="예: 오전 (09–13시)" value={formData.shift} onChange={e => setFormData(p => ({...p, shift: e.target.value}))}/>
+                <Input label="이름" placeholder="예: 홍길동" value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} />
+                <Input label="근무시간" placeholder="예: 오전 (09–13시)" value={formData.shift} onChange={e => setFormData(p => ({ ...p, shift: e.target.value }))} />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-                <Input label="로그인 아이디" placeholder="예: worker4 (3자 이상)" value={formData.username} onChange={e => setFormData(p => ({...p, username: e.target.value}))}/>
-                <Input label="비밀번호" placeholder="4자 이상" value={formData.password} onChange={e => setFormData(p => ({...p, password: e.target.value}))}/>
+                <Input label="로그인 아이디" placeholder="예: worker4 (3자 이상)" value={formData.username} onChange={e => setFormData(p => ({ ...p, username: e.target.value }))} />
+                <Input label="비밀번호" placeholder="4자 이상" value={formData.password} onChange={e => setFormData(p => ({ ...p, password: e.target.value }))} />
               </div>
               {formError && (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: theme.radiusSm, background: theme.redBg, border: `1px solid ${theme.redBorder}`, color: theme.red, fontSize: 13, marginBottom: 14 }}>
-                  <Icons.alert size={16}/> {formError}
+                  <Icons.alert size={16} /> {formError}
                 </div>
               )}
               <div style={{ display: "flex", gap: 8 }}>
@@ -5403,7 +5662,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                       <div style={{ width: 38, height: 38, borderRadius: 10, background: theme.accentBg, border: `1px solid ${theme.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <Icons.user size={18} color={theme.accent}/>
+                        <Icons.user size={18} color={theme.accent} />
                       </div>
                       <div>
                         <div style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>{worker.name}</div>
@@ -5421,46 +5680,46 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                           {showPassFor[worker.id] ? worker.password : "••••"}
                         </code>
                         <button onClick={() => togglePassVisibility(worker.id)} style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 2 }}>
-                          {showPassFor[worker.id] ? <Icons.eyeOff size={13}/> : <Icons.eye size={13}/>}
+                          {showPassFor[worker.id] ? <Icons.eyeOff size={13} /> : <Icons.eye size={13} />}
                         </button>
                       </div>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(worker)}><Icons.edit size={14}/></Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(worker)}><Icons.edit size={14} /></Button>
                     {confirmDelete === worker.id ? (
                       <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                         <Button variant="danger" size="sm" onClick={() => handleDelete(worker.id)}>삭제</Button>
                         <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(null)}>취소</Button>
                       </div>
                     ) : (
-                      <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(worker.id)}><Icons.trash size={14}/></Button>
+                      <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(worker.id)}><Icons.trash size={14} /></Button>
                     )}
                   </div>
                 </div>
               </Card>
             ))}
           </div>
-          {workers.length === 0 && <Empty icon={<Icons.users size={32}/>} text="등록된 근로학생 계정이 없습니다"/>}
+          {workers.length === 0 && <Empty icon={<Icons.users size={32} />} text="등록된 근로학생 계정이 없습니다" />}
         </div>
       )}
 
       {tab === "discipline" && (
         <div>
-          <SectionTitle icon={<Icons.alert size={16} color={theme.red}/>}>경고 누적</SectionTitle>
+          <SectionTitle icon={<Icons.alert size={16} color={theme.red} />}>경고 누적</SectionTitle>
           <Card style={{ marginBottom: 16 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-              <Input label="학번" value={warnForm.studentId} onChange={e => setWarnForm(p => ({ ...p, studentId: e.target.value }))}/>
-              <Input label="이름" value={warnForm.name} onChange={e => setWarnForm(p => ({ ...p, name: e.target.value }))}/>
+              <Input label="학번" value={warnForm.studentId} onChange={e => setWarnForm(p => ({ ...p, studentId: e.target.value }))} />
+              <Input label="이름" value={warnForm.name} onChange={e => setWarnForm(p => ({ ...p, name: e.target.value }))} />
             </div>
-            <Input label="사유 (선택)" value={warnForm.reason} onChange={e => setWarnForm(p => ({ ...p, reason: e.target.value }))}/>
+            <Input label="사유 (선택)" value={warnForm.reason} onChange={e => setWarnForm(p => ({ ...p, reason: e.target.value }))} />
             <div style={{ marginTop: 12 }}>
               <Button size="sm" onClick={addWarning}>경고 추가</Button>
             </div>
           </Card>
           <Card style={{ padding: 0, overflow: "hidden", marginBottom: 24 }}>
             {Object.keys(warnings || {}).length === 0 ? (
-              <Empty icon={<Icons.alert size={28}/>} text="경고 대상이 없습니다"/>
+              <Empty icon={<Icons.alert size={28} />} text="경고 대상이 없습니다" />
             ) : (
               Object.values(warnings).map((w, i) => (
                 <div key={w.studentId} style={{ padding: "12px 18px", borderBottom: `1px solid ${theme.border}` }}>
@@ -5476,20 +5735,20 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             )}
           </Card>
 
-          <SectionTitle icon={<Icons.shield size={16} color={theme.red}/>}>블랙리스트</SectionTitle>
+          <SectionTitle icon={<Icons.shield size={16} color={theme.red} />}>블랙리스트</SectionTitle>
           <Card style={{ marginBottom: 16 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-              <Input label="학번" value={blkForm.studentId} onChange={e => setBlkForm(p => ({ ...p, studentId: e.target.value }))}/>
-              <Input label="이름" value={blkForm.name} onChange={e => setBlkForm(p => ({ ...p, name: e.target.value }))}/>
+              <Input label="학번" value={blkForm.studentId} onChange={e => setBlkForm(p => ({ ...p, studentId: e.target.value }))} />
+              <Input label="이름" value={blkForm.name} onChange={e => setBlkForm(p => ({ ...p, name: e.target.value }))} />
             </div>
-            <Input label="사유 (선택)" value={blkForm.reason} onChange={e => setBlkForm(p => ({ ...p, reason: e.target.value }))}/>
+            <Input label="사유 (선택)" value={blkForm.reason} onChange={e => setBlkForm(p => ({ ...p, reason: e.target.value }))} />
             <div style={{ marginTop: 12 }}>
               <Button size="sm" variant="danger" onClick={addBlacklist}>블랙리스트 등록</Button>
             </div>
           </Card>
           <Card style={{ padding: 0, overflow: "hidden" }}>
             {Object.keys(blacklist || {}).length === 0 ? (
-              <Empty icon={<Icons.shield size={28}/>} text="블랙리스트가 없습니다"/>
+              <Empty icon={<Icons.shield size={28} />} text="블랙리스트가 없습니다" />
             ) : (
               Object.values(blacklist).map((b, i) => (
                 <div key={b.studentId} style={{ padding: "12px 18px", borderBottom: `1px solid ${theme.border}` }}>
@@ -5507,23 +5766,121 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
         </div>
       )}
 
+      {tab === "equipment" && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div style={{ fontSize: 13, color: theme.textMuted }}>등록된 물품: <strong style={{ color: theme.text }}>{equipmentDB.length}개</strong></div>
+            <Button size="sm" onClick={() => { resetEqForm(); setEqShowForm(true); }}><Icons.plus size={14} /> 물품 추가</Button>
+          </div>
+
+          {eqShowForm && (
+            <Card style={{ marginBottom: 20, borderColor: theme.accentBorder }}>
+              <SectionTitle icon={eqEditingId ? <Icons.edit size={16} color={theme.accent} /> : <Icons.plus size={16} color={theme.accent} />}>
+                {eqEditingId ? "물품 수정" : "새 물품 등록"}
+              </SectionTitle>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                <Input label="물품명" placeholder="예: 3D 프린터" value={eqForm.name} onChange={e => setEqForm(p => ({ ...p, name: e.target.value }))} />
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "#fff", letterSpacing: "0.5px", textTransform: "uppercase" }}>카테고리</label>
+                  <select value={eqForm.category} onChange={e => setEqForm(p => ({ ...p, category: e.target.value }))}
+                    style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.surface, color: theme.text, fontSize: 13, fontFamily: theme.font }}>
+                    {["가공장비", "수공구", "전자제품", "기타"].map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+                <Input label="아이콘 (이모지)" placeholder="🔧" value={eqForm.icon} onChange={e => setEqForm(p => ({ ...p, icon: e.target.value }))} />
+                <Input label="총 수량" type="number" value={eqForm.total} onChange={e => setEqForm(p => ({ ...p, total: Math.max(0, parseInt(e.target.value) || 0) }))} />
+                <Input label="가용 수량" type="number" value={eqForm.available} onChange={e => setEqForm(p => ({ ...p, available: Math.max(0, parseInt(e.target.value) || 0) }))} />
+                <Input label="최대 대여일" type="number" value={eqForm.maxDays} onChange={e => setEqForm(p => ({ ...p, maxDays: Math.max(1, parseInt(e.target.value) || 1) }))} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: theme.text, cursor: "pointer" }}>
+                  <input type="checkbox" checked={eqForm.deposit} onChange={e => setEqForm(p => ({ ...p, deposit: e.target.checked }))} />
+                  보증금 필요
+                </label>
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <Button size="sm" disabled={!eqForm.name.trim() || !eqForm.icon.trim() || eqForm.total <= 0} onClick={() => {
+                  if (eqEditingId) {
+                    setEquipmentDB(prev => prev.map(e => e.id === eqEditingId ? { ...e, ...eqForm } : e));
+                    addLog(`[관리자] 물품 수정: "${eqForm.name}"`, "admin");
+                  } else {
+                    const newItem = { ...eqForm, id: `E${Date.now()}` };
+                    setEquipmentDB(prev => [...prev, newItem]);
+                    addLog(`[관리자] 물품 등록: "${eqForm.name}"`, "admin");
+                  }
+                  resetEqForm();
+                }}>
+                  {eqEditingId ? "수정 완료" : "등록"}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={resetEqForm}>취소</Button>
+              </div>
+            </Card>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {equipmentDB.map(eq => (
+              <Card key={eq.id} style={{ padding: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{ fontSize: 32, width: 44, textAlign: "center" }}>{eq.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>{eq.name}</div>
+                      <Badge color="dim" style={{ fontSize: 10 }}>{eq.category}</Badge>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <Badge color={eq.available > 0 ? "green" : "red"} style={{ fontSize: 10 }}>가용 {eq.available}/{eq.total}</Badge>
+                      <Badge color="blue" style={{ fontSize: 10 }}>최대 {eq.maxDays}일</Badge>
+                      {eq.deposit && <Badge color="yellow" style={{ fontSize: 10 }}>보증금</Badge>}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <Button variant="ghost" size="sm" onClick={() => {
+                      setEqForm({ name: eq.name, category: eq.category, available: eq.available, total: eq.total, deposit: eq.deposit, maxDays: eq.maxDays, icon: eq.icon });
+                      setEqEditingId(eq.id);
+                      setEqShowForm(true);
+                    }}><Icons.edit size={14} /></Button>
+                    {eqDeleteConfirm === eq.id ? (
+                      <>
+                        <Button size="sm" style={{ background: theme.red, color: "#fff" }} onClick={() => {
+                          setEquipmentDB(prev => prev.filter(e => e.id !== eq.id));
+                          addLog(`[관리자] 물품 삭제: "${eq.name}"`, "admin");
+                          setEqDeleteConfirm(null);
+                        }}>삭제</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setEqDeleteConfirm(null)}>취소</Button>
+                      </>
+                    ) : (
+                      <Button variant="ghost" size="sm" style={{ color: theme.red }} onClick={() => setEqDeleteConfirm(eq.id)}><Icons.x size={14} /></Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
+            {equipmentDB.length === 0 && (
+              <Empty icon={<Icons.tool size={32} />} text="등록된 물품이 없습니다" />
+            )}
+          </div>
+        </div>
+      )}
+
       {tab === "community" && (
         <div>
           {/* 전시회 정보 관리 */}
-          <SectionTitle icon={<Icons.edit size={16} color={theme.accent}/>}>전시회 정보 관리</SectionTitle>
+          <SectionTitle icon={<Icons.edit size={16} color={theme.accent} />}>전시회 정보 관리</SectionTitle>
           <Card style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: theme.accent, marginBottom: 12 }}>
               {exhEditingId ? "전시회 수정" : "새 전시회 등록"}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-              <Input label="전시 제목" value={exhForm.title || ""} onChange={e => setExhForm(p => ({ ...p, title: e.target.value }))}/>
-              <Input label="장소" value={exhForm.location || ""} onChange={e => setExhForm(p => ({ ...p, location: e.target.value }))}/>
-              <Input label="기간" placeholder="예: 2026.02.05 ~ 02.09" value={exhForm.dates || ""} onChange={e => setExhForm(p => ({ ...p, dates: e.target.value }))}/>
-              <Input label="Instagram URL" value={exhForm.instagramUrl || ""} onChange={e => setExhForm(p => ({ ...p, instagramUrl: e.target.value }))}/>
+              <Input label="전시 제목" value={exhForm.title || ""} onChange={e => setExhForm(p => ({ ...p, title: e.target.value }))} />
+              <Input label="장소" value={exhForm.location || ""} onChange={e => setExhForm(p => ({ ...p, location: e.target.value }))} />
+              <Input label="기간" placeholder="예: 2026.02.05 ~ 02.09" value={exhForm.dates || ""} onChange={e => setExhForm(p => ({ ...p, dates: e.target.value }))} />
+              <Input label="Instagram URL" value={exhForm.instagramUrl || ""} onChange={e => setExhForm(p => ({ ...p, instagramUrl: e.target.value }))} />
             </div>
-            <Input label="설명" value={exhForm.description || ""} onChange={e => setExhForm(p => ({ ...p, description: e.target.value }))}/>
+            <Input label="설명" value={exhForm.description || ""} onChange={e => setExhForm(p => ({ ...p, description: e.target.value }))} />
             {/* 포스터 이미지 업로드 */}
-            <input ref={exhPosterFileRef} type="file" accept="image/*" onChange={handlePosterUpload} style={{ display: "none" }}/>
+            <input ref={exhPosterFileRef} type="file" accept="image/*" onChange={handlePosterUpload} style={{ display: "none" }} />
             <div style={{ marginTop: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 6 }}>포스터 이미지</div>
               <button
@@ -5538,15 +5895,15 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                   fontFamily: theme.font, width: "100%", justifyContent: "flex-start",
                   opacity: exhPosterUploading ? 0.5 : 1,
                 }}
-                onMouseEnter={e => { if (!exhPosterUploading) { e.currentTarget.style.borderColor = theme.accent; }}}
-                onMouseLeave={e => { if (!exhPosterUploading) { e.currentTarget.style.borderColor = theme.border; }}}
+                onMouseEnter={e => { if (!exhPosterUploading) { e.currentTarget.style.borderColor = theme.accent; } }}
+                onMouseLeave={e => { if (!exhPosterUploading) { e.currentTarget.style.borderColor = theme.border; } }}
               >
-                <Icons.upload size={16}/>
+                <Icons.upload size={16} />
                 {exhPosterFile ? exhPosterFile.name : (exhForm.posterUrl ? (exhForm.posterUrl.startsWith("data:") ? "이미지 업로드됨 (변경하려면 클릭)" : exhForm.posterUrl) : "포스터 이미지 업로드")}
               </button>
               {exhForm.posterUrl && (
                 <div style={{ marginTop: 10, borderRadius: 8, overflow: "hidden", border: `1px solid ${theme.border}`, maxHeight: 200 }}>
-                  <img src={exhForm.posterUrl} alt="포스터 미리보기" style={{ width: "100%", height: "auto", display: "block", maxHeight: 200, objectFit: "cover" }}/>
+                  <img src={exhForm.posterUrl} alt="포스터 미리보기" style={{ width: "100%", height: "auto", display: "block", maxHeight: 200, objectFit: "cover" }} />
                 </div>
               )}
             </div>
@@ -5586,7 +5943,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
               등록된 전시회 목록입니다. 전시회 홍보 탭에 표시됩니다.
             </div>
             {!exhibitionPosts?.length ? (
-              <Empty icon={<Icons.list size={28}/>} text="등록된 전시회가 없습니다"/>
+              <Empty icon={<Icons.list size={28} />} text="등록된 전시회가 없습니다" />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                 {exhibitionPosts.map((post, idx) => (
@@ -5614,7 +5971,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                         setExhEditingId(post.id);
                         setExhPosterFile(null);
                       }}>
-                        <Icons.edit size={14}/> 수정
+                        <Icons.edit size={14} /> 수정
                       </Button>
                       {exhDeleteConfirm === post.id ? (
                         <div style={{ display: "flex", gap: 4 }}>
@@ -5627,7 +5984,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                         </div>
                       ) : (
                         <Button size="sm" variant="ghost" onClick={() => setExhDeleteConfirm(post.id)} style={{ color: theme.red }}>
-                          <Icons.trash size={14}/> 삭제
+                          <Icons.trash size={14} /> 삭제
                         </Button>
                       )}
                     </div>
@@ -5638,13 +5995,13 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
           </Card>
 
           {/* 커뮤니티 글 관리 */}
-          <SectionTitle icon={<Icons.list size={16} color={theme.accent}/>}>커뮤니티 글 관리</SectionTitle>
+          <SectionTitle icon={<Icons.list size={16} color={theme.accent} />}>커뮤니티 글 관리</SectionTitle>
           <Card>
             <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 14, lineHeight: 1.6 }}>
               로그인 페이지 커뮤니티 탭에 표시되는 익명 게시글을 관리합니다. 부적절한 글이나 댓글을 삭제할 수 있습니다.
             </div>
             {!communityPosts?.length ? (
-              <Empty icon={<Icons.list size={28}/>} text="커뮤니티 글이 없습니다"/>
+              <Empty icon={<Icons.list size={28} />} text="커뮤니티 글이 없습니다" />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                 {communityPosts.map((post, idx) => (
@@ -5686,7 +6043,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                           </div>
                         ) : (
                           <Button size="sm" variant="ghost" onClick={() => setCmDeleteConfirm(post.id)} style={{ color: theme.red }}>
-                            <Icons.trash size={14}/> 삭제
+                            <Icons.trash size={14} /> 삭제
                           </Button>
                         )}
                       </div>
@@ -5734,7 +6091,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                                   onMouseEnter={e => e.currentTarget.style.color = theme.red}
                                   onMouseLeave={e => e.currentTarget.style.color = theme.textDim}
                                 >
-                                  <Icons.trash size={12}/> 삭제
+                                  <Icons.trash size={12} /> 삭제
                                 </button>
                               )}
                             </div>
@@ -5752,10 +6109,10 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
 
       {tab === "adminLog" && (
         <div>
-          <SectionTitle icon={<Icons.log size={16} color={theme.accent}/>}>관리자 작업 이력</SectionTitle>
+          <SectionTitle icon={<Icons.log size={16} color={theme.accent} />}>관리자 작업 이력</SectionTitle>
           <Card style={{ padding: 0, overflow: "hidden" }}>
             {adminLogs.length === 0 ? (
-              <Empty icon={<Icons.log size={28}/>} text="관리 이력이 없습니다"/>
+              <Empty icon={<Icons.log size={28} />} text="관리 이력이 없습니다" />
             ) : (
               <div style={{ maxHeight: 400, overflowY: "auto" }}>
                 {adminLogs.map(log => (
@@ -5774,25 +6131,25 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
 
       {tab === "certificates" && (
         <div>
-          <SectionTitle icon={<Icons.file size={16} color={theme.blue}/>}>수료증 관리</SectionTitle>
+          <SectionTitle icon={<Icons.file size={16} color={theme.blue} />}>수료증 관리</SectionTitle>
           <Card>
             <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 14, lineHeight: 1.6 }}>
               학생들이 업로드한 안전교육 수료증을 확인하고 관리합니다.
             </div>
             {!Object.keys(certificates || {}).length ? (
-              <Empty icon={<Icons.file size={28}/>} text="업로드된 수료증이 없습니다"/>
+              <Empty icon={<Icons.file size={28} />} text="업로드된 수료증이 없습니다" />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {Object.entries(certificates).map(([studentId, cert]) => (
-                  <Card 
-                    key={studentId} 
-                    style={{ background: theme.surface, padding: 14, cursor: "pointer" }} 
+                  <Card
+                    key={studentId}
+                    style={{ background: theme.surface, padding: 14, cursor: "pointer" }}
                     hover
                     onClick={() => setCertModal(cert)}
                   >
                     <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                       <div style={{ padding: 12, background: theme.blueBg, borderRadius: theme.radiusSm, border: `1px solid ${theme.blueBorder}` }}>
-                        <Icons.file size={24} color={theme.blue}/>
+                        <Icons.file size={24} color={theme.blue} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
@@ -5822,7 +6179,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
 
       {tab === "integration" && (
         <div>
-          <SectionTitle icon={<Icons.refresh size={16} color={theme.accent}/>}>구글 시트 연동</SectionTitle>
+          <SectionTitle icon={<Icons.refresh size={16} color={theme.accent} />}>구글 시트 연동</SectionTitle>
           <Card style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 10, lineHeight: 1.6 }}>
               예약 발생 시 구글 시트로 실시간 전송됩니다. Google Apps Script 웹앱 URL을 입력하세요.
@@ -5849,24 +6206,24 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
 
       {/* Certificate Preview Modal */}
       {certModal && (
-        <div style={{ 
-          position: "fixed", 
-          top: 0, 
-          left: 0, 
-          right: 0, 
-          bottom: 0, 
-          background: "rgba(0,0,0,0.85)", 
-          display: "flex", 
-          alignItems: "center", 
-          justifyContent: "center", 
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(0,0,0,0.85)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
           zIndex: 9999,
           padding: 20
         }}
-        onClick={() => setCertModal(null)}
+          onClick={() => setCertModal(null)}
         >
-          <div style={{ 
-            background: theme.card, 
-            borderRadius: theme.radius, 
+          <div style={{
+            background: theme.card,
+            borderRadius: theme.radius,
             border: `1px solid ${theme.border}`,
             maxWidth: 900,
             width: "100%",
@@ -5874,7 +6231,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             overflow: "auto",
             padding: 24
           }}
-          onClick={e => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
@@ -5885,24 +6242,24 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                   {certModal.studentName || "이름 없음"} ({certModal.studentId})
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setCertModal(null)}
-                style={{ 
-                  background: "none", 
-                  border: "none", 
-                  color: theme.textMuted, 
-                  cursor: "pointer", 
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: theme.textMuted,
+                  cursor: "pointer",
                   fontSize: 24,
                   padding: 4
                 }}
               >
-                <Icons.x size={20}/>
+                <Icons.x size={20} />
               </button>
             </div>
 
-            <div style={{ 
-              background: theme.surface, 
-              borderRadius: theme.radiusSm, 
+            <div style={{
+              background: theme.surface,
+              borderRadius: theme.radiusSm,
               padding: 16,
               marginBottom: 20,
               maxHeight: "60vh",
@@ -5912,20 +6269,20 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
               alignItems: "center"
             }}>
               {certModal.fileType?.startsWith("image/") ? (
-                <img 
-                  src={certModal.data} 
-                  alt="수료증" 
+                <img
+                  src={certModal.data}
+                  alt="수료증"
                   style={{ maxWidth: "100%", maxHeight: "60vh", objectFit: "contain" }}
                 />
               ) : certModal.fileType === "application/pdf" ? (
-                <iframe 
-                  src={certModal.data} 
+                <iframe
+                  src={certModal.data}
                   style={{ width: "100%", height: "60vh", border: "none" }}
                   title="PDF 수료증"
                 />
               ) : (
                 <div style={{ textAlign: "center", padding: 40, color: theme.textMuted }}>
-                  <Icons.file size={48} style={{ opacity: 0.5, marginBottom: 12 }}/>
+                  <Icons.file size={48} style={{ opacity: 0.5, marginBottom: 12 }} />
                   <div style={{ fontSize: 14 }}>미리보기를 지원하지 않는 파일 형식입니다</div>
                   <div style={{ fontSize: 12, marginTop: 8 }}>{certModal.fileName}</div>
                 </div>
@@ -5941,8 +6298,8 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             </div>
 
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 onClick={() => {
                   const link = document.createElement("a");
                   link.href = certModal.data;
@@ -5950,24 +6307,24 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                   link.click();
                 }}
               >
-                <Icons.download size={16}/> 다운로드
+                <Icons.download size={16} /> 다운로드
               </Button>
-              <Button 
-                variant="success" 
+              <Button
+                variant="success"
                 onClick={() => approveCertificate(certModal)}
                 disabled={approving}
               >
-                <Icons.check size={16}/> {approving ? "처리 중..." : "이상없음 (승인)"}
+                <Icons.check size={16} /> {approving ? "처리 중..." : "이상없음 (승인)"}
               </Button>
-              <Button 
-                variant="danger" 
+              <Button
+                variant="danger"
                 onClick={() => {
                   if (window.confirm(`${certModal.studentName}(${certModal.studentId})의 수료증을 반려하시겠습니까?`)) {
                     rejectCertificate(certModal);
                   }
                 }}
               >
-                <Icons.x size={16}/> 반려
+                <Icons.x size={16} /> 반려
               </Button>
               <Button variant="ghost" onClick={() => setCertModal(null)}>
                 닫기
