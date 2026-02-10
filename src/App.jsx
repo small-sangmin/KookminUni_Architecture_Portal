@@ -252,12 +252,12 @@ const Empty = ({ icon, text }) => (
 const Divider = () => <div style={{ height: 1, background: theme.border, margin: "20px 0" }} />;
 
 // ─── Tab Component ───────────────────────────────────────────────
-const Tabs = ({ tabs, active, onChange }) => (
-  <div style={{ display: "flex", gap: 2, background: theme.surface, borderRadius: theme.radius, padding: 3, marginBottom: 24, border: `1px solid ${theme.border}` }}>
+const Tabs = ({ tabs, active, onChange, isMobile }) => (
+  <div style={{ display: "flex", gap: 2, background: theme.surface, borderRadius: theme.radius, padding: 3, marginBottom: isMobile ? 16 : 24, border: `1px solid ${theme.border}`, ...(isMobile ? { overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" } : {}) }}>
     {tabs.map(t => (
       <button key={t.id} onClick={() => onChange(t.id)} style={{
-        flex: 1, padding: "10px 8px", borderRadius: theme.radiusSm + 1, border: "none", cursor: "pointer",
-        fontSize: 12.5, fontWeight: 600, fontFamily: theme.font, transition: "all 0.2s",
+        flex: isMobile ? "0 0 auto" : 1, padding: isMobile ? "8px 14px" : "10px 8px", borderRadius: theme.radiusSm + 1, border: "none", cursor: "pointer",
+        fontSize: isMobile ? 11.5 : 12.5, fontWeight: 600, fontFamily: theme.font, transition: "all 0.2s", whiteSpace: "nowrap",
         background: active === t.id ? theme.card : "transparent",
         color: active === t.id ? theme.text : theme.textMuted,
         boxShadow: active === t.id ? `0 1px 3px rgba(0,0,0,0.3)` : "none",
@@ -289,6 +289,12 @@ export default function App() {
   const [userRole, setUserRole] = useState(null); // student | worker | admin
   const [rememberSession, setRememberSession] = useState(true);
   const [savedCredentials, setSavedCredentials] = useState(null);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   // ─── Data State (persistent) ───────────────────────────────────
   const [reservations, setReservations] = useState([]);
@@ -879,7 +885,7 @@ export default function App() {
         .slide-in { animation: slideIn 0.25s ease forwards; }
       `}</style>
 
-      <div style={{ maxWidth: 880, margin: "0 auto", padding: "0 16px", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <div style={{ maxWidth: 880, margin: "0 auto", padding: isMobile ? "0 10px" : "0 16px", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         {page === "login" && (
           <LoginPage
             onLogin={handleLogin}
@@ -898,6 +904,7 @@ export default function App() {
             communityPosts={communityPosts}
             setCommunityPosts={setCommunityPosts}
             exhibitionPosts={exhibitionPosts}
+            isMobile={isMobile}
           />
         )}
         {page === "student" && (
@@ -915,6 +922,7 @@ export default function App() {
             updateInquiries={updateInquiries}
             printRequests={printRequests}
             updatePrintRequests={updatePrintRequests}
+            isMobile={isMobile}
           />
         )}
         {page === "worker" && (
@@ -929,6 +937,7 @@ export default function App() {
             inquiries={inquiries} updateInquiries={updateInquiries}
             printRequests={printRequests} updatePrintRequests={updatePrintRequests}
             visitCount={visitCount}
+            isMobile={isMobile}
           />
         )}
         {page === "admin" && (
@@ -946,6 +955,7 @@ export default function App() {
             communityPosts={communityPosts} setCommunityPosts={setCommunityPosts}
             exhibitionPosts={exhibitionPosts} setExhibitionPosts={setExhibitionPosts}
             equipmentDB={equipmentDB} setEquipmentDB={setEquipmentDB}
+            isMobile={isMobile}
           />
         )}
       </div>
@@ -980,7 +990,7 @@ export default function App() {
 // ════════════════════════════════════════════════════════════════
 //  LOGIN PAGE
 // ════════════════════════════════════════════════════════════════
-function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSession, onRememberSessionChange, blacklist, warnings, certificates, updateCertificates, inquiries, updateInquiries, savedCredentials, communityPosts, setCommunityPosts, exhibitionPosts }) {
+function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSession, onRememberSessionChange, blacklist, warnings, certificates, updateCertificates, inquiries, updateInquiries, savedCredentials, communityPosts, setCommunityPosts, exhibitionPosts, isMobile }) {
   const [mode, setMode] = useState(() => savedCredentials?.role === "worker" ? "worker" : savedCredentials?.role === "admin" ? "admin" : "student");
   const [sid, setSid] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.id || "") : "");
   const [sname, setSname] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.name || "") : "");
@@ -1277,6 +1287,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         width: 500,
         transform: `scale(${loginScale})`,
         transformOrigin: "top left",
+        display: isMobile ? "none" : undefined,
       }}>
         {/* Horizontal Guide Content */}
         <div style={{
@@ -1347,7 +1358,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         left: 20,
         top: "50%",
         transform: `translateY(-50%) scale(${loginScale})`,
-        display: "flex",
+        display: isMobile ? "none" : "flex",
         flexDirection: "column",
         gap: 8,
         zIndex: isCompactLayout ? 2 : 100,
@@ -1564,7 +1575,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         right: 60,
         top: "50%",
         transform: `translateY(-50%) scale(${loginScale})`,
-        display: "flex",
+        display: isMobile ? "none" : "flex",
         flexDirection: "column",
         gap: 10,
         zIndex: isCompactLayout ? 2 : 10,
@@ -2276,7 +2287,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         }}
       />
 
-      <div className="fade-in" style={{ width: "100%", maxWidth: 420, position: "relative", zIndex: isCompactLayout ? 30 : 1, transform: `scale(${loginScale})`, transformOrigin: "center top" }}>
+      <div className="fade-in" style={{ width: "100%", maxWidth: isMobile ? "100%" : 420, position: "relative", zIndex: isCompactLayout ? 30 : 1, transform: isMobile ? "none" : `scale(${loginScale})`, transformOrigin: "center top", padding: isMobile ? "0 4px" : 0 }}>
         {/* Main Login Section */}
         <div>
           {/* Header */}
@@ -2446,7 +2457,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                         학번과 이름을 입력한 후 파일을 선택해주세요.
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
                           <Input
                             label="학번"
                             placeholder="예: 2021001"
@@ -2460,7 +2471,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                             onChange={e => setCertSname(e.target.value)}
                           />
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
                           <Input
                             label="학년"
                             placeholder="예: 2"
@@ -2661,7 +2672,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                       📞 비로그인 문의는 근로학생이 연락처로 직접 답변드립니다.
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
                         <Input
                           label="이름 *"
                           placeholder="이름을 입력하세요"
@@ -2733,7 +2744,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
 // ════════════════════════════════════════════════════════════════
 //  STUDENT PORTAL
 // ════════════════════════════════════════════════════════════════
-function StudentPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, syncReservationToSheet, syncPrintToSheet, sendEmailNotification, warnings, inquiries, updateInquiries, printRequests, updatePrintRequests }) {
+function StudentPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, syncReservationToSheet, syncPrintToSheet, sendEmailNotification, warnings, inquiries, updateInquiries, printRequests, updatePrintRequests, isMobile }) {
   const [tab, setTab] = useState("dashboard");
   const isSafe = user.safetyTrained;
   const myInquiries = inquiries?.filter(i => i.name === user.name) || [];
@@ -2800,7 +2811,7 @@ function StudentPortal({ user, onLogout, reservations, updateReservations, equip
                   ]
                 },
               ]}
-              active={tab} onChange={setTab}
+              active={tab} onChange={setTab} isMobile={isMobile}
             />
           </div>
 
@@ -3037,13 +3048,14 @@ function StudentPortal({ user, onLogout, reservations, updateReservations, equip
               addNotification={addNotification}
               syncReservationToSheet={syncReservationToSheet}
               sendEmailNotification={sendEmailNotification}
+              isMobile={isMobile}
             />
           )}
           {tab === "equipment" && (
-            <EquipmentRental user={user} equipRentals={equipRentals} updateEquipRentals={updateEquipRentals} equipmentDB={equipmentDB} setEquipmentDB={setEquipmentDB} addLog={addLog} addNotification={addNotification} sendEmailNotification={sendEmailNotification} />
+            <EquipmentRental user={user} equipRentals={equipRentals} updateEquipRentals={updateEquipRentals} equipmentDB={equipmentDB} setEquipmentDB={setEquipmentDB} addLog={addLog} addNotification={addNotification} sendEmailNotification={sendEmailNotification} isMobile={isMobile} />
           )}
           {tab === "print" && (
-            <PrintRequest user={user} printRequests={myPrintRequests} updatePrintRequests={updatePrintRequests} addLog={addLog} addNotification={addNotification} syncPrintToSheet={syncPrintToSheet} sendEmailNotification={sendEmailNotification} />
+            <PrintRequest user={user} printRequests={myPrintRequests} updatePrintRequests={updatePrintRequests} addLog={addLog} addNotification={addNotification} syncPrintToSheet={syncPrintToSheet} sendEmailNotification={sendEmailNotification} isMobile={isMobile} />
           )}
           {tab === "history" && (
             <StudentHistory user={user} reservations={reservations} equipRentals={equipRentals} updateReservations={updateReservations} sendEmailNotification={sendEmailNotification} addLog={addLog} addNotification={addNotification} />
@@ -3058,7 +3070,7 @@ function StudentPortal({ user, onLogout, reservations, updateReservations, equip
 }
 
 // ─── Room Reservation ────────────────────────────────────────────
-function RoomReservation({ user, reservations, updateReservations, addLog, addNotification, syncReservationToSheet, sendEmailNotification }) {
+function RoomReservation({ user, reservations, updateReservations, addLog, addNotification, syncReservationToSheet, sendEmailNotification, isMobile }) {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [selectedDate, setSelectedDate] = useState(tomorrow());
   const [selectedSlots, setSelectedSlots] = useState([]);
@@ -3158,9 +3170,9 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
       )}
 
       {/* Two Column Layout */}
-      <div style={{ display: "flex", gap: 24, minHeight: 500 }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 16 : 24, minHeight: isMobile ? "auto" : 500 }}>
         {/* Left: Room List (Vertical) */}
-        <div style={{ width: 280, flexShrink: 0 }}>
+        <div style={{ width: isMobile ? "100%" : 280, flexShrink: 0 }}>
           <SectionTitle icon={<Icons.door size={16} color={theme.accent} />}>실기실 선택</SectionTitle>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {ROOMS.map(room => {
@@ -3315,7 +3327,7 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
 }
 
 // ─── Equipment Rental ────────────────────────────────────────────
-function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, sendEmailNotification }) {
+function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, sendEmailNotification, isMobile }) {
   const [selected, setSelected] = useState(null);
   const [returnDate, setReturnDate] = useState(addDays(3));
   const [note, setNote] = useState("");
@@ -3379,9 +3391,9 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
       </Card>
 
       {/* Two Column Layout */}
-      <div style={{ display: "flex", gap: 24, minHeight: 500 }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 16 : 24, minHeight: isMobile ? "auto" : 500 }}>
         {/* Left: Equipment List */}
-        <div style={{ width: 320, flexShrink: 0 }}>
+        <div style={{ width: isMobile ? "100%" : 320, flexShrink: 0 }}>
           <SectionTitle icon={<Icons.tool size={16} color={theme.accent} />}>물품 선택</SectionTitle>
 
           {/* Category Filter */}
@@ -3397,7 +3409,7 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
           </div>
 
           {/* Equipment Items */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 450, overflowY: "auto", paddingRight: 4 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: isMobile ? "none" : 450, overflowY: isMobile ? "visible" : "auto", paddingRight: isMobile ? 0 : 4 }}>
             {filtered.map(eq => {
               const sel = selected === eq.id;
               const soldOut = eq.available === 0;
@@ -3514,7 +3526,7 @@ const PRINT_PRICES = {
 
 const KAKAO_BANK_ACCOUNT = "3333-12-3456789"; // 카카오뱅크 계좌번호 (예시)
 
-function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNotification, syncPrintToSheet, sendEmailNotification }) {
+function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNotification, syncPrintToSheet, sendEmailNotification, isMobile }) {
   const [paperSize, setPaperSize] = useState("A4");
   const [colorMode, setColorMode] = useState("BW");
   const [copies, setCopies] = useState(1);
@@ -3619,7 +3631,7 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
           <Icons.file size={20} color={theme.accent} />
           <div style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>📋 출력 가격표 및 안내</div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(3, 1fr)" : "repeat(5, 1fr)", gap: 8, marginBottom: 16 }}>
           {["A4", "A3", "A2", "A1", "A0"].map(size => (
             <div key={size} style={{ background: theme.card, padding: 10, borderRadius: 8, textAlign: "center", border: `1px solid ${theme.border}` }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: theme.accent, marginBottom: 6 }}>{size}</div>
@@ -4168,7 +4180,7 @@ function StudentInquiries({ user, inquiries, updateInquiries }) {
 // ════════════════════════════════════════════════════════════════
 //  WORKER PORTAL
 // ════════════════════════════════════════════════════════════════
-function WorkerPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, logs, addLog, notifications, markNotifRead, markAllNotifsRead, unreadCount, sendEmailNotification, inquiries, updateInquiries, printRequests, updatePrintRequests, visitCount }) {
+function WorkerPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, logs, addLog, notifications, markNotifRead, markAllNotifsRead, unreadCount, sendEmailNotification, inquiries, updateInquiries, printRequests, updatePrintRequests, visitCount, isMobile }) {
   const [tab, setTab] = useState("dashboard");
   const pendingInquiries = inquiries?.filter(i => i.status === "pending")?.length || 0;
   const pendingPrints = printRequests?.filter(p => p.status === "pending" || p.status === "processing")?.length || 0;
@@ -4196,7 +4208,7 @@ function WorkerPortal({ user, onLogout, reservations, updateReservations, equipR
             { id: "inquiries", label: "문의", icon: <Icons.file size={15} />, badge: pendingInquiries },
             { id: "logs", label: "일지", icon: <Icons.log size={15} /> },
           ]}
-          active={tab} onChange={setTab}
+          active={tab} onChange={setTab} isMobile={isMobile}
         />
       </div>
 
@@ -4209,6 +4221,7 @@ function WorkerPortal({ user, onLogout, reservations, updateReservations, equipR
           sendEmailNotification={sendEmailNotification}
           printRequests={printRequests}
           visitCount={visitCount}
+          isMobile={isMobile}
         />
       )}
       {tab === "print" && (
@@ -4614,7 +4627,7 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
 }
 
 // ─── Worker Dashboard ────────────────────────────────────────────
-function WorkerDashboard({ reservations, updateReservations, equipRentals, updateEquipRentals, notifications, markNotifRead, markAllNotifsRead, unreadCount, addLog, workerName, sendEmailNotification, printRequests, visitCount }) {
+function WorkerDashboard({ reservations, updateReservations, equipRentals, updateEquipRentals, notifications, markNotifRead, markAllNotifsRead, unreadCount, addLog, workerName, sendEmailNotification, printRequests, visitCount, isMobile }) {
   const [showNotifPopup, setShowNotifPopup] = useState(false);
   const [expandedChecklist, setExpandedChecklist] = useState(null);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
@@ -5029,7 +5042,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
       </Card>
 
       {/* ═══ 간단 요약 카드 ═══ */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: 10, marginBottom: 20 }}>
         {[
           { label: "오늘 예약", value: todayRes.filter(r => r.date === today).length, icon: <Icons.calendar size={15} color={theme.accent} />, color: theme.accent },
           { label: "총 예약", value: totalReservations, icon: <Icons.list size={15} color={theme.blue} />, color: theme.blue },
@@ -5063,7 +5076,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
         </div>
         <div style={{ maxHeight: analyticsOpen ? 800 : 0, overflow: "hidden", transition: "max-height 0.4s ease-in-out" }}>
           {/* 도넛 + 주간 차트 + 실기실별 이용 */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 12 }}>
             {/* 주간 예약 현황 */}
             <Card style={{ padding: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -5248,7 +5261,7 @@ function LogViewer({ logs }) {
 // ════════════════════════════════════════════════════════════════
 //  ADMIN PORTAL
 // ════════════════════════════════════════════════════════════════
-function AdminPortal({ onLogout, reservations, updateReservations, workers, updateWorkers, logs, addLog, sheetConfig, updateSheetConfig, warnings, updateWarnings, blacklist, updateBlacklist, certificates, updateCertificates, sendEmailNotification, communityPosts, setCommunityPosts, exhibitionPosts, setExhibitionPosts, equipmentDB, setEquipmentDB }) {
+function AdminPortal({ onLogout, reservations, updateReservations, workers, updateWorkers, logs, addLog, sheetConfig, updateSheetConfig, warnings, updateWarnings, blacklist, updateBlacklist, certificates, updateCertificates, sendEmailNotification, communityPosts, setCommunityPosts, exhibitionPosts, setExhibitionPosts, equipmentDB, setEquipmentDB, isMobile }) {
   const [tab, setTab] = useState("accounts");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -5519,7 +5532,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             { id: "adminLog", label: "관리 이력", icon: <Icons.log size={15} /> },
             { id: "integration", label: "연동 설정", icon: <Icons.refresh size={15} /> },
           ]}
-          active={tab} onChange={setTab}
+          active={tab} onChange={setTab} isMobile={isMobile}
         />
       </div>
 
@@ -5536,11 +5549,11 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
               <SectionTitle icon={editingId ? <Icons.edit size={16} color={theme.accent} /> : <Icons.plus size={16} color={theme.accent} />}>
                 {editingId ? "계정 수정" : "새 근로학생 계정"}
               </SectionTitle>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14, marginBottom: 14 }}>
                 <Input label="이름" placeholder="예: 홍길동" value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} />
                 <Input label="근무시간" placeholder="예: 오전 (09–13시)" value={formData.shift} onChange={e => setFormData(p => ({ ...p, shift: e.target.value }))} />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14, marginBottom: 14 }}>
                 <Input label="로그인 아이디" placeholder="예: worker4 (3자 이상)" value={formData.username} onChange={e => setFormData(p => ({ ...p, username: e.target.value }))} />
                 <Input label="비밀번호" placeholder="4자 이상" value={formData.password} onChange={e => setFormData(p => ({ ...p, password: e.target.value }))} />
               </div>
@@ -5610,7 +5623,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
         <div>
           <SectionTitle icon={<Icons.alert size={16} color={theme.red} />}>경고 누적</SectionTitle>
           <Card style={{ marginBottom: 16 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 12 }}>
               <Input label="학번" value={warnForm.studentId} onChange={e => setWarnForm(p => ({ ...p, studentId: e.target.value }))} />
               <Input label="이름" value={warnForm.name} onChange={e => setWarnForm(p => ({ ...p, name: e.target.value }))} />
             </div>
@@ -5639,7 +5652,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
 
           <SectionTitle icon={<Icons.shield size={16} color={theme.red} />}>블랙리스트</SectionTitle>
           <Card style={{ marginBottom: 16 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 12 }}>
               <Input label="학번" value={blkForm.studentId} onChange={e => setBlkForm(p => ({ ...p, studentId: e.target.value }))} />
               <Input label="이름" value={blkForm.name} onChange={e => setBlkForm(p => ({ ...p, name: e.target.value }))} />
             </div>
@@ -5680,7 +5693,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
               <SectionTitle icon={eqEditingId ? <Icons.edit size={16} color={theme.accent} /> : <Icons.plus size={16} color={theme.accent} />}>
                 {eqEditingId ? "물품 수정" : "새 물품 등록"}
               </SectionTitle>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14, marginBottom: 14 }}>
                 <Input label="물품명" placeholder="예: 3D 프린터" value={eqForm.name} onChange={e => setEqForm(p => ({ ...p, name: e.target.value }))} />
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <label style={{ fontSize: 11, fontWeight: 600, color: "#fff", letterSpacing: "0.5px", textTransform: "uppercase" }}>카테고리</label>
@@ -5690,7 +5703,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                   </select>
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                 <Input label="아이콘 (이모지)" placeholder="🔧" value={eqForm.icon} onChange={e => setEqForm(p => ({ ...p, icon: e.target.value }))} />
                 <Input label="총 수량" type="number" value={eqForm.total} onChange={e => setEqForm(p => ({ ...p, total: Math.max(0, parseInt(e.target.value) || 0) }))} />
                 <Input label="가용 수량" type="number" value={eqForm.available} onChange={e => setEqForm(p => ({ ...p, available: Math.max(0, parseInt(e.target.value) || 0) }))} />
@@ -5774,7 +5787,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             <div style={{ fontSize: 12, fontWeight: 600, color: theme.accent, marginBottom: 12 }}>
               {exhEditingId ? "전시회 수정" : "새 전시회 등록"}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14, marginBottom: 14 }}>
               <Input label="전시 제목" value={exhForm.title || ""} onChange={e => setExhForm(p => ({ ...p, title: e.target.value }))} />
               <Input label="장소" value={exhForm.location || ""} onChange={e => setExhForm(p => ({ ...p, location: e.target.value }))} />
               <Input label="기간" placeholder="예: 2026.02.05 ~ 02.09" value={exhForm.dates || ""} onChange={e => setExhForm(p => ({ ...p, dates: e.target.value }))} />
