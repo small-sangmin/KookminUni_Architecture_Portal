@@ -232,7 +232,7 @@ const Card = ({ children, style: st, onClick, hover }) => (
     ...st
   }}
     onMouseEnter={e => { if (hover || onClick) { e.currentTarget.style.borderColor = theme.borderLight; e.currentTarget.style.background = theme.surfaceHover; } }}
-    onMouseLeave={e => { if (hover || onClick) { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.card; } }}
+    onMouseLeave={e => { if (hover || onClick) { e.currentTarget.style.borderColor = st?.borderColor || theme.border; e.currentTarget.style.background = st?.background || theme.card; } }}
   >{children}</div>
 );
 
@@ -909,10 +909,84 @@ export default function App() {
 
   if (!dataLoaded) {
     return (
-      <div style={{ fontFamily: theme.font, background: theme.bg, color: theme.text, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: theme.accent, marginBottom: 8 }}>국민대학교 건축대학 포털사이트</div>
-          <div style={{ fontSize: 13, color: theme.textMuted }}>데이터 로딩 중...</div>
+      <div style={{ fontFamily: theme.font, background: isDark ? "#0a0a1a" : "#ffffff", color: theme.text, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <style>{`
+          .cube-perspective { perspective: 1200px; }
+          .cube-preserve-3d { transform-style: preserve-3d; }
+          @keyframes cubeSpin {
+            0% { transform: rotateX(0deg) rotateY(0deg); }
+            100% { transform: rotateX(360deg) rotateY(360deg); }
+          }
+          @keyframes breathe {
+            0%, 100% { transform: translateZ(48px); opacity: 0.8; }
+            50% { transform: translateZ(80px); opacity: 0.4; border-color: rgba(255,255,255,0.8); }
+          }
+          @keyframes cubePulseFast {
+            0%, 100% { transform: scale(0.8); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 1; }
+          }
+          @keyframes shadowBreathe {
+            0%, 100% { transform: scale(1); opacity: 0.4; }
+            50% { transform: scale(1.5); opacity: 0.2; }
+          }
+          .cube-spin { animation: cubeSpin 8s linear infinite; }
+          .cube-pulse-fast { animation: cubePulseFast 2s ease-in-out infinite; }
+          .cube-shadow-breathe { animation: shadowBreathe 3s ease-in-out infinite; }
+          .cube-side {
+            position: absolute; width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            transform-style: preserve-3d;
+          }
+          .cube-face {
+            width: 100%; height: 100%; position: absolute;
+            animation: breathe 3s ease-in-out infinite;
+            backdrop-filter: blur(2px);
+          }
+          .cube-front  { transform: rotateY(0deg); }
+          .cube-back   { transform: rotateY(180deg); }
+          .cube-right  { transform: rotateY(90deg); }
+          .cube-left   { transform: rotateY(-90deg); }
+          .cube-top    { transform: rotateX(90deg); }
+          .cube-bottom { transform: rotateX(-90deg); }
+        `}</style>
+        <div className="cube-perspective" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 48, padding: 48 }}>
+          <div className="cube-preserve-3d" style={{ position: "relative", width: 96, height: 96, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div className="cube-preserve-3d cube-spin" style={{ position: "relative", width: "100%", height: "100%" }}>
+              {/* Core glow */}
+              <div className="cube-pulse-fast" style={{ position: "absolute", inset: 0, margin: "auto", width: 32, height: 32, background: "#fff", borderRadius: "50%", filter: "blur(8px)", boxShadow: "0 0 40px rgba(255,255,255,0.8)" }} />
+              {/* Front */}
+              <div className="cube-side cube-front">
+                <div className="cube-face" style={{ background: "rgba(34,211,238,0.1)", border: "2px solid rgb(34,211,238)", boxShadow: "0 0 15px rgba(34,211,238,0.4)" }} />
+              </div>
+              {/* Back */}
+              <div className="cube-side cube-back">
+                <div className="cube-face" style={{ background: "rgba(34,211,238,0.1)", border: "2px solid rgb(34,211,238)", boxShadow: "0 0 15px rgba(34,211,238,0.4)" }} />
+              </div>
+              {/* Right */}
+              <div className="cube-side cube-right">
+                <div className="cube-face" style={{ background: "rgba(168,85,247,0.1)", border: "2px solid rgb(168,85,247)", boxShadow: "0 0 15px rgba(168,85,247,0.4)" }} />
+              </div>
+              {/* Left */}
+              <div className="cube-side cube-left">
+                <div className="cube-face" style={{ background: "rgba(168,85,247,0.1)", border: "2px solid rgb(168,85,247)", boxShadow: "0 0 15px rgba(168,85,247,0.4)" }} />
+              </div>
+              {/* Top */}
+              <div className="cube-side cube-top">
+                <div className="cube-face" style={{ background: "rgba(99,102,241,0.1)", border: "2px solid rgb(99,102,241)", boxShadow: "0 0 15px rgba(99,102,241,0.4)" }} />
+              </div>
+              {/* Bottom */}
+              <div className="cube-side cube-bottom">
+                <div className="cube-face" style={{ background: "rgba(99,102,241,0.1)", border: "2px solid rgb(99,102,241)", boxShadow: "0 0 15px rgba(99,102,241,0.4)" }} />
+              </div>
+            </div>
+            {/* Floor shadow */}
+            <div className="cube-shadow-breathe" style={{ position: "absolute", bottom: -80, width: 96, height: 32, background: "rgba(0,0,0,0.4)", filter: "blur(12px)", borderRadius: "100%" }} />
+          </div>
+          {/* Loading text */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, marginTop: 8 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, letterSpacing: "0.3em", color: isDark ? "rgb(103,232,249)" : "rgb(14,116,144)", textTransform: "uppercase", margin: 0 }}>Loading</h3>
+            <p style={{ fontSize: 12, color: isDark ? "rgb(148,163,184)" : "rgb(100,116,139)", margin: 0 }}>잠시만 기다려주세요…</p>
+          </div>
         </div>
       </div>
     );
@@ -1049,7 +1123,7 @@ export default function App() {
 //  LOGIN PAGE
 // ════════════════════════════════════════════════════════════════
 function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSession, onRememberSessionChange, blacklist, warnings, certificates, updateCertificates, inquiries, updateInquiries, savedCredentials, communityPosts, setCommunityPosts, exhibitionPosts, isMobile, isDark, toggleDark }) {
-  const [mode, setMode] = useState(() => savedCredentials?.role === "worker" ? "worker" : savedCredentials?.role === "admin" ? "admin" : "student");
+  const [mode, setMode] = useState("student");
   const [sid, setSid] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.id || "") : "");
   const [sname, setSname] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.name || "") : "");
   const [wUser, setWUser] = useState(() => savedCredentials?.role === "worker" ? (savedCredentials.user?.username || "") : savedCredentials?.role === "admin" ? (savedCredentials.user?.username || "") : "");
@@ -2520,11 +2594,12 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         {mode === "student" && (
           <div style={{ marginTop: 16, width: "100%" }}>
             <Card
+              key={showCertUpload ? "cert-expanded" : "cert-collapsed"}
               onClick={showCertUpload ? undefined : () => setShowCertUpload(true)}
               hover={false}
               style={{
-                background: showCertUpload ? theme.card : theme.surfaceHover,
-                borderColor: showCertUpload ? theme.border : theme.border,
+                background: theme.card,
+                borderColor: theme.border,
                 cursor: showCertUpload ? "default" : "pointer",
                 transition: "all 0.3s ease",
               }}
@@ -2818,11 +2893,12 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         {/* Inquiry Banner */}
         <div style={{ marginTop: 12 }}>
           <Card
+            key={showInquiry ? "inq-expanded" : "inq-collapsed"}
             onClick={showInquiry ? undefined : () => setShowInquiry(true)}
             hover={false}
             style={{
-              background: showInquiry ? theme.card : theme.surfaceHover,
-              borderColor: showInquiry ? theme.border : theme.border,
+              background: theme.card,
+              borderColor: theme.border,
               cursor: showInquiry ? "default" : "pointer",
               transition: "all 0.3s ease",
             }}
@@ -5668,7 +5744,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
           });
           const text = await res.text();
           let result = null;
-          try { result = JSON.parse(text); } catch {}
+          try { result = JSON.parse(text); } catch { }
           if (result?.error) {
             console.error("Google Sheet 추가 실패:", result.error);
           }
@@ -5774,7 +5850,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
           tabs={[
             { id: "accounts", label: "근로학생 계정", icon: <Icons.users size={15} /> },
             { id: "discipline", label: "경고/블랙리스트", icon: <Icons.alert size={15} /> },
-            { id: "certificates", label: "수료증 관리", icon: <Icons.file size={15} />, badge: certificateCount },
+            { id: "certificates", label: "이수증 관리", icon: <Icons.file size={15} />, badge: certificateCount },
             { id: "equipment", label: "물품 관리", icon: <Icons.tool size={15} />, badge: equipmentDB.length },
             { id: "community", label: "커뮤니티/전시", icon: <Icons.edit size={15} />, badge: communityPosts?.length || 0 },
             { id: "adminLog", label: "관리 이력", icon: <Icons.log size={15} /> },
