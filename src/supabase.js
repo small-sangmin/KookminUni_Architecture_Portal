@@ -212,27 +212,9 @@ export const supabaseStore = {
 // ─── Certificate File Storage ────────────────────────────────────
 const CERT_BUCKET = 'certificates'
 
-// Ensure bucket exists on first use
-let bucketReady = null
-function ensureBucket() {
-  if (!bucketReady) {
-    bucketReady = supabase.storage.getBucket(CERT_BUCKET).then(({ error }) => {
-      if (error) {
-        return supabase.storage.createBucket(CERT_BUCKET, {
-          public: false,
-          fileSizeLimit: 10 * 1024 * 1024,
-          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'],
-        })
-      }
-    }).catch(() => {})
-  }
-  return bucketReady
-}
-
 export const certificateStorage = {
   async upload(studentId, file) {
     try {
-      await ensureBucket()
       const timestamp = Date.now()
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
       const filePath = `${studentId}/${timestamp}_${safeName}`
