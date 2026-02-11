@@ -1275,7 +1275,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                               padding: "8px 12px",
                               border: `1px solid ${theme.border}`,
                               borderRadius: 6,
-                              background: theme.surface,
+                              background: "#ffffff",
                               color: theme.text,
                               fontSize: 12,
                               outline: "none",
