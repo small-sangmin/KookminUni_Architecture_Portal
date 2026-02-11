@@ -59,21 +59,6 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
   const [editingCommentId, setEditingCommentId] = useState(null); // 수정 중인 댓글 ID
   const [editingCommentContent, setEditingCommentContent] = useState(""); // 수정 중인 댓글 내용
 
-  // 공지사항 상태
-  const [notices, setNotices] = useState([
-    { title: "[사단법인 밀레니엄심포니오케스트라] 대학생·대학원생 서포터즈 밀리언 3기 모집(~3/15)", date: "02.05", category: "사회봉사", url: "https://www.kookmin.ac.kr/user/kmuNews/notice/8/11324/view.do" },
-    { title: "[서울시립일시청소년쉼터] 2026 자원활동가 모집(~2/21)", date: "02.05", category: "사회봉사", url: "https://www.kookmin.ac.kr/user/kmuNews/notice/8/11323/view.do" },
-    { title: "제16회 DB보험금융공모전(IFC)", date: "02.05", category: "장학공지", url: "https://www.kookmin.ac.kr/user/kmuNews/notice/8/11322/view.do" },
-    { title: "[외국인유학생지원센터] 2025-2 학위과정 외국인등록증 발급 및 연장 안내", date: "02.05", category: "학사공지", url: "https://www.kookmin.ac.kr/user/kmuNews/notice/8/11321/view.do" },
-    { title: "2026학년도 1학기 재입학 신청 안내", date: "02.04", category: "학사공지", url: "https://www.kookmin.ac.kr/user/kmuNews/notice/8/11320/view.do" },
-    { title: "2026학년도 1학기 복학 신청 안내", date: "02.04", category: "학사공지", url: "https://www.kookmin.ac.kr/user/kmuNews/notice/8/11319/view.do" },
-    { title: "2026학년도 1학기 수강신청 일정 안내", date: "02.03", category: "학사공지", url: "https://www.kookmin.ac.kr/user/kmuNews/notice/8/11318/view.do" },
-    { title: "2026학년도 1학기 등록금 납부 안내", date: "02.03", category: "학사공지", url: "https://www.kookmin.ac.kr/user/kmuNews/notice/8/11317/view.do" },
-    { title: "2026년 2월 학위수여식 안내", date: "02.02", category: "학사공지", url: "https://www.kookmin.ac.kr/user/kmuNews/notice/8/11316/view.do" },
-    { title: "2026학년도 교내장학금 신청 안내", date: "02.01", category: "장학공지", url: "https://www.kookmin.ac.kr/user/kmuNews/notice/8/11315/view.do" },
-  ]);
-  const [noticeLoading, setNoticeLoading] = useState(false);
-  const [lastNoticeUpdate, setLastNoticeUpdate] = useState(null);
   const [haedongHover, setHaedongHover] = useState(false);
   const [certHover, setCertHover] = useState(false);
   const [showUploadConfirm, setShowUploadConfirm] = useState(false);
@@ -91,67 +76,6 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
     const heightRatio = viewportSize.height / 900;
     return Math.max(0.72, Math.min(1, widthRatio, heightRatio));
   }, [viewportSize]);
-
-  // 공지사항 가져오기 함수
-  const fetchNotices = async () => {
-    setNoticeLoading(true);
-    try {
-      const proxies = [
-        "https://api.codetabs.com/v1/proxy?quest=",
-        "https://api.allorigins.win/raw?url=",
-      ];
-      const targetUrl = "https://www.kookmin.ac.kr/user/kmuNews/notice/index.do";
-      let html = null;
-      for (const proxy of proxies) {
-        try {
-          const res = await fetch(proxy + encodeURIComponent(targetUrl));
-          if (res.ok) { html = await res.text(); break; }
-        } catch { }
-      }
-      if (!html) throw new Error("proxy failed");
-
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, "text/html");
-      const items = doc.querySelectorAll(".board_list ul li");
-
-      const newNotices = [];
-      items.forEach((li, idx) => {
-        if (idx >= 10) return;
-        const anchor = li.querySelector("a");
-        const titleEl = li.querySelector("p.title");
-        const categoryEl = li.querySelector("span.ctg_name");
-        const etcSpans = li.querySelectorAll(".board_etc span");
-
-        if (anchor && titleEl) {
-          const href = anchor.getAttribute("href");
-          const fullUrl = href?.startsWith("http") ? href : `https://www.kookmin.ac.kr${href}`;
-          const rawDate = etcSpans[0]?.textContent?.trim() || "";
-          const shortDate = rawDate.length >= 5 ? rawDate.slice(5) : rawDate;
-          newNotices.push({
-            title: titleEl.textContent?.trim() || "",
-            date: shortDate,
-            category: categoryEl?.textContent?.trim() || "",
-            url: fullUrl
-          });
-        }
-      });
-
-      if (newNotices.length > 0) {
-        setNotices(newNotices);
-        setLastNoticeUpdate(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
-      }
-    } catch (err) {
-      console.log("공지사항 로딩 실패:", err);
-    }
-    setNoticeLoading(false);
-  };
-
-  // 30분마다 공지사항 업데이트
-  useEffect(() => {
-    fetchNotices(); // 초기 로딩
-    const interval = setInterval(fetchNotices, 30 * 60 * 1000); // 30분
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     const onResize = () => {
@@ -1059,7 +983,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                         maxHeight: expandedPostId === post.id ? 300 : 0,
                         overflow: "hidden",
                         transition: "max-height 0.3s ease-in-out",
-                        background: "rgba(0,0,0,0.2)",
+                        background: isDark ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.9)",
                         borderBottom: expandedPostId === post.id && idx < communityPosts.length - 1 ? `1px solid ${theme.border}` : "none",
                       }}
                     >
@@ -1276,7 +1200,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                               border: `1px solid ${theme.border}`,
                               borderRadius: 6,
                               background: "#ffffff",
-                              color: theme.text,
+                              color: "#1a1a1a",
                               fontSize: 12,
                               outline: "none",
                               fontFamily: theme.font,
@@ -1519,13 +1443,12 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                 transition: "all 0.3s ease",
               }}
             >
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                <Icons.upload size={20} color={theme.blue} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: theme.blue }}>
-                      안전교육이수증 업로드
-                    </div>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: theme.blue }}>
+                    <Icons.upload size={18} color={theme.blue} />
+                    안전교육이수증 업로드
+                  </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <div
                         onClick={(e) => { e.stopPropagation(); setShowSafetyInfo(true); }}
@@ -1680,7 +1603,6 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                       </div>
                     </>
                   )}
-                </div>
               </div>
             </Card>
           </div>
@@ -1818,11 +1740,10 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               transition: "all 0.3s ease",
             }}
           >
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-              <Icons.file size={20} color={theme.accent} />
-              <div style={{ flex: 1 }}>
+            <div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: theme.accent }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: theme.accent }}>
+                    <Icons.file size={18} color={theme.accent} />
                     문의사항
                   </div>
                   {showInquiry && (
@@ -1911,7 +1832,6 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                     </div>
                   </>
                 )}
-              </div>
             </div>
           </Card>
         </div>
