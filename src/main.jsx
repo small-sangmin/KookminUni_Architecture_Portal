@@ -2,7 +2,7 @@
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import "./style.css";
-import firebaseStore from "./firebase";
+import supabaseStore from "./supabase";
 
 if (!window.storage) {
   const SERVER_PREFIX = "portal";
@@ -18,7 +18,7 @@ if (!window.storage) {
 
   window.storage = {
     async get(key) {
-      const fromServer = await withTimeout(firebaseStore.get(serverKey(key)), "__timeout__");
+      const fromServer = await withTimeout(supabaseStore.get(serverKey(key)), "__timeout__");
       if (fromServer === "__timeout__") {
         const local = localStorage.getItem(key);
         return local ? { value: local } : null;
@@ -28,27 +28,25 @@ if (!window.storage) {
       return { value: JSON.stringify(fromServer) };
     },
     async set(key, value) {
-      // Firebase 쓰기가 지연되면 fallback으로 전환해 무한 대기를 막는다.
-      for (let attempt = 1; attempt <= 3; attempt += 1) {
-        try {
-          const ok = await withTimeout(
-            firebaseStore.set(serverKey(key), value),
-            STORAGE_SET_TIMEOUT_TOKEN
-          );
-          if (ok === true) return true;
-        } catch (e) {
-          console.error(`Firebase set failed (attempt ${attempt}):`, e);
-        }
+      // Supabase 쓰기가 지연되면 fallback으로 전환해 무한 대기를 막는다.
+      try {
+        const ok = await withTimeout(
+          supabaseStore.set(serverKey(key), value),
+          STORAGE_SET_TIMEOUT_TOKEN
+        );
+        if (ok === true) return true;
+      } catch (e) {
+        console.error("Supabase set failed:", e);
       }
       // Firebase 저장 실패 시 local fallback은 남기되, 호출부에서 실패를 감지하도록 예외를 던진다.
       try {
         if (value === null || value === undefined) localStorage.removeItem(key);
         else localStorage.setItem(key, value);
-      } catch {}
+      } catch { }
       throw new Error(`Remote storage write failed for key: ${key}`);
     },
     async list(prefix) {
-      const all = await withTimeout(firebaseStore.listByPrefix(SERVER_PREFIX), null);
+      const all = await withTimeout(supabaseStore.listByPrefix(SERVER_PREFIX), null);
       if (Array.isArray(all)) {
         const keys = all
           .map(({ name }) => name.replace(`${SERVER_PREFIX}/`, ""))
@@ -66,7 +64,7 @@ if (!window.storage) {
   };
 
   (async () => {
-    const alreadyMigrated = await firebaseStore.get(serverKey(MIGRATION_FLAG_KEY));
+    const alreadyMigrated = await supabaseStore.get(serverKey(MIGRATION_FLAG_KEY));
     if (alreadyMigrated) return;
 
     const writes = [];
@@ -75,10 +73,10 @@ if (!window.storage) {
       if (!key) continue;
       const value = localStorage.getItem(key);
       if (value === null) continue;
-      writes.push(firebaseStore.set(serverKey(key), value));
+      writes.push(supabaseStore.set(serverKey(key), value));
     }
     await Promise.all(writes);
-    await firebaseStore.set(serverKey(MIGRATION_FLAG_KEY), "1");
+    await supabaseStore.set(serverKey(MIGRATION_FLAG_KEY), "1");
   })().catch((error) => {
     console.error("Initial migration to server storage failed:", error);
   });
