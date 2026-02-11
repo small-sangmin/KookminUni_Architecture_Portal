@@ -613,7 +613,7 @@ export default function App() {
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
         body: JSON.stringify(payload),
       });
       const text = await res.text();
@@ -666,7 +666,7 @@ export default function App() {
       };
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -757,7 +757,7 @@ export default function App() {
       };
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -823,7 +823,7 @@ export default function App() {
       };
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -5659,12 +5659,21 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
           columns: EDITABLE.safetySheet?.columns || {},
         };
         try {
-          await fetch(url, {
+          // text/plain을 사용해야 CORS preflight(OPTIONS)가 발생하지 않아
+          // Google Apps Script에 POST가 실제로 전달됨
+          const res = await fetch(url, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "text/plain;charset=UTF-8" },
             body: JSON.stringify(payload),
           });
+          const text = await res.text();
+          let result = null;
+          try { result = JSON.parse(text); } catch {}
+          if (result?.error) {
+            console.error("Google Sheet 추가 실패:", result.error);
+          }
         } catch (err) {
+          console.warn("POST 실패, GET 재시도:", err);
           const params = new URLSearchParams({
             action: "add_safety_student",
             key: EDITABLE.apiKey,
@@ -5675,7 +5684,11 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             studentEmail: cert.studentEmail || "",
             sheetName: EDITABLE.safetySheet?.sheetName || "",
           });
-          await fetch(`${url}?${params.toString()}`, { method: "GET" });
+          try {
+            await fetch(`${url}?${params.toString()}`, { method: "GET" });
+          } catch (err2) {
+            console.error("GET 재시도도 실패:", err2);
+          }
         }
       }
       updateCertificates(prev => {
