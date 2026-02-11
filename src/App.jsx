@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { certificateStorage } from "./supabase";
+import supabaseStore, { certificateStorage } from "./supabase";
 
 // ════════════════════════════════════════════════════════════════
 //  국민대학교 건축대학 포털사이트 v1.0
@@ -458,7 +458,12 @@ export default function App() {
           store.get("exhibitionData"),
           store.get("equipmentDB"),
         ]);
-        if (wk) setWorkers(wk);
+        if (Array.isArray(wk) && wk.length > 0) {
+          setWorkers(wk);
+        } else {
+          setWorkers(DEFAULT_WORKERS);
+          store.set("workers", DEFAULT_WORKERS).catch(() => { });
+        }
         if (warn) setWarnings(warn);
         if (blk) setBlacklist(blk);
         if (certs) setCertificates(certs);
@@ -499,6 +504,18 @@ export default function App() {
         setDataLoaded(true);
       }
     })();
+  }, []);
+
+  // 근로학생 계정은 서버 데이터(portal/workers)를 기준으로 실시간 동기화
+  useEffect(() => {
+    const unsubscribe = supabaseStore.subscribe("portal/workers", (serverWorkers) => {
+      if (Array.isArray(serverWorkers)) {
+        setWorkers(serverWorkers);
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
   }, []);
 
   // ─── Persist helpers ───────────────────────────────────────────
@@ -3890,7 +3907,7 @@ const PRINT_PLUS600_PRICES = {
   GLOSS_IMAGE: 7000,
 };
 
-const KAKAO_BANK_ACCOUNT = "3333-12-3456789"; // 카카오뱅크 계좌번호 (예시)
+const KAKAO_BANK_ACCOUNT = "3333-35-7572363 [김경호]"; // 카카오뱅크 계좌번호
 
 function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNotification, syncPrintToSheet, sendEmailNotification, isMobile }) {
   const [paperSize, setPaperSize] = useState("A2");
