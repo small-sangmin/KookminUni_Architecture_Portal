@@ -7,7 +7,7 @@ import firebaseStore from "./firebase";
 if (!window.storage) {
   const SERVER_PREFIX = "portal";
   const MIGRATION_FLAG_KEY = "__server_migrated_v1__";
-  const STORAGE_TIMEOUT_MS = 10000;
+  const STORAGE_TIMEOUT_MS = 30000;
   const STORAGE_SET_TIMEOUT_TOKEN = "__set_timeout__";
   const serverKey = (key) => `${SERVER_PREFIX}/${key}`;
   const withTimeout = (promise, fallbackValue) =>
@@ -29,21 +29,23 @@ if (!window.storage) {
     },
     async set(key, value) {
       // Firebase 쓰기가 지연되면 fallback으로 전환해 무한 대기를 막는다.
-      try {
-        const ok = await withTimeout(
-          firebaseStore.set(serverKey(key), value),
-          STORAGE_SET_TIMEOUT_TOKEN
-        );
-        if (ok === true) return true;
-      } catch (e) {
-        console.error("Firebase set failed:", e);
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        try {
+          const ok = await withTimeout(
+            firebaseStore.set(serverKey(key), value),
+            STORAGE_SET_TIMEOUT_TOKEN
+          );
+          if (ok === true) return true;
+        } catch (e) {
+          console.error(`Firebase set failed (attempt ${attempt}):`, e);
+        }
       }
-      // Firebase 실패 시 localStorage fallback
+      // Firebase 저장 실패 시 local fallback은 남기되, 호출부에서 실패를 감지하도록 예외를 던진다.
       try {
         if (value === null || value === undefined) localStorage.removeItem(key);
         else localStorage.setItem(key, value);
       } catch {}
-      return true;
+      throw new Error(`Remote storage write failed for key: ${key}`);
     },
     async list(prefix) {
       const all = await withTimeout(firebaseStore.listByPrefix(SERVER_PREFIX), null);
