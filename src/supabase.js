@@ -14,7 +14,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-// Supabase Store API (matches firebaseStore interface exactly)
+// Supabase Store API
 export const supabaseStore = {
   /**
    * Retrieve data by key
@@ -98,7 +98,7 @@ export const supabaseStore = {
   },
 
   /**
-   * Add a new child with auto-generated ID (mimics Firebase push behavior)
+   * Add a new child with auto-generated ID
    * @param {string} key - The parent key
    * @param {any} value - The value to add
    * @returns {Promise<string|null>} The generated ID, or null if failed
@@ -179,7 +179,7 @@ export const supabaseStore = {
       )
       .subscribe()
 
-    // Return unsubscribe function (matches Firebase API)
+    // Return unsubscribe function
     return () => {
       supabase.removeChannel(channel)
     }
@@ -200,7 +200,7 @@ export const supabaseStore = {
 
       if (error) throw error
 
-      // Transform to match Firebase format: [{name: "key1"}, {name: "key2"}]
+      // Transform to array of {name} objects
       return (data || []).map(row => ({ name: row.key }))
     } catch (error) {
       console.error(`Supabase listByPrefix error (${prefix}):`, error)
@@ -209,5 +209,78 @@ export const supabaseStore = {
   }
 }
 
-// Export as default (matches firebase.js export pattern)
+// ─── Certificate File Storage ────────────────────────────────────
+const CERT_BUCKET = 'certificates'
+
+// Ensure bucket exists on first use
+let bucketReady = null
+function ensureBucket() {
+  if (!bucketReady) {
+    bucketReady = supabase.storage.getBucket(CERT_BUCKET).then(({ error }) => {
+      if (error) {
+        return supabase.storage.createBucket(CERT_BUCKET, {
+          public: false,
+          fileSizeLimit: 10 * 1024 * 1024,
+          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'],
+        })
+      }
+    }).catch(() => {})
+  }
+  return bucketReady
+}
+
+export const certificateStorage = {
+  async upload(studentId, file) {
+    try {
+      await ensureBucket()
+      const timestamp = Date.now()
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const filePath = `${studentId}/${timestamp}_${safeName}`
+
+      const { data, error } = await supabase.storage
+        .from(CERT_BUCKET)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type,
+        })
+
+      if (error) throw error
+      return { path: data.path, error: null }
+    } catch (err) {
+      console.error('Certificate upload error:', err)
+      return { path: null, error: err.message }
+    }
+  },
+
+  async getSignedUrl(filePath, expiresIn = 3600) {
+    try {
+      const { data, error } = await supabase.storage
+        .from(CERT_BUCKET)
+        .createSignedUrl(filePath, expiresIn)
+
+      if (error) throw error
+      return data.signedUrl
+    } catch (err) {
+      console.error('Certificate signed URL error:', err)
+      return null
+    }
+  },
+
+  async remove(filePath) {
+    try {
+      const { error } = await supabase.storage
+        .from(CERT_BUCKET)
+        .remove([filePath])
+
+      if (error) throw error
+      return true
+    } catch (err) {
+      console.error('Certificate delete error:', err)
+      return false
+    }
+  },
+}
+
+// Export as default
 export default supabaseStore

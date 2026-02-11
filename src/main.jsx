@@ -38,7 +38,7 @@ if (!window.storage) {
       } catch (e) {
         console.error("Supabase set failed:", e);
       }
-      // Firebase 저장 실패 시 local fallback은 남기되, 호출부에서 실패를 감지하도록 예외를 던진다.
+      // 서버 저장 실패 시 local fallback은 남기되, 호출부에서 실패를 감지하도록 예외를 던진다.
       try {
         if (value === null || value === undefined) localStorage.removeItem(key);
         else localStorage.setItem(key, value);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { certificateStorage } from "./supabase";
 
 // ════════════════════════════════════════════════════════════════
 //  국민대학교 건축대학 포털사이트 v1.0
@@ -1276,47 +1277,33 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
     setUploadSuccess("");
     setError("");
     try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const base64 = reader.result;
-          const sid = certSid.trim();
-          const certMeta = {
-            studentId: sid,
-            studentName: certSname.trim(),
-            studentYear: certYear.trim(),
-            studentMajor: certMajor.trim(),
-            studentEmail: certEmail.trim(),
-            fileName: uploadFile.name,
-            fileSize: uploadFile.size,
-            fileType: uploadFile.type,
-            uploadDate: new Date().toISOString(),
-          };
-          // Firebase에 파일과 메타데이터를 확실히 저장 (await)
-          const updatedCerts = { ...(certificates || {}), [sid]: certMeta };
-          await Promise.all([
-            store.set(`certFile_${sid}`, base64),
-            store.set("certificates", updatedCerts),
-          ]);
-          // React 상태도 업데이트
-          updateCertificates?.(() => updatedCerts);
-          setUploading(false);
-          setUploadSuccess("✅ 업로드 완료!");
-          setShowUploadConfirm(true);
-          setUploadFile(null);
-        } catch (err) {
-          setUploading(false);
-          setError("서버 저장 실패: " + (err?.message || "알 수 없는 오류"));
-        }
+      const sid = certSid.trim();
+      const { path, error: uploadError } = await certificateStorage.upload(sid, uploadFile);
+      if (uploadError || !path) {
+        throw new Error(uploadError || "Upload failed");
+      }
+      const certMeta = {
+        studentId: sid,
+        studentName: certSname.trim(),
+        studentYear: certYear.trim(),
+        studentMajor: certMajor.trim(),
+        studentEmail: certEmail.trim(),
+        fileName: uploadFile.name,
+        fileSize: uploadFile.size,
+        fileType: uploadFile.type,
+        uploadDate: new Date().toISOString(),
+        storagePath: path,
       };
-      reader.onerror = () => {
-        setUploading(false);
-        setError("파일 업로드 실패");
-      };
-      reader.readAsDataURL(uploadFile);
+      const updatedCerts = { ...(certificates || {}), [sid]: certMeta };
+      await store.set("certificates", updatedCerts);
+      updateCertificates?.(() => updatedCerts);
+      setUploading(false);
+      setUploadSuccess("✅ 업로드 완료!");
+      setShowUploadConfirm(true);
+      setUploadFile(null);
     } catch (err) {
       setUploading(false);
-      setError("파일 업로드 실패: " + (err?.message || "알 수 없는 오류"));
+      setError("서버 저장 실패: " + (err?.message || "알 수 없는 오류"));
     }
   };
 
@@ -5488,8 +5475,12 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
     setCertModal(cert);
     setCertFileData(null);
     setCertFileLoading(true);
-    // 새 방식: 별도 키에서 로드 / 구버전 호환: cert.data에 직접 있을 수 있음
-    const fileData = cert.data || await store.get(`certFile_${cert.studentId}`);
+    let fileData = null;
+    if (cert.storagePath) {
+      fileData = await certificateStorage.getSignedUrl(cert.storagePath);
+    } else {
+      fileData = cert.data || await store.get(`certFile_${cert.studentId}`);
+    }
     setCertFileData(fileData);
     setCertFileLoading(false);
   };
@@ -5684,7 +5675,11 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
         return next;
       });
       // 별도 저장된 파일 데이터 삭제
-      store.set(`certFile_${cert.studentId}`, null);
+      if (cert.storagePath) {
+        certificateStorage.remove(cert.storagePath);
+      } else {
+        store.set(`certFile_${cert.studentId}`, null);
+      }
 
       // 승인 이메일 발송
       if (cert.studentEmail && sendEmailNotification) {
@@ -5711,7 +5706,11 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
       return next;
     });
     // 별도 저장된 파일 데이터 삭제
-    store.set(`certFile_${cert.studentId}`, null);
+    if (cert.storagePath) {
+      certificateStorage.remove(cert.storagePath);
+    } else {
+      store.set(`certFile_${cert.studentId}`, null);
+    }
     addLog(`[관리자] 수료증 반려: ${cert.studentName}(${cert.studentId})`, "admin");
     setCertModal(null);
   };
@@ -6483,10 +6482,23 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                 variant="ghost"
                 onClick={() => {
                   if (!certFileData) return;
-                  const link = document.createElement("a");
-                  link.href = certFileData;
-                  link.download = certModal.fileName;
-                  link.click();
+                  if (certModal.storagePath) {
+                    fetch(certFileData)
+                      .then(res => res.blob())
+                      .then(blob => {
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = url;
+                        link.download = certModal.fileName;
+                        link.click();
+                        URL.revokeObjectURL(url);
+                      });
+                  } else {
+                    const link = document.createElement("a");
+                    link.href = certFileData;
+                    link.download = certModal.fileName;
+                    link.click();
+                  }
                 }}
               >
                 <Icons.download size={16} /> 다운로드
