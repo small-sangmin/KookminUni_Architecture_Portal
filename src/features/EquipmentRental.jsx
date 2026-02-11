@@ -1,0 +1,191 @@
+import { useState } from "react";
+import { EDITABLE } from "../constants/data";
+import theme from "../constants/theme";
+import { uid, ts, dateStr, tomorrow, addDays } from "../utils/helpers";
+import Icons from "../components/Icons";
+import { Badge, Card, Button, Input, SectionTitle, Empty } from "../components/ui";
+
+function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, sendEmailNotification, isMobile }) {
+  const [selected, setSelected] = useState(null);
+  const [returnDate, setReturnDate] = useState(addDays(3));
+  const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(null);
+  const [filterCat, setFilterCat] = useState("전체");
+
+  const categories = ["전체", ...new Set(equipmentDB.map(e => e.category))];
+  const filtered = filterCat === "전체" ? equipmentDB : equipmentDB.filter(e => e.category === filterCat);
+
+  const toggleEquip = (id) => setSelected(prev => prev === id ? null : id);
+
+  const handleSubmit = () => {
+    if (!selected) return;
+    setSubmitting(true);
+    setTimeout(() => {
+      const item = equipmentDB.find(e => e.id === selected);
+      if (!item) return;
+      const rental = {
+        id: uid(), type: "equipment", studentId: user.id, studentName: user.name, studentDept: user.dept, studentEmail: user.email || "",
+        items: [{ id: item.id, name: item.name, icon: item.icon }],
+        returnDate, note: note || "", status: "pending_pickup", createdAt: ts(),
+      };
+      updateEquipRentals(prev => [rental, ...prev]);
+      setEquipmentDB(prev => prev.map(e => e.id === item.id ? { ...e, available: Math.max(0, e.available - 1) } : e));
+      addLog(`[기구대여] ${user.name}(${user.id}) → ${item.name} | 반납: ${returnDate}`, "equipment", { studentId: user.id });
+      addNotification(`🔧 기구대여 요청: ${user.name} → ${item.name}`, "equipment", true);
+      sendEmailNotification?.({
+        to: user.email || undefined,
+        subject: `[물품 대여 신청] ${user.name} · ${item.name}`,
+        body: `물품 대여 신청이 접수되었습니다.\n\n- 학생: ${user.name} (${user.id})\n- 물품: ${item.icon} ${item.name}\n- 반납 예정일: ${returnDate}\n- 비고: ${note || "없음"}\n\n교학팀에서 수령해주세요.`,
+      });
+      setSuccess(rental);
+      setSubmitting(false);
+      setSelected(null);
+      setNote("");
+    }, 800);
+  };
+
+  return (
+    <div className="fade-in">
+      {success && (
+        <Card style={{ marginBottom: 20, background: theme.greenBg, borderColor: theme.greenBorder }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Icons.check size={20} color={theme.green} />
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: theme.green }}>대여 신청 완료!</div>
+              <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 2 }}>
+                {success.items.map(i => i.name).join(", ")} · 반납 {success.returnDate}
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" style={{ marginLeft: "auto" }} onClick={() => setSuccess(null)}><Icons.x size={14} /></Button>
+          </div>
+        </Card>
+      )}
+
+      <Card style={{ marginBottom: 20, padding: 14, background: theme.blueBg, borderColor: theme.blueBorder }}>
+        <div style={{ fontSize: 13, color: theme.blue, display: "flex", alignItems: "center", gap: 8 }}>
+          <Icons.bell size={16} /> 신청 완료 시 근로학생에게 즉시 알림이 전송됩니다. 교학팀에서 수령해주세요.
+        </div>
+      </Card>
+
+      {/* Two Column Layout */}
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 16 : 24, minHeight: isMobile ? "auto" : 500 }}>
+        {/* Left: Equipment List */}
+        <div style={{ width: isMobile ? "100%" : 320, flexShrink: 0 }}>
+          <SectionTitle icon={<Icons.tool size={16} color={theme.accent} />}>물품 선택</SectionTitle>
+
+          {/* Category Filter */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+            {categories.map(c => (
+              <button key={c} onClick={() => setFilterCat(c)} style={{
+                padding: "6px 14px", borderRadius: 20, border: `1px solid ${filterCat === c ? theme.accent : theme.border}`,
+                background: filterCat === c ? theme.accentBg : "transparent",
+                color: filterCat === c ? theme.accent : theme.textMuted,
+                fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: theme.font, transition: "all 0.15s",
+              }}>{c}</button>
+            ))}
+          </div>
+
+          {/* Equipment Items */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: isMobile ? "none" : 450, overflowY: isMobile ? "visible" : "auto", paddingRight: isMobile ? 0 : 4 }}>
+            {filtered.map(eq => {
+              const sel = selected === eq.id;
+              const soldOut = eq.available === 0;
+              return (
+                <Card key={eq.id} onClick={() => !soldOut && toggleEquip(eq.id)} style={{
+                  padding: 14, cursor: soldOut ? "not-allowed" : "pointer", opacity: soldOut ? 0.4 : 1,
+                  borderColor: sel ? theme.accent : theme.border,
+                  background: sel ? theme.accentBg : theme.card,
+                  borderLeft: sel ? `3px solid ${theme.accent}` : `3px solid transparent`,
+                  display: "flex", alignItems: "center", gap: 12,
+                  transition: "all 0.2s",
+                }}>
+                  <div style={{ fontSize: 28, width: 40, textAlign: "center" }}>{eq.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: sel ? theme.accent : theme.text }}>{eq.name}</div>
+                    <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                      <Badge color={eq.available > 0 ? "dim" : "red"} style={{ fontSize: 10 }}>재고 {eq.available}/{eq.total}</Badge>
+                      <Badge color="dim" style={{ fontSize: 10 }}>최대 {eq.maxDays}일</Badge>
+                    </div>
+                  </div>
+                  {sel && <div style={{ color: theme.accent }}><Icons.check size={20} /></div>}
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Right: Details Panel */}
+        <div style={{ flex: 1 }}>
+          {!selected ? (
+            <div style={{
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              background: theme.surface,
+              borderRadius: 16,
+              border: `2px dashed ${theme.border}`,
+              padding: 40,
+            }}>
+              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.5 }}>🔧</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>물품을 선택해주세요</div>
+              <div style={{ fontSize: 13, color: theme.textDim, textAlign: "center" }}>
+                왼쪽 목록에서 대여할 물품을 클릭하면<br />대여 정보를 입력할 수 있습니다
+              </div>
+            </div>
+          ) : (() => {
+            const eq = equipmentDB.find(e => e.id === selected);
+            if (!eq) return null;
+            return (
+              <div>
+                {/* Equipment Details */}
+                <SectionTitle icon={<Icons.info size={16} color={theme.accent} />}>물품 상세 정보</SectionTitle>
+                <Card style={{ marginBottom: 20 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, padding: 12, background: theme.surface, borderRadius: 8 }}>
+                    <div style={{ fontSize: 32, width: 50, textAlign: "center" }}>{eq.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: theme.text, marginBottom: 4 }}>{eq.name}</div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <Badge color="dim">재고 {eq.available}/{eq.total}</Badge>
+                        <Badge color="blue">최대 {eq.maxDays}일 대여</Badge>
+                        {eq.deposit && <Badge color="yellow">보증금 필요</Badge>}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Return Info */}
+                <SectionTitle icon={<Icons.calendar size={16} color={theme.accent} />}>반납 정보</SectionTitle>
+                <Card style={{ marginBottom: 24 }}>
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                    <Input label="반납 예정일" type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} style={{ maxWidth: 180 }} />
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <Input label="비고 (선택)" placeholder="예: 수업용, 팀프로젝트 등" value={note} onChange={e => setNote(e.target.value)} />
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Summary */}
+                <Card style={{ marginBottom: 20, background: theme.surface, padding: 16 }}>
+                  <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 8 }}>대여 요약</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                    <Badge color="accent">{eq.icon} {eq.name}</Badge>
+                    <Badge color="blue">반납: {returnDate}</Badge>
+                  </div>
+                </Card>
+
+                <Button size="lg" onClick={handleSubmit} disabled={submitting} style={{ width: "100%", justifyContent: "center", marginBottom: 40 }}>
+                  {submitting ? "신청 중..." : `${eq.name} 대여 신청`}
+                </Button>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default EquipmentRental;

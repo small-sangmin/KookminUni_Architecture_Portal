@@ -7,7 +7,9 @@
       "Bash(ls:*)",
       "Bash(timeout 10 npx vite:*)",
       "WebFetch(domain:kookmin-uni-architecture-portal-mu.vercel.app)",
-      "WebFetch(domain:etdpijfbnepaeojkqndg.supabase.co)"
+      "WebFetch(domain:etdpijfbnepaeojkqndg.supabase.co)",
+      "Bash(npm run build:*)",
+      "Bash(git add:*)"
     ]
   }
 }

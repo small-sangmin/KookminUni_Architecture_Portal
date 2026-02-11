@@ -249,6 +249,20 @@ export const certificateStorage = {
     }
   },
 
+  async download(filePath) {
+    try {
+      const { data, error } = await supabase.storage
+        .from(CERT_BUCKET)
+        .download(filePath)
+
+      if (error) throw error
+      return data // Blob
+    } catch (err) {
+      console.error('Certificate download error:', err)
+      return null
+    }
+  },
+
   async remove(filePath) {
     try {
       const { error } = await supabase.storage
