@@ -5649,6 +5649,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
       if (url) {
         const payload = {
           action: "add_safety_student",
+          key: EDITABLE.apiKey,
           studentId: cert.studentId,
           studentName: cert.studentName || "",
           studentYear: cert.studentYear || "",
@@ -5660,12 +5661,20 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
         try {
           await fetch(url, {
             method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
         } catch (err) {
-          const params = new URLSearchParams(payload);
+          const params = new URLSearchParams({
+            action: "add_safety_student",
+            key: EDITABLE.apiKey,
+            studentId: cert.studentId,
+            studentName: cert.studentName || "",
+            studentYear: cert.studentYear || "",
+            studentMajor: cert.studentMajor || "",
+            studentEmail: cert.studentEmail || "",
+            sheetName: EDITABLE.safetySheet?.sheetName || "",
+          });
           await fetch(`${url}?${params.toString()}`, { method: "GET" });
         }
       }
@@ -5674,9 +5683,9 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
         delete next[cert.studentId];
         return next;
       });
-      // 별도 저장된 파일 데이터 삭제
+      // 서버에서 파일 삭제
       if (cert.storagePath) {
-        certificateStorage.remove(cert.storagePath);
+        await certificateStorage.remove(cert.storagePath);
       } else {
         store.set(`certFile_${cert.studentId}`, null);
       }
@@ -5699,15 +5708,15 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
     }
   };
 
-  const rejectCertificate = (cert) => {
+  const rejectCertificate = async (cert) => {
     updateCertificates(prev => {
       const next = { ...prev };
       delete next[cert.studentId];
       return next;
     });
-    // 별도 저장된 파일 데이터 삭제
+    // 서버에서 파일 삭제
     if (cert.storagePath) {
-      certificateStorage.remove(cert.storagePath);
+      await certificateStorage.remove(cert.storagePath);
     } else {
       store.set(`certFile_${cert.studentId}`, null);
     }
