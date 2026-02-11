@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+﻿import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { certificateStorage } from "./supabase";
 
 // ════════════════════════════════════════════════════════════════
@@ -353,6 +353,7 @@ export default function App() {
   const [inquiries, setInquiries] = useState([]);
   const [printRequests, setPrintRequests] = useState([]); // 출력 신청 데이터
   const [visitCount, setVisitCount] = useState(0); // 홈페이지 방문 횟수 (로그인 기반)
+  const [analyticsData, setAnalyticsData] = useState(null); // 관리 대시보드 analytics 스냅샷
   const [visitedUsers, setVisitedUsers] = useState({}); // 방문한 고유 사용자 목록
   const [dataLoaded, setDataLoaded] = useState(false);
 
@@ -421,7 +422,7 @@ export default function App() {
         setDataLoaded(true);
 
         // 2단계: 나머지 데이터 백그라운드 로드 (화면 표시 후)
-        const [wk, warn, blk, certs, res, eq, lg, notif, sheet, overdue, inq, prints, visits, visitors, cmPosts, exhPosts, exhDataOld, eqDB] = await Promise.all([
+        const [wk, warn, blk, certs, res, eq, lg, notif, sheet, overdue, inq, prints, visits, visitors, analytics, cmPosts, exhPosts, exhDataOld, eqDB] = await Promise.all([
           store.get("workers"),
           store.get("warnings"),
           store.get("blacklist"),
@@ -436,6 +437,7 @@ export default function App() {
           store.get("printRequests"),
           store.get("visitCount"),
           store.get("visitedUsers"),
+          store.get("analyticsData"),
           store.get("communityPosts"),
           store.get("exhibitionPosts"),
           store.get("exhibitionData"),
@@ -455,6 +457,7 @@ export default function App() {
         if (prints) setPrintRequests(prints);
         if (visits) setVisitCount(visits);
         if (visitors) setVisitedUsers(visitors);
+        if (analytics) setAnalyticsData(analytics);
         if (cmPosts) setCommunityPostsRaw(cmPosts); else store.set("communityPosts", defaultPosts);
         if (exhPosts) {
           setExhibitionPostsRaw(exhPosts);
@@ -581,6 +584,52 @@ export default function App() {
       return next;
     });
   }, [persist]);
+
+  // 관리 대시보드 analytics 스냅샷 저장
+  useEffect(() => {
+    if (!dataLoaded) return;
+    const totalReservations = reservations.length;
+    const completedReservations = reservations.filter(r => r.status === "approved" || r.status === "completed").length;
+    const cancelledReservations = reservations.filter(r => r.status === "cancelled" || r.status === "rejected").length;
+    const pendingReservations = reservations.filter(r => r.status === "pending").length;
+    const totalRentals = equipRentals.length;
+    const returnedRentals = equipRentals.filter(r => r.status === "returned").length;
+    const pendingPrints = (printRequests || []).filter(p => p.status === "pending" || p.status === "processing").length;
+
+    const roomStats = ROOMS.map(room => ({
+      roomId: room.id,
+      roomName: room.name,
+      count: reservations.filter(r => r.roomId === room.id && r.status === "approved").length,
+    }));
+
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      return d.toISOString().slice(0, 10);
+    });
+    const dailyStats = last7Days.map(date => ({
+      date,
+      count: reservations.filter(r => r.date === date && r.status === "approved").length,
+    }));
+
+    const snapshot = {
+      updatedAt: new Date().toISOString(),
+      totals: {
+        totalReservations,
+        completedReservations,
+        cancelledReservations,
+        pendingReservations,
+        totalRentals,
+        returnedRentals,
+        pendingPrints,
+        visitCount: visitCount || 0,
+      },
+      roomStats,
+      dailyStats,
+    };
+    setAnalyticsData(snapshot);
+    store.set("analyticsData", snapshot).catch(() => { });
+  }, [dataLoaded, reservations, equipRentals, printRequests, visitCount]);
 
   const markNotifRead = useCallback((id) => {
     setNotifications(prev => {
@@ -1069,6 +1118,7 @@ export default function App() {
             inquiries={inquiries} updateInquiries={updateInquiries}
             printRequests={printRequests} updatePrintRequests={updatePrintRequests}
             visitCount={visitCount}
+            analyticsData={analyticsData}
             isMobile={isMobile}
             isDark={isDark} toggleDark={toggleDark}
           />
@@ -4471,7 +4521,7 @@ function StudentInquiries({ user, inquiries, updateInquiries }) {
 // ════════════════════════════════════════════════════════════════
 //  WORKER PORTAL
 // ════════════════════════════════════════════════════════════════
-function WorkerPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, logs, addLog, notifications, markNotifRead, markAllNotifsRead, unreadCount, sendEmailNotification, inquiries, updateInquiries, printRequests, updatePrintRequests, visitCount, isMobile, isDark, toggleDark }) {
+function WorkerPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, logs, addLog, notifications, markNotifRead, markAllNotifsRead, unreadCount, sendEmailNotification, inquiries, updateInquiries, printRequests, updatePrintRequests, visitCount, analyticsData, isMobile, isDark, toggleDark }) {
   const [tab, setTab] = useState("dashboard");
   const pendingInquiries = inquiries?.filter(i => i.status === "pending")?.length || 0;
   const pendingPrints = printRequests?.filter(p => p.status === "pending" || p.status === "processing")?.length || 0;
@@ -4515,6 +4565,7 @@ function WorkerPortal({ user, onLogout, reservations, updateReservations, equipR
           sendEmailNotification={sendEmailNotification}
           printRequests={printRequests}
           visitCount={visitCount}
+          analyticsData={analyticsData}
           isMobile={isMobile}
         />
       )}
