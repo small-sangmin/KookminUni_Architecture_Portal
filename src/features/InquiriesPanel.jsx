@@ -111,7 +111,7 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
       {selectedInquiry && (
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          background: "transparent",
+          background: "rgba(0,0,0,0.5)",
           display: "flex", alignItems: "center", justifyContent: "center",
           zIndex: 2000,
           padding: 20
@@ -172,10 +172,10 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
                 marginBottom: 16
               }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: theme.green, marginBottom: 8 }}>
-                  답변 ({selectedInquiry.answeredBy} · {selectedInquiry.answeredAt})
+                  답변 ({selectedInquiry.answer?.answeredBy || selectedInquiry.answeredBy || "근로학생"} · {selectedInquiry.answer?.answeredAt || selectedInquiry.answeredAt || ""})
                 </div>
                 <div style={{ fontSize: 14, color: theme.text, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-                  {selectedInquiry.answer}
+                  {typeof selectedInquiry.answer === "object" ? selectedInquiry.answer?.text : selectedInquiry.answer}
                 </div>
               </div>
             )}
