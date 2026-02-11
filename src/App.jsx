@@ -113,6 +113,7 @@ const dateStr = () => new Date().toISOString().split("T")[0];
 const tomorrow = () => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split("T")[0]; };
 const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().split("T")[0]; };
 const formatDate = (d) => { if (!d) return ""; const [y, m, dd] = d.split("-"); return `${m}/${dd}`; };
+const ACTIVE_PORTAL_SESSION_KEY = "kmu_active_portal_session";
 
 // ─── Storage Layer ───────────────────────────────────────────────
 const store = {
@@ -415,6 +416,20 @@ export default function App() {
 
         const rememberPref = remember ?? true;
         setRememberSession(rememberPref);
+
+        // 새로고침 시 현재 포털 화면 유지 (브라우저 탭 단위 세션)
+        try {
+          const rawSession = sessionStorage.getItem(ACTIVE_PORTAL_SESSION_KEY);
+          if (rawSession) {
+            const parsedSession = JSON.parse(rawSession);
+            if (parsedSession?.user && ["student", "worker", "admin"].includes(parsedSession?.role)) {
+              setCurrentUser(parsedSession.user);
+              setUserRole(parsedSession.role);
+              setPage(parsedSession.role);
+            }
+          }
+        } catch { }
+
         if (rememberPref && session?.user && session?.role) {
           setSavedCredentials({ user: session.user, role: session.role });
         }
@@ -925,6 +940,9 @@ export default function App() {
     setCurrentUser(user);
     setUserRole(role);
     setPage(role);
+    try {
+      sessionStorage.setItem(ACTIVE_PORTAL_SESSION_KEY, JSON.stringify({ user, role, loggedAt: Date.now() }));
+    } catch { }
     if (rememberSession) store.set("session", { user, role, page: role });
     else store.set("session", null);
 
@@ -941,6 +959,9 @@ export default function App() {
     setCurrentUser(null);
     setUserRole(null);
     setPage("login");
+    try {
+      sessionStorage.removeItem(ACTIVE_PORTAL_SESSION_KEY);
+    } catch { }
     if (!rememberSession) store.set("session", null);
   };
 
