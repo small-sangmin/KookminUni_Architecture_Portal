@@ -812,11 +812,12 @@ export default function App() {
           paperSize: printRequest.paperSize,
           colorMode: printRequest.colorMode,
           copies: printRequest.copies,
+          plus600Count: printRequest.plus600Count || 0,
+          plus600UnitPrice: printRequest.plus600UnitPrice || 0,
+          plus600Price: printRequest.plus600Price || 0,
           unitPrice: printRequest.unitPrice,
           totalPrice: printRequest.totalPrice,
           fileName: printRequest.printFile?.name || "",
-          note: printRequest.note,
-          urgentPickup: printRequest.urgentPickup,
           status: printRequest.status,
           createdAt: printRequest.createdAt,
         },
@@ -845,11 +846,12 @@ export default function App() {
               paperSize: printRequest.paperSize,
               colorMode: printRequest.colorMode,
               copies: printRequest.copies,
+              plus600Count: printRequest.plus600Count || 0,
+              plus600UnitPrice: printRequest.plus600UnitPrice || 0,
+              plus600Price: printRequest.plus600Price || 0,
               unitPrice: printRequest.unitPrice,
               totalPrice: printRequest.totalPrice,
               fileName: printRequest.printFile?.name || "",
-              note: printRequest.note,
-              urgentPickup: printRequest.urgentPickup,
               status: printRequest.status,
               createdAt: printRequest.createdAt,
             },
@@ -1458,7 +1460,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                 fontSize: 11, fontWeight: 700,
                 display: "flex", alignItems: "center", justifyContent: "center"
               }}>1</span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>안전교육 수료증 제출</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>안전교육이수증 제출</span>
             </div>
             <span style={{ color: theme.textDim, fontSize: 10 }}>→</span>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -2450,7 +2452,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
               {[
-                { n: "1", t: "안전교육 수료증 제출" },
+                { n: "1", t: "안전교육이수증 제출" },
                 { n: "2", t: "학번/이름 입력 후 로그인" },
                 { n: "3", t: "예약/대여/출력 이용" },
               ].map(s => (
@@ -2639,7 +2641,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
 
                   {!showCertUpload ? (
                     <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.5 }}>
-                      안전교육 수료증을 업로드하려면 클릭하세요
+                      안전교육이수증을 업로드하려면 클릭하세요
                     </div>
                   ) : (
                     <>
@@ -3193,7 +3195,7 @@ function StudentPortal({ user, onLogout, reservations, updateReservations, equip
                         <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: theme.surface, borderRadius: 8, border: `1px solid ${theme.border}` }}>
                           <div>
                             <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>
-                              {p.paperSize} {p.colorMode === "BW" ? "흑백" : "컬러"} × {p.copies}부
+                              {p.paperSize} {PRINT_TYPE_LABELS[p.colorMode] || p.colorMode} × {p.copies}부{p.plus600Count > 0 ? ` (+600 x ${p.plus600Count})` : ""}
                             </div>
                             <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>
                               💰 {(p.totalPrice || 0).toLocaleString()}원 · {new Date(p.createdAt).toLocaleDateString("ko-KR")}
@@ -3778,58 +3780,83 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
 }
 
 // ─── Print Request (출력 신청) ───────────────────────────────────
+const PRINT_SIZE_OPTIONS = ["A2", "A1", "900x1200", "900x1800", "600x1500"];
+const PRINT_TYPE_OPTIONS = ["COATED_DRAWING", "COATED_IMAGE", "MATT_IMAGE", "GLOSS_IMAGE"];
+const PRINT_TYPE_LABELS = {
+  COATED_DRAWING: "Coated(도면)",
+  COATED_IMAGE: "Coated(이미지)",
+  MATT_IMAGE: "Matt(이미지)",
+  GLOSS_IMAGE: "Gloss(이미지)",
+  BW: "흑백",
+  COLOR: "컬러",
+};
 const PRINT_PRICES = {
-  A4_BW: 50,      // A4 흑백
-  A4_COLOR: 200,  // A4 컬러
-  A3_BW: 100,     // A3 흑백
-  A3_COLOR: 500,  // A3 컬러
-  A2_BW: 500,     // A2 흑백
-  A2_COLOR: 1500, // A2 컬러
-  A1_BW: 1000,    // A1 흑백
-  A1_COLOR: 3000, // A1 컬러
-  A0_BW: 2000,    // A0 흑백
-  A0_COLOR: 5000, // A0 컬러
+  A2_COATED_DRAWING: 700,
+  A2_COATED_IMAGE: 1400,
+  A2_MATT_IMAGE: 2100,
+  A2_GLOSS_IMAGE: 4200,
+  A1_COATED_DRAWING: 1400,
+  A1_COATED_IMAGE: 2800,
+  A1_MATT_IMAGE: 3500,
+  A1_GLOSS_IMAGE: 7000,
+  "900x1200_COATED_DRAWING": 2800,
+  "900x1200_COATED_IMAGE": 4900,
+  "900x1200_MATT_IMAGE": 7000,
+  "900x1200_GLOSS_IMAGE": 14000,
+  "900x1800_COATED_DRAWING": 3500,
+  "900x1800_COATED_IMAGE": 7000,
+  "900x1800_MATT_IMAGE": 10500,
+  "900x1800_GLOSS_IMAGE": 21000,
+  "600x1500_COATED_DRAWING": 2100,
+  "600x1500_COATED_IMAGE": 4900,
+  "600x1500_MATT_IMAGE": 7000,
+  "600x1500_GLOSS_IMAGE": 14000,
+};
+const PRINT_PLUS600_PRICES = {
+  COATED_DRAWING: 700,
+  COATED_IMAGE: 2100,
+  MATT_IMAGE: 3500,
+  GLOSS_IMAGE: 7000,
 };
 
 const KAKAO_BANK_ACCOUNT = "3333-12-3456789"; // 카카오뱅크 계좌번호 (예시)
 
 function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNotification, syncPrintToSheet, sendEmailNotification, isMobile }) {
-  const [paperSize, setPaperSize] = useState("A4");
-  const [colorMode, setColorMode] = useState("BW");
+  const [paperSize, setPaperSize] = useState("A2");
+  const [colorMode, setColorMode] = useState("COATED_DRAWING");
   const [copies, setCopies] = useState(1);
+  const [plus600Count, setPlus600Count] = useState(0);
   const [printFile, setPrintFile] = useState(null);
   const [paymentProof, setPaymentProof] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [note, setNote] = useState("");
-  const [urgentPickup, setUrgentPickup] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const printFileRef = useRef(null);
   const paymentFileRef = useRef(null);
 
   const priceKey = `${paperSize}_${colorMode}`;
-  const unitPrice = PRINT_PRICES[priceKey] || 50;
-  const totalPrice = unitPrice * copies;
+  const unitPrice = PRINT_PRICES[priceKey] || 0;
+  const plus600UnitPrice = PRINT_PLUS600_PRICES[colorMode] || 0;
+  const colorModeLabel = PRINT_TYPE_LABELS[colorMode] || colorMode;
+  const totalPrice = (unitPrice * copies) + (plus600UnitPrice * plus600Count * copies);
 
   const handlePrintFileUpload = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setPrintFile({ name: file.name, size: file.size, type: file.type, data: reader.result });
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPrintFile({ name: file.name, size: file.size, type: file.type, data: reader.result });
+    };
+    reader.readAsDataURL(file);
   };
 
   const handlePaymentUpload = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setPaymentProof({ name: file.name, size: file.size, type: file.type, data: reader.result });
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPaymentProof({ name: file.name, size: file.size, type: file.type, data: reader.result });
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async () => {
@@ -3838,7 +3865,7 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
       return;
     }
     if (!paymentProof) {
-      alert("송금 완료 캡처를 업로드해주세요.");
+      alert("입금 완료 캡처를 업로드해주세요.");
       return;
     }
 
@@ -3852,37 +3879,34 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
       paperSize,
       colorMode,
       copies,
+      plus600Count,
       unitPrice,
       totalPrice,
+      plus600UnitPrice,
+      plus600Price: plus600UnitPrice * plus600Count * copies,
       printFile,
       paymentProof,
-      note: note.trim(),
-      urgentPickup,
-      status: "pending", // pending | processing | completed | cancelled
+      status: "pending",
       createdAt: ts(),
       completedAt: null,
     };
 
     updatePrintRequests(prev => [newRequest, ...prev]);
-    addLog(`출력 신청: ${paperSize} ${colorMode === "BW" ? "흑백" : "컬러"} ${copies}장`, "print", { studentId: user.id });
+    addLog(`출력 신청: ${paperSize} ${colorModeLabel} ${copies}장${plus600Count > 0 ? ` (+600 x ${plus600Count})` : ""}`, "print", { studentId: user.id });
     addNotification(`🖨️ 새 출력 신청: ${user.name} - ${paperSize} ${copies}장`, "info", true);
 
-    // 구글 시트 연동
     await syncPrintToSheet?.(newRequest);
 
-    // 학생 이메일 알림
     sendEmailNotification?.({
       to: user.email || undefined,
       subject: `[출력 신청 접수] ${user.name} · ${paperSize} ${copies}장`,
-      body: `출력 신청이 접수되었습니다.\n\n- 학생: ${user.name} (${user.id})\n- 용지: ${paperSize}\n- 색상: ${colorMode === "BW" ? "흑백" : "컬러"}\n- 매수: ${copies}장\n- 금액: ${totalPrice.toLocaleString()}원\n- 비고: ${note.trim() || "없음"}\n\n근로학생이 확인 후 출력해드립니다.`,
+      body: `출력 신청이 접수되었습니다.\n\n- 학생: ${user.name} (${user.id})\n- 용지: ${paperSize}\n- 재질: ${colorModeLabel}\n- 매수: ${copies}장\n- +600 추가: ${plus600Count}개\n- 금액: ${totalPrice.toLocaleString()}원\n\n근로학생이 확인 후 출력해드립니다.`,
     });
 
-    // 초기화
     setPrintFile(null);
     setPaymentProof(null);
     setCopies(1);
-    setNote("");
-    setUrgentPickup(false);
+    setPlus600Count(0);
     setSubmitting(false);
     alert("출력 신청이 완료되었습니다! 근로학생이 확인 후 출력해드립니다.");
   };
@@ -3892,28 +3916,50 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
 
   return (
     <div style={{ paddingTop: 20 }}>
-      {/* 출력 가격표 안내 */}
       <Card style={{ marginBottom: 20, background: theme.surface }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
           <Icons.file size={20} color={theme.accent} />
           <div style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>📋 출력 가격표 및 안내</div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(3, 1fr)" : "repeat(5, 1fr)", gap: 8, marginBottom: 16 }}>
-          {["A4", "A3", "A2", "A1", "A0"].map(size => (
-            <div key={size} style={{ background: theme.card, padding: 10, borderRadius: 8, textAlign: "center", border: `1px solid ${theme.border}` }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: theme.accent, marginBottom: 6 }}>{size}</div>
-              <div style={{ fontSize: 11, color: theme.textMuted }}>흑백 {PRINT_PRICES[`${size}_BW`]}원</div>
-              <div style={{ fontSize: 11, color: theme.textMuted }}>컬러 {PRINT_PRICES[`${size}_COLOR`]}원</div>
-            </div>
-          ))}
-        </div>
-        <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.6 }}>
-          💳 <strong>송금 계좌:</strong> 카카오뱅크 {KAKAO_BANK_ACCOUNT}<br />
-          ⏰ <strong>운영시간:</strong> 평일 10:00~17:00 (점심시간 12:00~13:00 제외)<br />
-          📍 <strong>수령장소:</strong> 건축대학 출력실 (복지관 6층)
+
+        <div style={{ overflowX: "auto", marginBottom: 16 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
+            <thead>
+              <tr>
+                <th style={{ border: `1px solid ${theme.border}`, padding: "8px 10px", textAlign: "left", fontSize: 12, color: theme.textMuted }}>사이즈</th>
+                {PRINT_TYPE_OPTIONS.map(type => (
+                  <th key={type} style={{ border: `1px solid ${theme.border}`, padding: "8px 10px", textAlign: "right", fontSize: 12, color: theme.textMuted }}>
+                    {PRINT_TYPE_LABELS[type]}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {PRINT_SIZE_OPTIONS.map(size => (
+                <tr key={size}>
+                  <td style={{ border: `1px solid ${theme.border}`, padding: "8px 10px", fontSize: 13, fontWeight: 600, color: theme.text }}>{size}</td>
+                  {PRINT_TYPE_OPTIONS.map(type => (
+                    <td key={`${size}_${type}`} style={{ border: `1px solid ${theme.border}`, padding: "8px 10px", textAlign: "right", fontSize: 13, color: theme.text }}>
+                      {(PRINT_PRICES[`${size}_${type}`] || 0).toLocaleString()}원
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
-        {/* 내 출력 신청 내역 배너 */}
+        <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.6 }}>
+          💳 <strong>입금 계좌:</strong> 카카오뱅크 {KAKAO_BANK_ACCOUNT}<br />
+          🕒 <strong>운영시간:</strong> 평일 10:00~17:00 (점심시간 12:00~13:00 제외)<br />
+          📍 <strong>수령장소:</strong> 건축대학 출력실 (복지관 6층)<br />
+          ℹ️ <strong>안내:</strong> 표 기준은 1장 단가이며, <code>+600</code>은 추가 600mm 길이 기준입니다.
+        </div>
+        <div style={{ marginTop: 10, fontSize: 12, color: theme.textMuted }}>
+          <strong>+600 추가금(개당):</strong>{" "}
+          {PRINT_TYPE_OPTIONS.map(type => `${PRINT_TYPE_LABELS[type]} ${PRINT_PLUS600_PRICES[type].toLocaleString()}원`).join(" · ")}
+        </div>
+
         <button
           onClick={() => setShowHistoryModal(true)}
           style={{
@@ -3953,7 +3999,6 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
         </button>
       </Card>
 
-      {/* 출력 신청 내역 모달 */}
       {showHistoryModal && (
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
@@ -3965,7 +4010,6 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
             background: theme.card, borderRadius: 16, width: "100%", maxWidth: 500, boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
             maxHeight: "80vh", overflow: "hidden", display: "flex", flexDirection: "column",
           }} onClick={e => e.stopPropagation()}>
-            {/* 모달 헤더 */}
             <div style={{
               padding: "16px 20px", borderBottom: `1px solid ${theme.border}`,
               display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -3978,11 +4022,10 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
               }}>✕</button>
             </div>
 
-            {/* 모달 내용 */}
             <div style={{ padding: 20, overflowY: "auto", flex: 1 }}>
               {printRequests.length === 0 ? (
                 <div style={{ textAlign: "center", padding: 40, color: theme.textDim }}>
-                  <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>🖨</div>
                   <div style={{ fontSize: 14 }}>출력 신청 내역이 없습니다</div>
                 </div>
               ) : (
@@ -3997,11 +4040,10 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
                           <span style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{req.paperSize}</span>
                           <span style={{
                             fontSize: 12, marginLeft: 8, padding: "2px 8px", borderRadius: 4,
-                            background: req.colorMode === "BW" ? theme.surface : "linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3)",
-                            color: req.colorMode === "BW" ? theme.textMuted : "#fff",
-                            border: `1px solid ${theme.border}`,
-                          }}>{req.colorMode === "BW" ? "흑백" : "컬러"}</span>
+                            background: theme.surface, color: theme.textMuted, border: `1px solid ${theme.border}`,
+                          }}>{PRINT_TYPE_LABELS[req.colorMode] || req.colorMode}</span>
                           <span style={{ fontSize: 13, color: theme.textMuted, marginLeft: 8 }}>× {req.copies}장</span>
+                          {req.plus600Count > 0 && <span style={{ fontSize: 13, color: theme.textMuted, marginLeft: 8 }}>+600 × {req.plus600Count}</span>}
                         </div>
                         <Badge color={statusColors[req.status]}>{statusLabels[req.status]}</Badge>
                       </div>
@@ -4016,21 +4058,12 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
                           {req.totalPrice?.toLocaleString()}원
                         </span>
                       </div>
-                      {req.urgentPickup && (
-                        <div style={{ fontSize: 11, color: theme.red, marginTop: 6 }}>🚨 긴급 수령 요청</div>
-                      )}
-                      {req.note && (
-                        <div style={{ fontSize: 11, color: theme.textDim, marginTop: 4, padding: "6px 8px", background: theme.card, borderRadius: 6 }}>
-                          💬 {req.note}
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* 모달 푸터 */}
             <div style={{ padding: "12px 20px", borderTop: `1px solid ${theme.border}`, background: theme.surface }}>
               <Button size="sm" variant="ghost" onClick={() => setShowHistoryModal(false)} style={{ width: "100%", justifyContent: "center" }}>
                 닫기
@@ -4040,15 +4073,13 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
         </div>
       )}
 
-      {/* 출력 신청 폼 */}
       <Card style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, color: theme.text }}>🖨️ 출력 신청</div>
 
-        {/* 용지 크기 */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>용지 크기</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {["A4", "A3", "A2", "A1", "A0"].map(size => (
+            {PRINT_SIZE_OPTIONS.map(size => (
               <button key={size} onClick={() => setPaperSize(size)} style={{
                 padding: "10px 20px", borderRadius: 8, border: `1px solid ${paperSize === size ? theme.accent : theme.border}`,
                 background: paperSize === size ? theme.accentBg : "transparent",
@@ -4059,26 +4090,20 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
           </div>
         </div>
 
-        {/* 색상 모드 */}
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>색상</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setColorMode("BW")} style={{
-              padding: "10px 24px", borderRadius: 8, border: `1px solid ${colorMode === "BW" ? theme.accent : theme.border}`,
-              background: colorMode === "BW" ? theme.accentBg : "transparent",
-              color: colorMode === "BW" ? theme.accent : theme.textMuted,
-              fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: theme.font,
-            }}>⬛ 흑백</button>
-            <button onClick={() => setColorMode("COLOR")} style={{
-              padding: "10px 24px", borderRadius: 8, border: `1px solid ${colorMode === "COLOR" ? theme.accent : theme.border}`,
-              background: colorMode === "COLOR" ? theme.accentBg : "transparent",
-              color: colorMode === "COLOR" ? theme.accent : theme.textMuted,
-              fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: theme.font,
-            }}>🌈 컬러</button>
+          <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>재질</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {PRINT_TYPE_OPTIONS.map(type => (
+              <button key={type} onClick={() => setColorMode(type)} style={{
+                padding: "10px 14px", borderRadius: 8, border: `1px solid ${colorMode === type ? theme.accent : theme.border}`,
+                background: colorMode === type ? theme.accentBg : "transparent",
+                color: colorMode === type ? theme.accent : theme.textMuted,
+                fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: theme.font,
+              }}>{PRINT_TYPE_LABELS[type]}</button>
+            ))}
           </div>
         </div>
 
-        {/* 매수 */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>매수</div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -4094,17 +4119,35 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
               width: 36, height: 36, borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.surface,
               color: theme.text, fontSize: 18, cursor: "pointer", fontFamily: theme.font,
             }}>+</button>
-            <span style={{ fontSize: 13, color: theme.textMuted, marginLeft: 8 }}>장당 {unitPrice}원</span>
+            <span style={{ fontSize: 13, color: theme.textMuted, marginLeft: 8 }}>장당 {unitPrice.toLocaleString()}원</span>
+          </div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>+600 추가 개수</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={() => setPlus600Count(Math.max(0, plus600Count - 1))} style={{
+              width: 36, height: 36, borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.surface,
+              color: theme.text, fontSize: 18, cursor: "pointer", fontFamily: theme.font,
+            }}>-</button>
+            <input type="number" value={plus600Count} onChange={e => setPlus600Count(Math.max(0, parseInt(e.target.value) || 0))} min={0} style={{
+              width: 60, padding: "8px 12px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.surface,
+              color: theme.text, fontSize: 16, fontWeight: 600, textAlign: "center", fontFamily: theme.font,
+            }} />
+            <button onClick={() => setPlus600Count(plus600Count + 1)} style={{
+              width: 36, height: 36, borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.surface,
+              color: theme.text, fontSize: 18, cursor: "pointer", fontFamily: theme.font,
+            }}>+</button>
+            <span style={{ fontSize: 13, color: theme.textMuted, marginLeft: 8 }}>
+              개당 {plus600UnitPrice.toLocaleString()}원 (총 {(plus600UnitPrice * plus600Count * copies).toLocaleString()}원)
+            </span>
           </div>
         </div>
 
-        {/* 총 금액 */}
         <div style={{ padding: 16, background: theme.accentBg, borderRadius: 8, marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>총 결제 금액</span>
           <span style={{ fontSize: 24, fontWeight: 800, color: theme.accent }}>{totalPrice.toLocaleString()}원</span>
         </div>
 
-        {/* 출력 파일 업로드 */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>출력 파일 업로드 <span style={{ color: theme.red }}>*</span></div>
           <input type="file" ref={printFileRef} onChange={handlePrintFileUpload} accept=".pdf,.jpg,.jpeg,.png,.ai,.psd,.dwg" style={{ display: "none" }} />
@@ -4117,11 +4160,10 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
           </button>
         </div>
 
-        {/* 송금 캡처 업로드 */}
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>송금 완료 캡처 <span style={{ color: theme.red }}>*</span></div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>입금 완료 캡처 <span style={{ color: theme.red }}>*</span></div>
           <div style={{ fontSize: 11, color: theme.yellow, marginBottom: 8, padding: "8px 12px", background: theme.yellowBg, borderRadius: 6 }}>
-            💡 카카오뱅크 {KAKAO_BANK_ACCOUNT}로 {totalPrice.toLocaleString()}원을 송금한 후 캡처해주세요
+            💡 카카오뱅크 {KAKAO_BANK_ACCOUNT}로 {totalPrice.toLocaleString()}원을 입금 후 캡처해주세요
           </div>
           <input type="file" ref={paymentFileRef} onChange={handlePaymentUpload} accept=".jpg,.jpeg,.png" style={{ display: "none" }} />
           <button onClick={() => paymentFileRef.current?.click()} style={{
@@ -4129,26 +4171,10 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
             background: paymentProof ? theme.greenBg : "transparent", color: paymentProof ? theme.green : theme.textMuted,
             fontSize: 13, cursor: "pointer", fontFamily: theme.font, textAlign: "center",
           }}>
-            {paymentProof ? `✅ ${paymentProof.name}` : "📸 송금 캡처 이미지를 업로드하세요"}
+            {paymentProof ? `✅ ${paymentProof.name}` : "💰 입금 캡처 이미지를 업로드하세요"}
           </button>
         </div>
 
-        {/* 요청사항 */}
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>요청사항 (선택)</div>
-          <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="예: 양면출력 / 특정 페이지만 / 두껍게 출력 등" style={{
-            width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.surface,
-            color: theme.text, fontSize: 13, fontFamily: theme.font, resize: "none", minHeight: 60,
-          }} />
-        </div>
-
-        {/* 긴급 수령 */}
-        <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, cursor: "pointer" }}>
-          <input type="checkbox" checked={urgentPickup} onChange={e => setUrgentPickup(e.target.checked)} style={{ width: 18, height: 18 }} />
-          <span style={{ fontSize: 13, color: theme.text }}>🚨 긴급 수령 요청 (가능한 빨리 출력 요청)</span>
-        </label>
-
-        {/* 제출 버튼 */}
         <Button size="lg" onClick={handleSubmit} disabled={submitting || !printFile || !paymentProof} style={{ width: "100%", justifyContent: "center" }}>
           {submitting ? "신청 중..." : "출력 신청하기"}
         </Button>
@@ -4156,8 +4182,6 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
     </div>
   );
 }
-
-// ─── Student History ─────────────────────────────────────────────
 function StudentHistory({ user, reservations, equipRentals, updateReservations, sendEmailNotification, addLog, addNotification }) {
   const [cancelConfirm, setCancelConfirm] = useState(null);
   const [cancelling, setCancelling] = useState(false);
@@ -4531,7 +4555,7 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
       sendEmailNotification?.({
         to: req.studentEmail,
         subject: `[출력 완료] ${req.studentName}님 · ${req.paperSize} ${req.copies}장`,
-        body: `출력이 완료되었습니다.\n\n- 용지: ${req.paperSize}\n- 색상: ${req.colorMode === "BW" ? "흑백" : "컬러"}\n- 매수: ${req.copies}장\n- 금액: ${(req.totalPrice || 0).toLocaleString()}원\n\n건축대학 출력실(복지관 6층)에서 수령해주세요.`,
+        body: `출력이 완료되었습니다.\n\n- 용지: ${req.paperSize}\n- 재질: ${PRINT_TYPE_LABELS[req.colorMode] || req.colorMode}\n- 매수: ${req.copies}장\n- +600 추가: ${req.plus600Count || 0}개\n- 금액: ${(req.totalPrice || 0).toLocaleString()}원\n\n건축대학 출력실(복지관 6층)에서 수령해주세요.`,
       });
     }
   };
@@ -4584,26 +4608,24 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
           filtered.map(req => (
             <Card key={req.id} style={{
               padding: 16, cursor: "pointer",
-              borderColor: req.urgentPickup ? theme.red : (req.status === "pending" ? theme.yellow : theme.border),
-              background: req.urgentPickup ? theme.redBg : theme.card,
+              borderColor: req.status === "pending" ? theme.yellow : theme.border,
+              background: theme.card,
             }} onClick={() => setSelectedRequest(selectedRequest?.id === req.id ? null : req)}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                    {req.urgentPickup && <span style={{ fontSize: 16 }}>🚨</span>}
                     <span style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>{req.studentName}</span>
                     <Badge color="dim">{req.studentDept}</Badge>
                     <Badge color={statusColors[req.status]}>{statusLabels[req.status]}</Badge>
                   </div>
                   <div style={{ display: "flex", gap: 12, fontSize: 13, color: theme.textMuted }}>
-                    <span>📄 {req.paperSize} {req.colorMode === "BW" ? "흑백" : "컬러"}</span>
+                    <span>📄 {req.paperSize} {PRINT_TYPE_LABELS[req.colorMode] || req.colorMode}{req.plus600Count > 0 ? ` (+600 x ${req.plus600Count})` : ""}</span>
                     <span>📋 {req.copies}장</span>
                     <span>💰 {req.totalPrice?.toLocaleString()}원</span>
                   </div>
                   <div style={{ fontSize: 11, color: theme.textDim, marginTop: 6 }}>
                     신청: {req.createdAt?.slice(5, 16).replace("T", " ")}
                   </div>
-                  {req.note && <div style={{ fontSize: 12, color: theme.accent, marginTop: 6 }}>💬 {req.note}</div>}
                 </div>
               </div>
 
@@ -5600,7 +5622,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
     reader.readAsDataURL(file);
   };
 
-  // 수료증 개수 계산
+  // 이수증 개수 계산
   const certificateCount = certificates ? Object.keys(certificates).length : 0;
 
   useEffect(() => {
@@ -5783,12 +5805,12 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
       if (cert.studentEmail && sendEmailNotification) {
         sendEmailNotification({
           to: cert.studentEmail,
-          subject: `[국민대 건축대학] 안전교육 수료증 승인 완료`,
-          body: `안녕하세요, ${cert.studentName}님.\n\n교학팀에서 안전교육 수료증 확인을 완료하였습니다.\n\n해당 메일을 받으신 시점부터 포털 로그인이 가능합니다.\n\n감사합니다.\n국민대학교 건축대학 교학팀`
+          subject: `[국민대 건축대학] 안전교육이수증 승인 완료`,
+          body: `안녕하세요, ${cert.studentName}님.\n\n교학팀에서 안전교육이수증 확인을 완료하였습니다.\n\n해당 메일을 받으신 시점부터 포털 로그인이 가능합니다.\n\n감사합니다.\n국민대학교 건축대학 교학팀`
         });
       }
 
-      addLog(`[관리자] 수료증 승인: ${cert.studentName}(${cert.studentId})`, "admin");
+      addLog(`[관리자] 이수증 승인: ${cert.studentName}(${cert.studentId})`, "admin");
       setCertModal(null);
       setApproving(false);
     } catch (err) {
@@ -5809,7 +5831,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
     } else {
       store.set(`certFile_${cert.studentId}`, null);
     }
-    addLog(`[관리자] 수료증 반려: ${cert.studentName}(${cert.studentId})`, "admin");
+    addLog(`[관리자] 이수증 반려: ${cert.studentName}(${cert.studentId})`, "admin");
     setCertModal(null);
   };
 
@@ -6399,13 +6421,13 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
 
       {tab === "certificates" && (
         <div>
-          <SectionTitle icon={<Icons.file size={16} color={theme.blue} />}>수료증 관리</SectionTitle>
+          <SectionTitle icon={<Icons.file size={16} color={theme.blue} />}>이수증 관리</SectionTitle>
           <Card>
             <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 14, lineHeight: 1.6 }}>
-              학생들이 업로드한 안전교육 수료증을 확인하고 관리합니다.
+              학생들이 업로드한 안전교육이수증을 확인하고 관리합니다.
             </div>
             {!Object.keys(certificates || {}).length ? (
-              <Empty icon={<Icons.file size={28} />} text="업로드된 수료증이 없습니다" />
+              <Empty icon={<Icons.file size={28} />} text="업로드된 이수증이 없습니다" />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {Object.entries(certificates).map(([studentId, cert]) => (
@@ -6422,7 +6444,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                       <div style={{ flex: 1 }}>
                         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
                           <span style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>{cert.studentName || studentId}</span>
-                          <Badge color="blue">수료증</Badge>
+                          <Badge color="blue">이수증</Badge>
                         </div>
                         <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 6 }}>
                           학번: {studentId} · 파일명: {cert.fileName}
@@ -6505,7 +6527,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: theme.text, marginBottom: 4 }}>
-                  안전교육 수료증 확인
+                  안전교육이수증 확인
                 </div>
                 <div style={{ fontSize: 13, color: theme.textMuted }}>
                   {certModal.studentName || "이름 없음"} ({certModal.studentId})
@@ -6549,14 +6571,14 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
               ) : certModal.fileType?.startsWith("image/") ? (
                 <img
                   src={certFileData}
-                  alt="수료증"
+                  alt="이수증"
                   style={{ maxWidth: "100%", maxHeight: "60vh", objectFit: "contain" }}
                 />
               ) : certModal.fileType === "application/pdf" ? (
                 <iframe
                   src={certFileData}
                   style={{ width: "100%", height: "60vh", border: "none" }}
-                  title="PDF 수료증"
+                  title="PDF 이수증"
                 />
               ) : (
                 <div style={{ textAlign: "center", padding: 40, color: theme.textMuted }}>
@@ -6611,7 +6633,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
               <Button
                 variant="danger"
                 onClick={() => {
-                  if (window.confirm(`${certModal.studentName}(${certModal.studentId})의 수료증을 반려하시겠습니까?`)) {
+                  if (window.confirm(`${certModal.studentName}(${certModal.studentId})의 이수증을 반려하시겠습니까?`)) {
                     rejectCertificate(certModal);
                   }
                 }}
@@ -6628,3 +6650,5 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
     </div>
   );
 }
+
+
