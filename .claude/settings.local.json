@@ -4,7 +4,10 @@
       "Bash(npx vite build)",
       "WebFetch(domain:www.kookmin.ac.kr)",
       "Bash(python3 -c \"import os; os.remove\\(''건축대학_관리시스템_v1.jsx''\\)\")",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(timeout 10 npx vite:*)",
+      "WebFetch(domain:kookmin-uni-architecture-portal-mu.vercel.app)",
+      "WebFetch(domain:etdpijfbnepaeojkqndg.supabase.co)"
     ]
   }
 }
