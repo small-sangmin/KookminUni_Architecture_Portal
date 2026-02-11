@@ -6,7 +6,7 @@ import store from "../utils/storage";
 import Icons from "../components/Icons";
 import { Badge, Card, Button, Input, SectionTitle, Empty, Divider } from "../components/ui";
 
-function WorkerDashboard({ reservations, updateReservations, equipRentals, updateEquipRentals, notifications, markNotifRead, markAllNotifsRead, unreadCount, addLog, workerName, sendEmailNotification, printRequests, visitCount, isMobile }) {
+function WorkerDashboard({ reservations, updateReservations, equipRentals, updateEquipRentals, notifications, markNotifRead, markAllNotifsRead, unreadCount, addLog, workerName, sendEmailNotification, printRequests, visitCount, dailyVisits, isMobile }) {
   const [showNotifPopup, setShowNotifPopup] = useState(false);
   const [expandedChecklist, setExpandedChecklist] = useState(null);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
@@ -54,6 +54,12 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
   const totalRentals = equipRentals.length;
   const returnedRentals = equipRentals.filter(r => r.status === "returned").length;
 
+  // 예약 기간 범위
+  const resDates = reservations.map(r => r.date).filter(Boolean).sort();
+  const resDateRange = resDates.length > 0
+    ? `${resDates[0]} ~ ${resDates[resDates.length - 1]}`
+    : today;
+
   // 실기실별 예약 통계
   const roomStats = ROOMS.map(room => ({
     name: room.name.replace("실기실 ", ""),
@@ -73,6 +79,14 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
     count: reservations.filter(r => r.date === date && r.status === "approved").length
   }));
   const maxDailyCount = Math.max(...dailyStats.map(d => d.count), 20);
+
+  // 일별 방문자 데이터 (최근 7일)
+  const dailyVisitorStats = last7Days.map(date => ({
+    date,
+    day: ["일", "월", "화", "수", "목", "금", "토"][new Date(date).getDay()],
+    count: (dailyVisits || {})[date] || 0,
+  }));
+  const maxVisitorCount = Math.max(...dailyVisitorStats.map(d => d.count), 1);
 
   // 도넛 차트 렌더링 함수
   const DonutChart = ({ data, size = 120, strokeWidth = 16 }) => {
@@ -421,10 +435,9 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
       </Card>
 
       {/* ═══ 간단 요약 카드 ═══ */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: 10, marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(3, 1fr)", gap: 10, marginBottom: 20 }}>
         {[
           { label: "오늘 예약", value: todayRes.filter(r => r.date === today).length, icon: <Icons.calendar size={15} color={theme.accent} />, color: theme.accent },
-          { label: "총 예약", value: totalReservations, icon: <Icons.list size={15} color={theme.blue} />, color: theme.blue },
           { label: "물품 대여", value: totalRentals, icon: <Icons.package size={15} color={theme.yellow} />, color: theme.yellow },
           { label: "방문자", value: visitCount || 0, icon: <Icons.users size={15} color={theme.green} />, color: theme.green },
         ].map((stat, i) => (
@@ -453,7 +466,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
             <span style={{ fontSize: 11, color: theme.textDim, transition: "transform 0.2s", display: "inline-block", transform: analyticsOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
           </div>
         </div>
-        <div style={{ maxHeight: analyticsOpen ? 800 : 0, overflow: "hidden", transition: "max-height 0.4s ease-in-out" }}>
+        <div style={{ maxHeight: analyticsOpen ? 1200 : 0, overflow: "hidden", transition: "max-height 0.4s ease-in-out" }}>
           {/* 도넛 + 주간 차트 + 실기실별 이용 */}
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 12 }}>
             {/* 주간 예약 현황 */}
@@ -511,6 +524,80 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
               </div>
             </Card>
           </div>
+
+          {/* 일별 방문자 선 그래프 */}
+          <Card style={{ padding: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Icons.users size={15} color={theme.green} />
+                <span style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>일별 방문자</span>
+              </div>
+              <div style={{ fontSize: 11, color: theme.textMuted }}>{last7Days[0]} ~ {last7Days[6]}</div>
+            </div>
+            <div style={{ position: "relative", height: 160 }}>
+              {/* Y축 라벨 */}
+              <div style={{ position: "absolute", left: 0, top: 0, bottom: 24, display: "flex", flexDirection: "column", justifyContent: "space-between", fontSize: 10, color: theme.textDim, width: 24 }}>
+                <span>{maxVisitorCount}</span>
+                <span>{Math.round(maxVisitorCount / 2)}</span>
+                <span>0</span>
+              </div>
+              {/* 그래프 영역 */}
+              <div style={{ marginLeft: 28, height: "calc(100% - 24px)", position: "relative" }}>
+                {/* 가로 가이드 라인 */}
+                {[0, 0.5, 1].map((ratio, i) => (
+                  <div key={i} style={{ position: "absolute", left: 0, right: 0, top: `${ratio * 100}%`, borderBottom: `1px ${i === 2 ? "solid" : "dashed"} ${theme.border}`, opacity: 0.5 }} />
+                ))}
+                {/* SVG 선 그래프 */}
+                <svg width="100%" height="100%" viewBox="0 0 600 136" preserveAspectRatio="none" style={{ position: "absolute", top: 0, left: 0 }}>
+                  {/* 영역 채우기 */}
+                  <polygon
+                    points={
+                      dailyVisitorStats.map((d, i) => {
+                        const x = (i / (dailyVisitorStats.length - 1)) * 600;
+                        const y = 136 - (d.count / maxVisitorCount) * 136;
+                        return `${x},${y}`;
+                      }).join(" ") + ` 600,136 0,136`
+                    }
+                    fill={theme.green}
+                    opacity={0.1}
+                  />
+                  {/* 선 */}
+                  <polyline
+                    points={dailyVisitorStats.map((d, i) => {
+                      const x = (i / (dailyVisitorStats.length - 1)) * 600;
+                      const y = 136 - (d.count / maxVisitorCount) * 136;
+                      return `${x},${y}`;
+                    }).join(" ")}
+                    fill="none"
+                    stroke={theme.green}
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {/* 점 */}
+                  {dailyVisitorStats.map((d, i) => {
+                    const x = (i / (dailyVisitorStats.length - 1)) * 600;
+                    const y = 136 - (d.count / maxVisitorCount) * 136;
+                    return (
+                      <g key={i}>
+                        <circle cx={x} cy={y} r={d.date === today ? 7 : 5} fill={theme.green} opacity={0.2} />
+                        <circle cx={x} cy={y} r={d.date === today ? 5 : 3.5} fill={d.date === today ? theme.green : theme.card} stroke={theme.green} strokeWidth={2} />
+                        <text x={x} y={y - 12} textAnchor="middle" fontSize="11" fontWeight="700" fill={theme.text} fontFamily={theme.fontMono}>
+                          {d.count}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+              {/* X축 라벨 (요일) */}
+              <div style={{ display: "flex", justifyContent: "space-between", marginLeft: 28, marginTop: 8 }}>
+                {dailyVisitorStats.map((d, i) => (
+                  <span key={i} style={{ fontSize: 10, color: d.date === today ? theme.green : theme.textDim, fontWeight: d.date === today ? 700 : 400 }}>{d.day}</span>
+                ))}
+              </div>
+            </div>
+          </Card>
         </div>
       </div>
 

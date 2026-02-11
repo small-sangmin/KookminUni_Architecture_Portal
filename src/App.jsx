@@ -73,6 +73,7 @@ export default function App() {
   const [visitCount, setVisitCount] = useState(0); // 홈페이지 방문 횟수 (로그인 기반)
   const [analyticsData, setAnalyticsData] = useState(null); // 관리 대시보드 analytics 스냅샷
   const [visitedUsers, setVisitedUsers] = useState({}); // 방문한 고유 사용자 목록
+  const [dailyVisits, setDailyVisits] = useState({}); // 일별 방문자 수 { "2026-02-11": 5, ... }
   const [dataLoaded, setDataLoaded] = useState(false);
 
   // ─── Community & Exhibition (shared between LoginPage & AdminPortal) ──
@@ -154,7 +155,7 @@ export default function App() {
         setDataLoaded(true);
 
         // 2단계: 나머지 데이터 백그라운드 로드 (화면 표시 후)
-        const [wk, warn, blk, certs, res, eq, lg, notif, sheet, overdue, inq, prints, visits, visitors, analytics, cmPosts, exhPosts, exhDataOld, eqDB] = await Promise.all([
+        const [wk, warn, blk, certs, res, eq, lg, notif, sheet, overdue, inq, prints, visits, visitors, analytics, cmPosts, exhPosts, exhDataOld, eqDB, dVisits] = await Promise.all([
           store.get("workers"),
           store.get("warnings"),
           store.get("blacklist"),
@@ -174,6 +175,7 @@ export default function App() {
           store.get("exhibitionPosts"),
           store.get("exhibitionData"),
           store.get("equipmentDB"),
+          store.get("dailyVisits"),
         ]);
         if (Array.isArray(wk) && wk.length > 0) {
           setWorkers(wk);
@@ -194,6 +196,7 @@ export default function App() {
         if (prints) setPrintRequests(prints);
         if (visits) setVisitCount(visits);
         if (visitors) setVisitedUsers(visitors);
+        if (dVisits) setDailyVisits(dVisits);
         if (analytics) setAnalyticsData(analytics);
         if (cmPosts) setCommunityPostsRaw(cmPosts); else store.set("communityPosts", defaultPosts);
         if (exhPosts) {
@@ -687,6 +690,13 @@ export default function App() {
       const newCount = currentCount + 1;
       setVisitCount(newCount);
       await store.set("visitCount", newCount);
+
+      // 일별 방문자 수 기록
+      const todayKey = dateStr();
+      const currentDailyVisits = await store.get("dailyVisits") || {};
+      const updatedDailyVisits = { ...currentDailyVisits, [todayKey]: (currentDailyVisits[todayKey] || 0) + 1 };
+      setDailyVisits(updatedDailyVisits);
+      await store.set("dailyVisits", updatedDailyVisits);
     }
   };
 
@@ -793,6 +803,7 @@ export default function App() {
             printRequests={printRequests} updatePrintRequests={updatePrintRequests}
             visitCount={visitCount}
             analyticsData={analyticsData}
+            dailyVisits={dailyVisits}
             isMobile={isMobile}
             isDark={isDark} toggleDark={toggleDark}
           />
