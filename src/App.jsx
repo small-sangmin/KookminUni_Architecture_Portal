@@ -11,7 +11,7 @@ import WorkerPortal from "./pages/WorkerPortal";
 import AdminPortal from "./pages/AdminPortal";
 
 // ════════════════════════════════════════════════════════════════
-//  국민대학교 건축대학 포털사이트 v1.0
+//  국민대학교 건축대학  포털사이트 v1.0
 // ════════════════════════════════════════════════════════════════
 
 export default function App() {
