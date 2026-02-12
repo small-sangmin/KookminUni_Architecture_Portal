@@ -193,7 +193,7 @@ export default function App() {
         if (sheet) setSheetConfig(sheet);
         if (overdue) setOverdueFlags(overdue);
         if (inq) setInquiries(inq);
-        if (prints) setPrintRequests(prints);
+        // printRequests는 Supabase 실시간 동기화에서 관리 (아래 useEffect)
         if (visits) setVisitCount(visits);
         if (visitors) setVisitedUsers(visitors);
         if (dVisits) setDailyVisits(dVisits);
@@ -238,25 +238,14 @@ export default function App() {
     };
   }, []);
 
-  // 출력 신청 데이터 실시간 동기화
+  // 출력 신청 데이터: Supabase가 단일 진실 원천(Single Source of Truth)
   const lastLocalPrintWrite = useRef(0);
   useEffect(() => {
-    // 초기 로드: 서버↔로컬 양방향 동기화
+    // 서버에서 데이터 로드 — 서버가 비어있으면 빈 상태 유지
     supabaseStore.get("portal/printRequests").then(serverData => {
       const serverItems = Array.isArray(serverData) ? serverData : [];
-      if (serverItems.length > 0) {
-        // 서버에 데이터가 있으면 서버 기준으로 동기화
-        setPrintRequests(serverItems);
-        store.set("printRequests", serverItems).catch(() => { });
-      } else {
-        // 서버가 비어있으면 로컬 데이터를 서버에 업로드
-        store.get("printRequests").then(localData => {
-          if (Array.isArray(localData) && localData.length > 0) {
-            lastLocalPrintWrite.current = Date.now();
-            supabaseStore.set("portal/printRequests", localData).catch(() => { });
-          }
-        });
-      }
+      setPrintRequests(serverItems);
+      store.set("printRequests", serverItems).catch(() => { });
     });
 
     const unsubscribe = supabaseStore.subscribe("portal/printRequests", (serverData) => {
@@ -368,7 +357,7 @@ export default function App() {
       const next = typeof updater === "function" ? updater(prev) : updater;
       persist("printRequests", next);
       lastLocalPrintWrite.current = Date.now();
-      supabaseStore.set("portal/printRequests", next).catch(() => { });
+      supabaseStore.set("portal/printRequests_v2", next).catch(() => { });
       return next;
     });
   }, [persist]);
