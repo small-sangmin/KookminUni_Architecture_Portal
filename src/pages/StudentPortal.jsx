@@ -8,6 +8,15 @@ import PrintRequest from "../features/PrintRequest";
 import StudentHistory from "../features/StudentHistory";
 import StudentInquiries from "../features/StudentInquiries";
 
+const PRINT_TYPE_LABELS = {
+  COATED_DRAWING: "Coated(평면)",
+  COATED_IMAGE: "Coated(이미지)",
+  MATT_IMAGE: "Matt(이미지)",
+  GLOSS_IMAGE: "Gloss(이미지)",
+  BW: "흑백",
+  COLOR: "컬러",
+};
+
 function StudentPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, syncReservationToSheet, syncPrintToSheet, sendEmailNotification, warnings, inquiries, updateInquiries, printRequests, updatePrintRequests, isMobile, isDark, toggleDark }) {
   const [tab, setTabRaw] = useState("dashboard");
   const [dashboardDetail, setDashboardDetail] = useState(null);
@@ -200,7 +209,7 @@ function StudentPortal({ user, onLogout, reservations, updateReservations, equip
                           <Badge color="green">승인</Badge>
                         </div>
                       ))}
-                      <div style={{ fontSize: 11, color: theme.textDim, textAlign: "right" }}>항목 클릭 시 상세 조정</div>
+                      <div style={{ fontSize: 11, color: theme.textDim, textAlign: "right" }}>항목 클릭시 취소 가능</div>
                       {upcomingReservations.length > 3 && (
                         <div style={{ fontSize: 11, color: theme.textDim, textAlign: "center" }}>외 {upcomingReservations.length - 3}건 더</div>
                       )}
@@ -245,7 +254,7 @@ function StudentPortal({ user, onLogout, reservations, updateReservations, equip
                           </Badge>
                         </div>
                       ))}
-                      <div style={{ fontSize: 11, color: theme.textDim, textAlign: "right" }}>항목 클릭 시 상세 조정</div>
+                      <div style={{ fontSize: 11, color: theme.textDim, textAlign: "right" }}>항목 클릭시 취소 가능</div>
                       {activeRentals.length > 3 && (
                         <div style={{ fontSize: 11, color: theme.textDim, textAlign: "center" }}>외 {activeRentals.length - 3}건 더</div>
                       )}

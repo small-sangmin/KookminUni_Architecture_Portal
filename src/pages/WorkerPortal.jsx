@@ -9,6 +9,7 @@ import LogViewer from "../features/LogViewer";
 
 function WorkerPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, logs, addLog, notifications, markNotifRead, markAllNotifsRead, unreadCount, sendEmailNotification, inquiries, updateInquiries, printRequests, updatePrintRequests, visitCount, analyticsData, dailyVisits, isMobile, isDark, toggleDark }) {
   const [tab, setTabRaw] = useState("dashboard");
+  const safePrintRequests = Array.isArray(printRequests) ? printRequests : [];
   const setTab = useCallback((newTab) => {
     setTabRaw(prev => {
       if (prev !== newTab) history.pushState({ page: "worker", tab: newTab }, "");
@@ -24,7 +25,7 @@ function WorkerPortal({ user, onLogout, reservations, updateReservations, equipR
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
   const pendingInquiries = inquiries?.filter(i => i.status === "pending")?.length || 0;
-  const pendingPrints = printRequests?.filter(p => p.status === "pending" || p.status === "processing")?.length || 0;
+  const pendingPrints = safePrintRequests.filter(p => p.status === "pending" || p.status === "processing").length;
 
   return (
     <div className="fade-in" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -64,14 +65,14 @@ function WorkerPortal({ user, onLogout, reservations, updateReservations, equipR
           notifications={notifications} markNotifRead={markNotifRead} markAllNotifsRead={markAllNotifsRead}
           unreadCount={unreadCount} addLog={addLog} workerName={user.name}
           sendEmailNotification={sendEmailNotification}
-          printRequests={printRequests}
+          printRequests={safePrintRequests}
           visitCount={visitCount}
           dailyVisits={dailyVisits}
           isMobile={isMobile}
         />
       )}
       {tab === "print" && (
-        <PrintManagement printRequests={printRequests} updatePrintRequests={updatePrintRequests} addLog={addLog} workerName={user.name} sendEmailNotification={sendEmailNotification} />
+        <PrintManagement printRequests={safePrintRequests} updatePrintRequests={updatePrintRequests} addLog={addLog} workerName={user.name} sendEmailNotification={sendEmailNotification} />
       )}
       {tab === "inquiries" && (
         <InquiriesPanel inquiries={inquiries} updateInquiries={updateInquiries} workerName={user.name} addLog={addLog} />

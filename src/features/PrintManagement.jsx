@@ -4,11 +4,21 @@ import { ts } from "../utils/helpers";
 import Icons from "../components/Icons";
 import { Badge, Card, Button, SectionTitle, Empty } from "../components/ui";
 
+const PRINT_TYPE_LABELS = {
+  COATED_DRAWING: "Coated(평면)",
+  COATED_IMAGE: "Coated(이미지)",
+  MATT_IMAGE: "Matt(이미지)",
+  GLOSS_IMAGE: "Gloss(이미지)",
+  BW: "흑백",
+  COLOR: "컬러",
+};
+
 function PrintManagement({ printRequests, updatePrintRequests, addLog, workerName, sendEmailNotification }) {
   const [filter, setFilter] = useState("pending"); // pending | processing | completed | all
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const requests = Array.isArray(printRequests) ? printRequests : [];
 
-  const filtered = (printRequests || []).filter(p => {
+  const filtered = requests.filter(p => {
     if (filter === "pending") return p.status === "pending";
     if (filter === "processing") return p.status === "processing";
     if (filter === "completed") return p.status === "completed" || p.status === "cancelled";
@@ -16,7 +26,7 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
   });
 
   const handleStatusChange = (requestId, newStatus) => {
-    const req = (printRequests || []).find(p => p.id === requestId);
+    const req = requests.find(p => p.id === requestId);
     updatePrintRequests(prev => prev.map(p =>
       p.id === requestId
         ? { ...p, status: newStatus, completedAt: newStatus === "completed" ? ts() : p.completedAt, processedBy: workerName }
@@ -32,8 +42,8 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
     }
   };
 
-  const pendingCount = (printRequests || []).filter(p => p.status === "pending").length;
-  const processingCount = (printRequests || []).filter(p => p.status === "processing").length;
+  const pendingCount = requests.filter(p => p.status === "pending").length;
+  const processingCount = requests.filter(p => p.status === "processing").length;
 
   const statusLabels = { pending: "대기중", processing: "출력중", completed: "완료", cancelled: "취소됨" };
   const statusColors = { pending: "yellow", processing: "blue", completed: "green", cancelled: "red" };

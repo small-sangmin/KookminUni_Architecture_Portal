@@ -64,6 +64,9 @@ function StudentHistory({ user, reservations, equipRentals, updateReservations, 
       <SectionTitle icon={<Icons.history size={16} color={theme.accent} />}>이용 내역
         <Badge color="dim">{all.length}건</Badge>
       </SectionTitle>
+      <div style={{ fontSize: 12, color: theme.textDim, marginTop: -8, marginBottom: 12 }}>
+        실기실 사용일 및 물품 반납일 기준 7일 뒤 이용내역이 삭제됩니다.
+      </div>
       {all.length === 0 ? (
         <Empty icon={<Icons.calendar size={32} />} text="아직 이용 내역이 없습니다" />
       ) : (

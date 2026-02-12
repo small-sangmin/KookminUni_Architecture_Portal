@@ -336,6 +336,45 @@ export default function App() {
       return next;
     });
   }, [persist]);
+  // Auto-prune old student history records to reduce stored data size.
+  useEffect(() => {
+    if (!dataLoaded) return;
+
+    const safeReservations = Array.isArray(reservations) ? reservations : [];
+    const safeEquipRentals = Array.isArray(equipRentals) ? equipRentals : [];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const isExpiredAfter7Days = (baseDateStr) => {
+      if (!baseDateStr) return false;
+      const base = new Date(`${baseDateStr}T00:00:00`);
+      if (Number.isNaN(base.getTime())) return false;
+      base.setDate(base.getDate() + 7);
+      return today >= base;
+    };
+
+    const nextReservations = safeReservations.filter(r => !isExpiredAfter7Days(r?.date));
+
+    const nextEquipRentals = safeEquipRentals.filter(r => {
+      const terminal = ["returned", "cancelled"].includes(r?.status);
+      if (!terminal) return true;
+      const baseDate =
+        (typeof r?.returnDate === "string" && r.returnDate.length >= 10 && r.returnDate.slice(0, 10)) ||
+        (typeof r?.returnedAt === "string" && r.returnedAt.length >= 10 && r.returnedAt.slice(0, 10)) ||
+        (typeof r?.cancelledAt === "string" && r.cancelledAt.length >= 10 && r.cancelledAt.slice(0, 10)) ||
+        (typeof r?.createdAt === "string" && r.createdAt.length >= 10 && r.createdAt.slice(0, 10)) ||
+        null;
+      return !isExpiredAfter7Days(baseDate);
+    });
+
+    if (nextReservations.length !== safeReservations.length || !Array.isArray(reservations)) {
+      updateReservations(nextReservations);
+    }
+    if (nextEquipRentals.length !== safeEquipRentals.length || !Array.isArray(equipRentals)) {
+      updateEquipRentals(nextEquipRentals);
+    }
+  }, [dataLoaded, reservations, equipRentals, updateReservations, updateEquipRentals]);
 
   // 관리 대시보드 analytics 스냅샷 저장
   useEffect(() => {
