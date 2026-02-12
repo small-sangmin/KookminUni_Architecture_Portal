@@ -238,20 +238,30 @@ export default function App() {
     };
   }, []);
 
-  // 출력 신청 데이터 실시간 동기화 (로컬 쓰기 직후 구독 콜백 무시)
+  // 출력 신청 데이터 실시간 동기화
   const lastLocalPrintWrite = useRef(0);
   useEffect(() => {
-    // 초기 로드: 서버 데이터가 있으면 서버 기준으로 동기화
+    // 초기 로드: 서버↔로컬 양방향 동기화
     supabaseStore.get("portal/printRequests").then(serverData => {
-      if (Array.isArray(serverData) && serverData.length > 0) {
-        setPrintRequests(serverData);
-        store.set("printRequests", serverData).catch(() => { });
+      const serverItems = Array.isArray(serverData) ? serverData : [];
+      if (serverItems.length > 0) {
+        // 서버에 데이터가 있으면 서버 기준으로 동기화
+        setPrintRequests(serverItems);
+        store.set("printRequests", serverItems).catch(() => { });
+      } else {
+        // 서버가 비어있으면 로컬 데이터를 서버에 업로드
+        store.get("printRequests").then(localData => {
+          if (Array.isArray(localData) && localData.length > 0) {
+            lastLocalPrintWrite.current = Date.now();
+            supabaseStore.set("portal/printRequests", localData).catch(() => { });
+          }
+        });
       }
     });
 
     const unsubscribe = supabaseStore.subscribe("portal/printRequests", (serverData) => {
-      // 로컬 쓰기 직후(500ms 이내) 들어온 구독 이벤트는 무시하여 깜빡임 방지
-      if (Date.now() - lastLocalPrintWrite.current < 500) return;
+      // 로컬 쓰기 직후(3초 이내) 들어온 구독 이벤트는 무시
+      if (Date.now() - lastLocalPrintWrite.current < 3000) return;
       if (Array.isArray(serverData)) {
         setPrintRequests(serverData);
         store.set("printRequests", serverData).catch(() => { });
