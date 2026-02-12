@@ -242,13 +242,13 @@ export default function App() {
   const lastLocalPrintWrite = useRef(0);
   useEffect(() => {
     // 서버에서 데이터 로드 — 서버가 비어있으면 빈 상태 유지
-    supabaseStore.get("portal/printRequests").then(serverData => {
+    supabaseStore.get("portal/printRequests_v2").then(serverData => {
       const serverItems = Array.isArray(serverData) ? serverData : [];
       setPrintRequests(serverItems);
       store.set("printRequests", serverItems).catch(() => { });
     });
 
-    const unsubscribe = supabaseStore.subscribe("portal/printRequests", (serverData) => {
+    const unsubscribe = supabaseStore.subscribe("portal/printRequests_v2", (serverData) => {
       // 로컬 쓰기 직후(3초 이내) 들어온 구독 이벤트는 무시
       if (Date.now() - lastLocalPrintWrite.current < 3000) return;
       if (Array.isArray(serverData)) {
