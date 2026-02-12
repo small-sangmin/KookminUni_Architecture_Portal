@@ -795,6 +795,7 @@ export default function App() {
             user={currentUser} onLogout={handleLogout}
             reservations={reservations} updateReservations={updateReservations}
             equipRentals={equipRentals} updateEquipRentals={updateEquipRentals}
+            equipmentDB={equipmentDB} setEquipmentDB={setEquipmentDB}
             logs={logs} addLog={addLog}
             notifications={notifications} markNotifRead={markNotifRead} markAllNotifsRead={markAllNotifsRead}
             unreadCount={unreadCount}

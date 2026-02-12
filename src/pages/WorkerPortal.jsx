@@ -7,7 +7,7 @@ import PrintManagement from "../features/PrintManagement";
 import InquiriesPanel from "../features/InquiriesPanel";
 import LogViewer from "../features/LogViewer";
 
-function WorkerPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, logs, addLog, notifications, markNotifRead, markAllNotifsRead, unreadCount, sendEmailNotification, inquiries, updateInquiries, printRequests, updatePrintRequests, visitCount, analyticsData, dailyVisits, isMobile, isDark, toggleDark }) {
+function WorkerPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, logs, addLog, notifications, markNotifRead, markAllNotifsRead, unreadCount, sendEmailNotification, inquiries, updateInquiries, printRequests, updatePrintRequests, visitCount, analyticsData, dailyVisits, isMobile, isDark, toggleDark }) {
   const [tab, setTabRaw] = useState("dashboard");
   const setTab = useCallback((newTab) => {
     setTabRaw(prev => {
@@ -60,6 +60,7 @@ function WorkerPortal({ user, onLogout, reservations, updateReservations, equipR
         <WorkerDashboard
           reservations={reservations} updateReservations={updateReservations}
           equipRentals={equipRentals} updateEquipRentals={updateEquipRentals}
+          equipmentDB={equipmentDB} setEquipmentDB={setEquipmentDB}
           notifications={notifications} markNotifRead={markNotifRead} markAllNotifsRead={markAllNotifsRead}
           unreadCount={unreadCount} addLog={addLog} workerName={user.name}
           sendEmailNotification={sendEmailNotification}

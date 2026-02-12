@@ -5,7 +5,7 @@ import { ts, dateStr } from "../utils/helpers";
 import Icons from "../components/Icons";
 import { Badge, Card, Button, Input, SectionTitle, Empty, Divider } from "../components/ui";
 
-function WorkerDashboard({ reservations, updateReservations, equipRentals, updateEquipRentals, notifications, markNotifRead, markAllNotifsRead, unreadCount, addLog, workerName, sendEmailNotification, printRequests, visitCount, dailyVisits, isMobile }) {
+function WorkerDashboard({ reservations, updateReservations, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, notifications, markNotifRead, markAllNotifsRead, unreadCount, addLog, workerName, sendEmailNotification, printRequests, visitCount, dailyVisits, isMobile }) {
   const [showNotifPopup, setShowNotifPopup] = useState(false);
   const [expandedChecklist, setExpandedChecklist] = useState(null);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
@@ -143,6 +143,11 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
     updateEquipRentals(prev => prev.map(r => r.id === rentalId ? { ...r, status: "returned", returnedAt: ts() } : r));
     const rental = equipRentals.find(r => r.id === rentalId);
     if (rental) {
+      setEquipmentDB?.(prev => prev.map(eq => {
+        const matched = rental.items?.find(i => i.id === eq.id);
+        if (!matched) return eq;
+        return { ...eq, available: Math.min(eq.total, (eq.available || 0) + 1) };
+      }));
       addLog(`[반납완료] ${rental.studentName}의 기구 반납 완료 → ${rental.items.map(i => i.name).join(", ")}`, "equipment");
     }
   };
