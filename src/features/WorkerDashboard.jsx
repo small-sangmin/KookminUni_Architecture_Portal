@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { EDITABLE, ROOMS } from "../constants/data";
 import theme from "../constants/theme";
-import { uid, ts, dateStr, formatDate } from "../utils/helpers";
-import store from "../utils/storage";
+import { ts, dateStr } from "../utils/helpers";
 import Icons from "../components/Icons";
 import { Badge, Card, Button, Input, SectionTitle, Empty, Divider } from "../components/ui";
 
@@ -10,21 +9,6 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
   const [showNotifPopup, setShowNotifPopup] = useState(false);
   const [expandedChecklist, setExpandedChecklist] = useState(null);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
-  const [roomCleanup, setRoomCleanup] = useState({});
-
-  // 실기실 정리 확인 — 오늘 날짜 기준 store 연동
-  useEffect(() => {
-    const key = `roomCleanup_${dateStr()}`;
-    store.get(key).then(v => { if (v) setRoomCleanup(v); });
-  }, []);
-  const toggleRoomCleanup = (roomId) => {
-    setRoomCleanup(prev => {
-      const next = { ...prev, [roomId]: !prev[roomId] };
-      store.set(`roomCleanup_${dateStr()}`, next);
-      return next;
-    });
-  };
-
   const todayRes = reservations.filter(r => r.status === "approved");
   const pendingRes = reservations.filter(r => r.status === "pending");
   const pendingRentals = equipRentals.filter(r => r.status === "pending_pickup");
@@ -32,18 +16,10 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
   const pendingPrints = (printRequests || []).filter(p => p.status === "pending" || p.status === "processing").length;
   const today = dateStr();
 
-  // 오늘 사용된 실기실 목록
-  const todayUsedRooms = ROOMS.filter(room =>
-    reservations.some(r => r.roomId === room.id && r.date === today && r.status === "approved")
-  );
-  const allRoomsChecked = todayUsedRooms.length === 0 || todayUsedRooms.every(r => roomCleanup[r.id]);
-
   // 체크리스트 완료 상태
   const checklistItems = [
-    { key: "pending", label: "승인 대기 예약 처리", icon: <Icons.calendar size={16} />, count: pendingRes.length, done: pendingRes.length === 0 },
     { key: "rental", label: "물품 수령/반납 처리", icon: <Icons.package size={16} />, count: activeRentals.length, done: activeRentals.length === 0 },
     { key: "print", label: "출력 대기 처리", icon: <Icons.file size={16} />, count: pendingPrints, done: pendingPrints === 0 },
-    { key: "cleanup", label: "실기실 정리 확인", icon: <Icons.check size={16} />, count: todayUsedRooms.filter(r => !roomCleanup[r.id]).length, done: allRoomsChecked },
   ];
   const doneCount = checklistItems.filter(c => c.done).length;
 
@@ -171,23 +147,6 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
     }));
   };
 
-  const approveReservation = (reservationId) => {
-    updateReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status: "approved", approvedAt: ts(), approvedBy: workerName } : r));
-    const res = reservations.find(r => r.id === reservationId);
-    if (res) {
-      addLog(`[예약승인] ${res.studentName}(${res.studentId}) → ${res.roomName} | ${res.date} ${res.slotLabels?.join(", ")}`, "reservation", { studentId: res.studentId, roomId: res.roomId });
-    }
-  };
-
-  const rejectReservation = (reservationId) => {
-    const reason = window.prompt("반려 사유 (선택)") || "";
-    updateReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status: "rejected", rejectedAt: ts(), rejectedBy: workerName, rejectedReason: reason } : r));
-    const res = reservations.find(r => r.id === reservationId);
-    if (res) {
-      addLog(`[예약반려] ${res.studentName}(${res.studentId}) → ${res.roomName} | ${res.date} ${res.slotLabels?.join(", ")}${reason ? ` | 사유: ${reason}` : ""}`, "reservation", { studentId: res.studentId, roomId: res.roomId });
-    }
-  };
-
   return (
     <div className="fade-in">
       {/* ═══ Header ═══ */}
@@ -257,14 +216,14 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
         {/* 체크리스트 헤더 */}
         <div style={{ padding: "16px 20px", borderBottom: `1px solid ${theme.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Icons.shield size={18} color={doneCount === 4 ? theme.green : theme.accent} />
+            <Icons.shield size={18} color={doneCount === checklistItems.length ? theme.green : theme.accent} />
             <span style={{ fontSize: 16, fontWeight: 800, color: theme.text }}>퇴근 전 체크리스트</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 80, height: 6, borderRadius: 3, background: theme.surface, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${(doneCount / 4) * 100}%`, background: doneCount === 4 ? theme.green : theme.accent, borderRadius: 3, transition: "width 0.3s" }} />
+              <div style={{ height: "100%", width: `${(doneCount / checklistItems.length) * 100}%`, background: doneCount === checklistItems.length ? theme.green : theme.accent, borderRadius: 3, transition: "width 0.3s" }} />
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: doneCount === 4 ? theme.green : theme.accent, fontFamily: theme.fontMono }}>{doneCount}/4</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: doneCount === checklistItems.length ? theme.green : theme.accent, fontFamily: theme.fontMono }}>{doneCount}/{checklistItems.length}</span>
           </div>
         </div>
 
@@ -315,33 +274,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
               background: "rgba(0,0,0,0.15)",
             }}>
               <div style={{ padding: "12px 20px" }}>
-                {/* 1) 승인 대기 예약 */}
-                {item.key === "pending" && (
-                  pendingRes.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "20px 0", color: theme.textDim, fontSize: 13 }}>
-                      <Icons.check size={24} color={theme.green} /><div style={{ marginTop: 8 }}>모든 예약이 처리되었습니다</div>
-                    </div>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {pendingRes.map(res => (
-                        <div key={res.id} style={{ padding: 14, background: theme.card, borderRadius: theme.radiusSm, border: `1px solid ${theme.border}` }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>{res.studentName} <span style={{ color: theme.textMuted, fontWeight: 400 }}>({res.studentId})</span></div>
-                            <Badge color="yellow">대기</Badge>
-                          </div>
-                          <div style={{ fontSize: 13, color: theme.textMuted, marginBottom: 4 }}>{res.roomName} · {res.date} · {res.slotLabels?.join(", ")}</div>
-                          {res.purpose && <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 8 }}>목적: {res.purpose}</div>}
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <Button size="sm" onClick={() => approveReservation(res.id)}>승인</Button>
-                            <Button size="sm" variant="danger" onClick={() => rejectReservation(res.id)}>반려</Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )
-                )}
-
-                {/* 2) 물품 수령/반납 */}
+                {/* 1) 물품 수령/반납 */}
                 {item.key === "rental" && (
                   activeRentals.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "20px 0", color: theme.textDim, fontSize: 13 }}>
@@ -383,7 +316,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
                   )
                 )}
 
-                {/* 3) 출력 대기 */}
+                {/* 2) 출력 대기 */}
                 {item.key === "print" && (
                   pendingPrints === 0 ? (
                     <div style={{ textAlign: "center", padding: "20px 0", color: theme.textDim, fontSize: 13 }}>
@@ -396,35 +329,6 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
                         <span style={{ fontWeight: 600 }}>{pendingPrints}건의 출력 요청이 대기 중입니다.</span>
                       </div>
                       <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 6 }}>출력 대기 탭에서 처리해주세요.</div>
-                    </div>
-                  )
-                )}
-
-                {/* 4) 실기실 정리 확인 */}
-                {item.key === "cleanup" && (
-                  todayUsedRooms.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "20px 0", color: theme.textDim, fontSize: 13 }}>
-                      <Icons.check size={24} color={theme.green} /><div style={{ marginTop: 8 }}>오늘 사용된 실기실이 없습니다</div>
-                    </div>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {todayUsedRooms.map(room => (
-                        <label key={room.id}
-                          onClick={(e) => { e.stopPropagation(); toggleRoomCleanup(room.id); }}
-                          style={{
-                            display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", cursor: "pointer",
-                            background: roomCleanup[room.id] ? theme.greenBg : theme.card,
-                            borderRadius: theme.radiusSm, border: `1px solid ${roomCleanup[room.id] ? theme.greenBorder : theme.border}`,
-                            transition: "all 0.2s",
-                          }}>
-                          <input type="checkbox" checked={!!roomCleanup[room.id]} readOnly style={{ accentColor: theme.green }} />
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: roomCleanup[room.id] ? theme.green : theme.text }}>{room.name}</div>
-                            <div style={{ fontSize: 11, color: theme.textDim }}>{room.floor} · {room.building}</div>
-                          </div>
-                          {roomCleanup[room.id] && <Badge color="green">확인됨</Badge>}
-                        </label>
-                      ))}
                     </div>
                   )
                 )}

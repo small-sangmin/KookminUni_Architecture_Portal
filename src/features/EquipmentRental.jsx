@@ -5,7 +5,7 @@ import { uid, ts, dateStr, tomorrow, addDays } from "../utils/helpers";
 import Icons from "../components/Icons";
 import { Badge, Card, Button, Input, SectionTitle, Empty } from "../components/ui";
 
-function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, sendEmailNotification, isMobile }) {
+function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, isMobile }) {
   const [selected, setSelected] = useState(null);
   const [returnDate, setReturnDate] = useState(addDays(3));
   const [note, setNote] = useState("");
@@ -33,11 +33,6 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
       setEquipmentDB(prev => prev.map(e => e.id === item.id ? { ...e, available: Math.max(0, e.available - 1) } : e));
       addLog(`[기구대여] ${user.name}(${user.id}) → ${item.name} | 반납: ${returnDate}`, "equipment", { studentId: user.id });
       addNotification(`🔧 기구대여 요청: ${user.name} → ${item.name}`, "equipment", true);
-      sendEmailNotification?.({
-        to: user.email || undefined,
-        subject: `[물품 대여 신청] ${user.name} · ${item.name}`,
-        body: `물품 대여 신청이 접수되었습니다.\n\n- 학생: ${user.name} (${user.id})\n- 물품: ${item.icon} ${item.name}\n- 반납 예정일: ${returnDate}\n- 비고: ${note || "없음"}\n\n교학팀에서 수령해주세요.`,
-      });
       setSuccess(rental);
       setSubmitting(false);
       setSelected(null);
@@ -115,8 +110,8 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
           </div>
         </div>
 
-        {/* Right: Details Panel */}
-        <div style={{ flex: 1 }}>
+        {/* Right: Details Panel — Desktop only */}
+        {!isMobile && <div style={{ flex: 1 }}>
           {!selected ? (
             <div style={{
               height: "100%",
@@ -182,8 +177,55 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
               </div>
             );
           })()}
-        </div>
+        </div>}
       </div>
+
+      {/* ═══ Mobile Bottom Sheet ═══ */}
+      {isMobile && selected && (() => {
+        const eq = equipmentDB.find(e => e.id === selected);
+        if (!eq) return null;
+        return (
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, display: "flex", flexDirection: "column" }} onClick={() => setSelected(null)}>
+            <div style={{ flex: "0 0 auto", minHeight: 60, background: "rgba(0,0,0,0.5)" }} />
+            <div onClick={e => e.stopPropagation()} style={{ flex: 1, background: theme.bg, borderRadius: "20px 20px 0 0", padding: "12px 20px 32px", overflowY: "auto", boxShadow: "0 -4px 30px rgba(0,0,0,0.3)" }}>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+                <div style={{ width: 40, height: 4, borderRadius: 2, background: theme.border }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <div style={{ fontSize: 17, fontWeight: 800, color: theme.text }}>대여 신청</div>
+                <Button variant="ghost" size="sm" onClick={() => setSelected(null)}><Icons.x size={18} /></Button>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, padding: 14, background: theme.surface, borderRadius: 12, marginBottom: 16 }}>
+                <div style={{ fontSize: 36, width: 50, textAlign: "center" }}>{eq.icon}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: theme.text, marginBottom: 6 }}>{eq.name}</div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <Badge color="dim">재고 {eq.available}/{eq.total}</Badge>
+                    <Badge color="blue">최대 {eq.maxDays}일</Badge>
+                    {eq.deposit && <Badge color="yellow">보증금 필요</Badge>}
+                  </div>
+                </div>
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <Input label="반납 예정일" type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} />
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <Input label="비고 (선택)" placeholder="예: 수업용, 팀프로젝트 등" value={note} onChange={e => setNote(e.target.value)} />
+              </div>
+              <Card style={{ marginBottom: 16, background: theme.surface, padding: 14 }}>
+                <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 8 }}>대여 요약</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  <Badge color="accent">{eq.icon} {eq.name}</Badge>
+                  <Badge color="blue">반납: {returnDate}</Badge>
+                </div>
+              </Card>
+              <Button size="lg" onClick={handleSubmit} disabled={submitting} style={{ width: "100%", justifyContent: "center" }}>
+                {submitting ? "신청 중..." : `${eq.name} 대여 신청`}
+              </Button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
