@@ -22,12 +22,17 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
   const [downloadingFile, setDownloadingFile] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [deleting, setDeleting] = useState(false);
+  // 반려 관련 state
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectTargetId, setRejectTargetId] = useState(null);
   const requests = Array.isArray(printRequests) ? printRequests : [];
 
   const filtered = requests.filter(p => {
     if (filter === "pending") return p.status === "pending";
     if (filter === "processing") return p.status === "processing";
-    if (filter === "completed") return p.status === "completed" || p.status === "cancelled";
+    if (filter === "completed") return p.status === "completed";
+    if (filter === "rejected") return p.status === "rejected";
     return true;
   });
 
@@ -65,6 +70,60 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
     setModalRequest(null);
   };
 
+  // 반려 처리: 사유 입력 모달 열기
+  const openRejectModal = (requestId) => {
+    setRejectTargetId(requestId);
+    setRejectReason("");
+    setShowRejectModal(true);
+  };
+
+  // 반려 확정: 상태 변경 + 이메일 발송
+  const handleReject = () => {
+    if (!rejectTargetId) return;
+    const reason = rejectReason.trim();
+    if (!reason) {
+      alert("반려 사유를 입력해주세요.");
+      return;
+    }
+
+    const req = requests.find(p => p.id === rejectTargetId);
+    updatePrintRequests(prev => prev.map(p =>
+      p.id === rejectTargetId
+        ? { ...p, status: "rejected", rejectedAt: ts(), rejectReason: reason, processedBy: workerName }
+        : p
+    ));
+    addLog(`출력 반려: ${req?.studentName} — ${reason}`, "print", { requestId: rejectTargetId });
+
+    // 반려 이메일 발송
+    if (req?.studentEmail) {
+      sendEmailNotification?.({
+        to: req.studentEmail,
+        subject: `[출력 반려] ${req.studentName}님 · ${req.paperSize} ${req.copies}장`,
+        body: [
+          `출력 신청이 반려되었습니다.`,
+          ``,
+          `[반려 사유]`,
+          reason,
+          ``,
+          `[출력 정보]`,
+          `- 용지: ${req.paperSize}`,
+          `- 재질: ${PRINT_TYPE_LABELS[req.colorMode] || req.colorMode}`,
+          `- 매수: ${req.copies}장`,
+          `- +600 추가: ${req.plus600Count || 0}개`,
+          `- 금액: ${(req.totalPrice || 0).toLocaleString()}원`,
+          ``,
+          `수정 후 다시 신청하거나, 문의사항이 있으시면 건축대학 출력실로 연락해주세요.`,
+          `건축대학 교학팀`,
+        ].join("\n"),
+      });
+    }
+
+    setShowRejectModal(false);
+    setRejectTargetId(null);
+    setRejectReason("");
+    setModalRequest(null);
+  };
+
   const handleDownloadPrintFile = async (req) => {
     const path = req.printFile?.storagePath;
     if (!path) return;
@@ -96,6 +155,7 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
     });
   };
 
+  // 완료 탭: Drive 아카이브 후 삭제
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`선택된 ${selectedIds.size}건을 삭제하시겠습니까?\nGoogle Drive에 백업 후 서버에서 삭제됩니다.`)) return;
@@ -137,12 +197,46 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
     }
   };
 
+  // 반려 탭: Drive 아카이브 없이 바로 삭제
+  const handleBulkDeleteRejected = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`선택된 ${selectedIds.size}건을 삭제하시겠습니까?\n(반려 항목은 Google Drive에 백업하지 않고 바로 삭제됩니다.)`)) return;
+
+    setDeleting(true);
+    try {
+      const toDelete = requests.filter(r => selectedIds.has(r.id));
+
+      // Supabase Storage 파일 삭제
+      const pathsToRemove = [];
+      for (const req of toDelete) {
+        if (req.printFile?.storagePath) pathsToRemove.push(req.printFile.storagePath);
+        if (req.paymentProof?.storagePath) pathsToRemove.push(req.paymentProof.storagePath);
+      }
+      if (pathsToRemove.length > 0) {
+        await printStorage.remove(pathsToRemove);
+      }
+
+      // Remove from state
+      updatePrintRequests(prev => prev.filter(p => !selectedIds.has(p.id)));
+      addLog(`반려 출력 요청 ${selectedIds.size}건 삭제`, "print");
+      setSelectedIds(new Set());
+    } catch (err) {
+      console.error("Rejected bulk delete error:", err);
+      alert("삭제 중 오류가 발생했습니다.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const pendingCount = requests.filter(p => p.status === "pending").length;
   const processingCount = requests.filter(p => p.status === "processing").length;
-  const completedCount = requests.filter(p => p.status === "completed" || p.status === "cancelled").length;
+  const completedCount = requests.filter(p => p.status === "completed").length;
+  const rejectedCount = requests.filter(p => p.status === "rejected").length;
 
-  const statusLabels = { pending: "대기중", processing: "출력중", completed: "완료", cancelled: "취소됨" };
-  const statusColors = { pending: "yellow", processing: "blue", completed: "green", cancelled: "red" };
+  const statusLabels = { pending: "대기중", processing: "출력중", completed: "완료", rejected: "반려됨" };
+  const statusColors = { pending: "yellow", processing: "blue", completed: "green", rejected: "red" };
+
+  const showSelectionBar = (filter === "completed" || filter === "rejected") && filtered.length > 0;
 
   return (
     <div style={{ paddingTop: 20 }}>
@@ -165,6 +259,7 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
           { id: "pending", label: `대기 (${pendingCount})` },
           { id: "processing", label: `출력중 (${processingCount})` },
           { id: "completed", label: `완료 (${completedCount})` },
+          { id: "rejected", label: `반려 (${rejectedCount})` },
           { id: "all", label: "전체" },
         ].map(f => (
           <button key={f.id} onClick={() => { setFilter(f.id); setSelectedIds(new Set()); }} style={{
@@ -176,8 +271,8 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
         ))}
       </div>
 
-      {/* 완료 탭 선택 삭제 */}
-      {filter === "completed" && filtered.length > 0 && (
+      {/* 완료/반려 탭 선택 삭제 */}
+      {showSelectionBar && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, padding: "8px 12px", background: theme.surface, borderRadius: 8 }}>
           <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: theme.textMuted, cursor: "pointer" }}>
             <input
@@ -192,8 +287,15 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
             전체 선택 ({selectedIds.size}/{filtered.length})
           </label>
           {selectedIds.size > 0 && (
-            <Button size="sm" variant="ghost" onClick={handleBulkDelete} disabled={deleting} style={{ color: theme.red }}>
-              {deleting ? "아카이브 및 삭제중..." : `선택 삭제 (${selectedIds.size})`}
+            <Button
+              size="sm" variant="ghost"
+              onClick={filter === "rejected" ? handleBulkDeleteRejected : handleBulkDelete}
+              disabled={deleting}
+              style={{ color: theme.red }}
+            >
+              {deleting
+                ? (filter === "rejected" ? "삭제중..." : "아카이브 및 삭제중...")
+                : `선택 삭제 (${selectedIds.size})`}
             </Button>
           )}
         </div>
@@ -209,12 +311,12 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
           filtered.map(req => (
             <Card key={req.id} style={{
               padding: 16, cursor: "pointer",
-              borderColor: req.status === "pending" ? theme.yellow : theme.border,
+              borderColor: req.status === "pending" ? theme.yellow : req.status === "rejected" ? theme.red : theme.border,
               background: theme.card,
             }} onClick={() => setModalRequest(req)}>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                {/* 완료 탭 체크박스 */}
-                {filter === "completed" && (
+                {/* 완료/반려 탭 체크박스 */}
+                {(filter === "completed" || filter === "rejected") && (
                   <div onClick={e => e.stopPropagation()} style={{ paddingTop: 2 }}>
                     <input
                       type="checkbox"
@@ -235,6 +337,12 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
                     <span>📋 {req.copies}장</span>
                     <span>💰 {req.totalPrice?.toLocaleString()}원</span>
                   </div>
+                  {/* 반려 사유 표시 */}
+                  {req.status === "rejected" && req.rejectReason && (
+                    <div style={{ fontSize: 12, color: theme.red, marginTop: 6 }}>
+                      ❌ 반려 사유: {req.rejectReason}
+                    </div>
+                  )}
                   <div style={{ fontSize: 11, color: theme.textDim, marginTop: 6 }}>
                     신청: {req.createdAt?.slice(5, 16).replace("T", " ")}
                   </div>
@@ -334,10 +442,24 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
                 </div>
               </div>
 
+              {/* 반려 사유 표시 (반려된 건) */}
+              {modalRequest.status === "rejected" && modalRequest.rejectReason && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: theme.red, marginBottom: 8 }}>반려 사유</div>
+                  <div style={{
+                    padding: 12, background: `${theme.red}11`, borderRadius: 8,
+                    border: `1px solid ${theme.red}33`, fontSize: 13, color: theme.text, lineHeight: 1.6,
+                  }}>
+                    {modalRequest.rejectReason}
+                  </div>
+                </div>
+              )}
+
               {/* 시간 정보 */}
               <div style={{ fontSize: 11, color: theme.textDim, marginBottom: 16 }}>
                 신청: {modalRequest.createdAt?.slice(0, 16).replace("T", " ")}
                 {modalRequest.completedAt && ` · 완료: ${modalRequest.completedAt?.slice(0, 16).replace("T", " ")}`}
+                {modalRequest.rejectedAt && ` · 반려: ${modalRequest.rejectedAt?.slice(0, 16).replace("T", " ")}`}
                 {modalRequest.processedBy && ` · 처리: ${modalRequest.processedBy}`}
               </div>
             </div>
@@ -349,8 +471,8 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
                   <Button size="sm" onClick={() => handleStatusChange(modalRequest.id, "processing")} style={{ flex: 1, justifyContent: "center" }}>
                     🖨️ 출력 시작
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => handleStatusChange(modalRequest.id, "cancelled")} style={{ color: theme.red }}>
-                    ❌ 취소
+                  <Button size="sm" variant="ghost" onClick={() => openRejectModal(modalRequest.id)} style={{ color: theme.red }}>
+                    ❌ 출력 반려
                   </Button>
                 </>
               )}
@@ -359,16 +481,79 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
                   <Button size="sm" onClick={() => handleStatusChange(modalRequest.id, "completed")} style={{ flex: 1, justifyContent: "center" }}>
                     ✅ 출력 완료
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => handleStatusChange(modalRequest.id, "cancelled")} style={{ color: theme.red }}>
-                    ❌ 취소
+                  <Button size="sm" variant="ghost" onClick={() => openRejectModal(modalRequest.id)} style={{ color: theme.red }}>
+                    ❌ 출력 반려
                   </Button>
                 </>
               )}
-              {(modalRequest.status === "completed" || modalRequest.status === "cancelled") && (
+              {(modalRequest.status === "completed" || modalRequest.status === "rejected") && (
                 <Button size="sm" variant="ghost" onClick={() => setModalRequest(null)} style={{ flex: 1, justifyContent: "center" }}>
                   닫기
                 </Button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 반려 사유 입력 모달 */}
+      {showRejectModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.6)", zIndex: 10000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 20,
+        }} onClick={() => setShowRejectModal(false)}>
+          <div style={{
+            background: theme.card, borderRadius: 16, width: "100%", maxWidth: 420,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{
+              padding: "16px 20px", borderBottom: `1px solid ${theme.border}`,
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+            }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>❌ 출력 반려</span>
+              <button onClick={() => setShowRejectModal(false)} style={{
+                width: 32, height: 32, borderRadius: 8, border: "none",
+                background: theme.surface, color: theme.textMuted, fontSize: 16,
+                cursor: "pointer", fontFamily: theme.font,
+              }}>✕</button>
+            </div>
+
+            <div style={{ padding: 20 }}>
+              <div style={{ fontSize: 13, color: theme.textMuted, marginBottom: 12 }}>
+                반려 사유를 입력해주세요. 학생에게 이메일로 전달됩니다.
+              </div>
+              <textarea
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                placeholder="예: 파일 형식이 올바르지 않습니다. PDF 또는 이미지 파일로 다시 제출해주세요."
+                rows={4}
+                style={{
+                  width: "100%", padding: 12, borderRadius: 8,
+                  border: `1px solid ${theme.border}`, background: theme.surface,
+                  color: theme.text, fontSize: 13, fontFamily: theme.font,
+                  resize: "vertical", outline: "none", boxSizing: "border-box",
+                }}
+                autoFocus
+              />
+            </div>
+
+            <div style={{
+              padding: "12px 20px", borderTop: `1px solid ${theme.border}`,
+              background: theme.surface, display: "flex", gap: 8, borderRadius: "0 0 16px 16px",
+            }}>
+              <Button size="sm" variant="ghost" onClick={() => setShowRejectModal(false)} style={{ flex: 1, justifyContent: "center" }}>
+                취소
+              </Button>
+              <Button size="sm" onClick={handleReject} disabled={!rejectReason.trim()} style={{
+                flex: 1, justifyContent: "center",
+                background: rejectReason.trim() ? theme.red : theme.border,
+                borderColor: rejectReason.trim() ? theme.red : theme.border,
+                color: "#fff",
+              }}>
+                반려 확정
+              </Button>
             </div>
           </div>
         </div>
