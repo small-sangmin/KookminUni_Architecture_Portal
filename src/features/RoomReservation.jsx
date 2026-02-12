@@ -13,6 +13,7 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
   const [members, setMembers] = useState("1");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(null);
+  const [showPopup, setShowPopup] = useState(false);
   const [error, setError] = useState("");
 
   const toggleSlot = (id) => setSelectedSlots(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
@@ -66,15 +67,17 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
           "- 이용 수칙을 준수해주세요.",
           "- 예약 변경/취소가 필요하면 근로학생 또는 관리자에게 문의해주세요.",
           "",
+          "※※※ 신분증 또는 학생증 지참 무조건 해주셔야합니다 ※※※",
+          "",
           "국민대학교 건축대학 교학팀",
         ].join("\n"),
       });
       syncReservationToSheet?.(res);
       setSuccess(res);
+      setShowPopup(true);
       setSubmitting(false);
       setSelectedSlots([]);
       setPurpose("");
-      alert("✅ 예약이 완료되었습니다!\n\n📌 실기실 예약 시간 5분 전 교학팀으로 방문해주세요.");
     }, 800);
   };
 
@@ -257,6 +260,80 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
           )}
         </div>
       </div>
+
+      {/* ═══ 예약 완료 강조 팝업 ═══ */}
+      {showPopup && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
+          animation: "fadeIn 0.3s ease",
+        }}>
+          <div style={{
+            background: theme.card, borderRadius: 20, padding: "36px 32px 28px",
+            maxWidth: 420, width: "90%", textAlign: "center",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.4), 0 0 0 2px " + theme.accent,
+            animation: "popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+          }}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>
+              {"✅"}
+            </div>
+            <div style={{
+              fontSize: 22, fontWeight: 900, color: theme.accent, marginBottom: 20,
+              lineHeight: 1.3,
+            }}>
+              예약 신청 완료!
+            </div>
+            <div style={{
+              background: theme.yellowBg || "#fff8e1",
+              border: `2px solid ${theme.yellow || "#f9a825"}`,
+              borderRadius: 14, padding: "20px 18px", marginBottom: 20,
+            }}>
+              <div style={{
+                fontSize: 15, fontWeight: 700, color: theme.text, lineHeight: 1.8,
+                wordBreak: "keep-all",
+              }}>
+                {"📌"} 실기실 예약 시간 <span style={{ color: theme.accent, fontSize: 17 }}>5분 전</span> 교학팀으로 방문해주세요.
+              </div>
+              <div style={{
+                marginTop: 16, padding: "14px 12px",
+                background: "linear-gradient(135deg, #ff5252, #d50000)",
+                borderRadius: 10,
+              }}>
+                <div style={{
+                  fontSize: 18, fontWeight: 900, color: "#fff", lineHeight: 1.6,
+                  textShadow: "0 1px 4px rgba(0,0,0,0.3)",
+                }}>
+                  {"⚠️"} 교학팀 방문 시
+                </div>
+                <div style={{
+                  fontSize: 22, fontWeight: 900, color: "#ffeb3b", lineHeight: 1.6,
+                  textShadow: "0 2px 8px rgba(0,0,0,0.4)",
+                  letterSpacing: 1,
+                }}>
+                  {"🪪"} 신분증 및 학생증
+                </div>
+                <div style={{
+                  fontSize: 22, fontWeight: 900, color: "#fff", lineHeight: 1.6,
+                  textShadow: "0 1px 4px rgba(0,0,0,0.3)",
+                }}>
+                  꼭!! 지참해주세요!! {"🙏"}
+                </div>
+              </div>
+            </div>
+            <Button size="lg" onClick={() => setShowPopup(false)} style={{
+              width: "100%", justifyContent: "center", fontSize: 16, fontWeight: 700,
+            }}>
+              확인했습니다
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.8) translateY(20px) } to { opacity: 1; transform: scale(1) translateY(0) } }
+      `}</style>
     </div>
   );
 }

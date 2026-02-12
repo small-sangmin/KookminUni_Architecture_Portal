@@ -11,6 +11,7 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(null);
+  const [showPopup, setShowPopup] = useState(false);
   const [filterCat, setFilterCat] = useState("전체");
 
   const categories = ["전체", ...new Set(equipmentDB.map(e => e.category))];
@@ -34,6 +35,7 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
       addLog(`[기구대여] ${user.name}(${user.id}) → ${item.name} | 반납: ${returnDate}`, "equipment", { studentId: user.id });
       addNotification(`🔧 기구대여 요청: ${user.name} → ${item.name}`, "equipment", true);
       setSuccess(rental);
+      setShowPopup(true);
       setSubmitting(false);
       setSelected(null);
       setNote("");
@@ -226,6 +228,80 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
           </div>
         );
       })()}
+
+      {/* ═══ 대여 신청 완료 강조 팝업 ═══ */}
+      {showPopup && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
+          animation: "fadeIn 0.3s ease",
+        }}>
+          <div style={{
+            background: theme.card, borderRadius: 20, padding: "36px 32px 28px",
+            maxWidth: 420, width: "90%", textAlign: "center",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.4), 0 0 0 2px " + theme.accent,
+            animation: "popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+          }}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>
+              {"✅"}
+            </div>
+            <div style={{
+              fontSize: 22, fontWeight: 900, color: theme.accent, marginBottom: 20,
+              lineHeight: 1.3,
+            }}>
+              대여 신청 완료!
+            </div>
+            <div style={{
+              background: theme.yellowBg || "#fff8e1",
+              border: `2px solid ${theme.yellow || "#f9a825"}`,
+              borderRadius: 14, padding: "20px 18px", marginBottom: 20,
+            }}>
+              <div style={{
+                fontSize: 15, fontWeight: 700, color: theme.text, lineHeight: 1.8,
+                wordBreak: "keep-all",
+              }}>
+                대여신청해주신 물품 교학팀에서 준비가 되면 확인 메일 보내드리겠습니다.
+              </div>
+              <div style={{
+                marginTop: 16, padding: "14px 12px",
+                background: `linear-gradient(135deg, #ff5252, #d50000)`,
+                borderRadius: 10,
+              }}>
+                <div style={{
+                  fontSize: 18, fontWeight: 900, color: "#fff", lineHeight: 1.6,
+                  textShadow: "0 1px 4px rgba(0,0,0,0.3)",
+                }}>
+                  {"⚠️"} 물품 받으러 교학팀에 오실 때는
+                </div>
+                <div style={{
+                  fontSize: 22, fontWeight: 900, color: "#ffeb3b", lineHeight: 1.6,
+                  textShadow: "0 2px 8px rgba(0,0,0,0.4)",
+                  letterSpacing: 1,
+                }}>
+                  {"🪪"} 신분증 및 학생증
+                </div>
+                <div style={{
+                  fontSize: 22, fontWeight: 900, color: "#fff", lineHeight: 1.6,
+                  textShadow: "0 1px 4px rgba(0,0,0,0.3)",
+                }}>
+                  꼭!! 지참해주세요!! {"🙏"}
+                </div>
+              </div>
+            </div>
+            <Button size="lg" onClick={() => setShowPopup(false)} style={{
+              width: "100%", justifyContent: "center", fontSize: 16, fontWeight: 700,
+            }}>
+              확인했습니다
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.8) translateY(20px) } to { opacity: 1; transform: scale(1) translateY(0) } }
+      `}</style>
     </div>
   );
 }
