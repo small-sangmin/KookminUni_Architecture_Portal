@@ -282,7 +282,7 @@ function WorkerDashboard({ reservations, updateReservations, equipRentals, updat
               transition: "max-height 0.3s ease-in-out",
               background: "rgba(0,0,0,0.15)",
             }}>
-              <div style={{ padding: "12px 20px" }}>
+              <div style={{ padding: "12px 20px", maxHeight: 350, overflowY: "auto" }}>
                 {/* 1) 물품 수령/반납 */}
                 {item.key === "rental" && (
                   activeRentals.length === 0 ? (
