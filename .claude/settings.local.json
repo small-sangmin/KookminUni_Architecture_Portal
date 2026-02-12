@@ -1,15 +1,18 @@
-{
+﻿{
   "permissions": {
     "allow": [
       "Bash(npx vite build)",
       "WebFetch(domain:www.kookmin.ac.kr)",
-      "Bash(python3 -c \"import os; os.remove\\(''건축대학_관리시스템_v1.jsx''\\)\")",
+      "Bash(python3 -c \"import os; os.remove\\(''嫄댁텞???愿由ъ떆?ㅽ뀥_v1.jsx''\\)\")",
       "Bash(ls:*)",
       "Bash(timeout 10 npx vite:*)",
       "WebFetch(domain:kookmin-uni-architecture-portal-mu.vercel.app)",
       "WebFetch(domain:etdpijfbnepaeojkqndg.supabase.co)",
       "Bash(npm run build:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(node -e \"\nconst { Client } = require\\(''pg''\\);\nconst client = new Client\\({\n  host: ''aws-0-ap-northeast-2.pooler.supabase.com'',\n  port: 5432,\n  database: ''postgres'',\n  user: ''postgres.etdpijfbnepaeojkqndg'',\n  password: ''choasd1130!'',\n  ssl: { rejectUnauthorized: false }\n}\\);\nasync function run\\(\\) {\n  await client.connect\\(\\);\n  console.log\\(''Connected!''\\);\n  await client.end\\(\\);\n}\nrun\\(\\).catch\\(e => { console.error\\(''Error:'', e.message\\); process.exit\\(1\\); }\\);\n\")",
+      "Bash(curl.exe:*)",
+      "Bash(findstr:*)"
     ]
   }
 }

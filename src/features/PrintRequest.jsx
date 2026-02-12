@@ -3,6 +3,7 @@ import theme from "../constants/theme";
 import { uid, ts } from "../utils/helpers";
 import Icons from "../components/Icons";
 import { Badge, Card, Button, Input, SectionTitle, Empty } from "../components/ui";
+import supabaseStore, { printStorage } from "../supabase";
 
 // ─── Print Request (출력 신청) ───────────────────────────────────
 const PRINT_SIZE_OPTIONS = ["A2", "A1", "900x1200", "900x1800", "600x1500"];
@@ -67,21 +68,13 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
   const handlePrintFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPrintFile({ name: file.name, size: file.size, type: file.type, data: reader.result });
-    };
-    reader.readAsDataURL(file);
+    setPrintFile({ name: file.name, size: file.size, type: file.type, rawFile: file });
   };
 
   const handlePaymentUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPaymentProof({ name: file.name, size: file.size, type: file.type, data: reader.result });
-    };
-    reader.readAsDataURL(file);
+    setPaymentProof({ name: file.name, size: file.size, type: file.type, rawFile: file });
   };
 
   const handleSubmit = async () => {
@@ -95,45 +88,65 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
     }
 
     setSubmitting(true);
-    const newRequest = {
-      id: uid(),
-      studentId: user.id,
-      studentName: user.name,
-      studentDept: user.dept,
-      studentEmail: user.email || "",
-      paperSize,
-      colorMode,
-      copies,
-      plus600Count,
-      unitPrice,
-      totalPrice,
-      plus600UnitPrice,
-      plus600Price: plus600UnitPrice * plus600Count * copies,
-      printFile,
-      paymentProof,
-      status: "pending",
-      createdAt: ts(),
-      completedAt: null,
-    };
+    try {
+      const requestId = uid();
 
-    updatePrintRequests(prev => [newRequest, ...prev]);
-    addLog(`출력 신청: ${paperSize} ${colorModeLabel} ${copies}장${plus600Count > 0 ? ` (+600 x ${plus600Count})` : ""}`, "print", { studentId: user.id });
-    addNotification(`🖨️ 새 출력 신청: ${user.name} - ${paperSize} ${copies}장`, "info", true);
+      // Upload files to Supabase Storage
+      const [printUpload, paymentUpload] = await Promise.all([
+        printStorage.upload(requestId, printFile.rawFile, "print"),
+        printStorage.upload(requestId, paymentProof.rawFile, "payment"),
+      ]);
 
-    await syncPrintToSheet?.(newRequest);
+      if (printUpload.error || paymentUpload.error) {
+        alert(`파일 업로드 실패: ${printUpload.error || paymentUpload.error}`);
+        setSubmitting(false);
+        return;
+      }
 
-    sendEmailNotification?.({
-      to: user.email || undefined,
-      subject: `[출력 신청 접수] ${user.name} · ${paperSize} ${copies}장`,
-      body: `출력 신청이 접수되었습니다.\n\n- 학생: ${user.name} (${user.id})\n- 용지: ${paperSize}\n- 재질: ${colorModeLabel}\n- 매수: ${copies}장\n- +600 추가: ${plus600Count}개\n- 금액: ${totalPrice.toLocaleString()}원\n\n근로학생이 확인 후 출력해드립니다.`,
-    });
+      const newRequest = {
+        id: requestId,
+        studentId: user.id,
+        studentName: user.name,
+        studentDept: user.dept,
+        studentEmail: user.email || "",
+        paperSize,
+        colorMode,
+        copies,
+        plus600Count,
+        unitPrice,
+        totalPrice,
+        plus600UnitPrice,
+        plus600Price: plus600UnitPrice * plus600Count * copies,
+        printFile: { name: printFile.name, size: printFile.size, type: printFile.type, storagePath: printUpload.path },
+        paymentProof: { name: paymentProof.name, size: paymentProof.size, type: paymentProof.type, storagePath: paymentUpload.path },
+        status: "pending",
+        createdAt: ts(),
+        completedAt: null,
+      };
 
-    setPrintFile(null);
-    setPaymentProof(null);
-    setCopies(1);
-    setPlus600Count(0);
-    setSubmitting(false);
-    alert("출력 신청이 완료되었습니다! 근로학생이 확인 후 출력해드립니다.");
+      updatePrintRequests(prev => [newRequest, ...prev]);
+      addLog(`출력 신청: ${paperSize} ${colorModeLabel} ${copies}장${plus600Count > 0 ? ` (+600 x ${plus600Count})` : ""}`, "print", { studentId: user.id });
+      addNotification(`🖨️ 새 출력 신청: ${user.name} - ${paperSize} ${copies}장`, "info", true);
+
+      await syncPrintToSheet?.(newRequest);
+
+      sendEmailNotification?.({
+        to: user.email || undefined,
+        subject: `[출력 신청 접수] ${user.name} · ${paperSize} ${copies}장`,
+        body: `출력 신청이 접수되었습니다.\n\n- 학생: ${user.name} (${user.id})\n- 용지: ${paperSize}\n- 재질: ${colorModeLabel}\n- 매수: ${copies}장\n- +600 추가: ${plus600Count}개\n- 금액: ${totalPrice.toLocaleString()}원\n\n근로학생이 확인 후 출력해드립니다.`,
+      });
+
+      setPrintFile(null);
+      setPaymentProof(null);
+      setCopies(1);
+      setPlus600Count(0);
+      alert("출력 신청이 완료되었습니다! 근로학생이 확인 후 출력해드립니다.");
+    } catch (err) {
+      console.error("Print request submit error:", err);
+      alert("출력 신청 중 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const statusLabels = { pending: "대기중", processing: "출력중", completed: "완료", cancelled: "취소됨" };
@@ -181,7 +194,7 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
           ℹ️ <strong>안내:</strong> 표 기준은 1장 단가이며, <code>+600</code>은 추가 600mm 길이 기준입니다.
         </div>
         <div style={{ marginTop: 10, fontSize: 12, color: theme.textMuted }}>
-          <strong>+600 추가금(개당):</strong>{" "}
+          <strong>+600mm 추가금(개당):</strong>{" "}
           {PRINT_TYPE_OPTIONS.map(type => `${PRINT_TYPE_LABELS[type]} ${PRINT_PLUS600_PRICES[type].toLocaleString()}원`).join(" · ")}
         </div>
 

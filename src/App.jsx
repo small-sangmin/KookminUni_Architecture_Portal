@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import supabaseStore from "./supabase";
+import supabaseStore, { printStorage } from "./supabase";
 import { EDITABLE, ROOMS, DEFAULT_EQUIPMENT_DB, DEFAULT_WORKERS } from "./constants/data";
 import theme, { darkColors, lightColors } from "./constants/theme";
 import { uid, ts, dateStr, ACTIVE_PORTAL_SESSION_KEY } from "./utils/helpers";
@@ -238,6 +238,27 @@ export default function App() {
     };
   }, []);
 
+  // 출력 신청 데이터 실시간 동기화
+  useEffect(() => {
+    // 초기 로드: 서버 데이터가 있으면 서버 기준으로 동기화
+    supabaseStore.get("portal/printRequests").then(serverData => {
+      if (Array.isArray(serverData) && serverData.length > 0) {
+        setPrintRequests(serverData);
+        store.set("printRequests", serverData).catch(() => {});
+      }
+    });
+
+    const unsubscribe = supabaseStore.subscribe("portal/printRequests", (serverData) => {
+      if (Array.isArray(serverData)) {
+        setPrintRequests(serverData);
+        store.set("printRequests", serverData).catch(() => {});
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, []);
+
   // ─── Persist helpers ───────────────────────────────────────────
   const persist = useCallback(async (key, data) => { await store.set(key, data); }, []);
 
@@ -333,6 +354,7 @@ export default function App() {
     setPrintRequests(prev => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       persist("printRequests", next);
+      supabaseStore.set("portal/printRequests", next).catch(() => {});
       return next;
     });
   }, [persist]);
@@ -705,6 +727,96 @@ export default function App() {
     }
   }, [sheetConfig, addLog]);
 
+  // ─── Archive prints to Google Drive ──────────────────────────
+  const archivePrintsToDrive = useCallback(async (requestsToArchive) => {
+    const cfg = EDITABLE?.printArchive;
+    const gasUrl = cfg?.gasUrl?.trim();
+    if (!gasUrl) return { ok: false, error: "printArchive.gasUrl이 설정되지 않았습니다." };
+
+    const results = [];
+    for (const req of requestsToArchive) {
+      // Build date folder from createdAt (YY.MM.DD)
+      const dateFolder = req.createdAt
+        ? new Date(req.createdAt).toLocaleDateString("ko-KR", { year: "2-digit", month: "2-digit", day: "2-digit" }).replace(/\. /g, ".").replace(/\.$/, "")
+        : new Date().toLocaleDateString("ko-KR", { year: "2-digit", month: "2-digit", day: "2-digit" }).replace(/\. /g, ".").replace(/\.$/, "");
+
+      const studentLabel = `${req.studentId || "unknown"}+${req.studentName || "unknown"}`;
+
+      // Archive print file
+      if (req.printFile?.storagePath) {
+        const ext = (req.printFile.name || "file").split(".").pop() || "bin";
+        const archiveName = `[출력파일]${studentLabel}.${ext}`;
+        try {
+          const signedUrl = await printStorage.getSignedUrl(req.printFile.storagePath, 600);
+          if (!signedUrl) { results.push({ id: req.id, file: "printFile", ok: false, error: "signed URL 생성 실패" }); continue; }
+          const res = await archiveFileToGAS(gasUrl, signedUrl, archiveName, dateFolder, cfg.folderName);
+          results.push({ id: req.id, file: "printFile", ...res });
+        } catch (err) {
+          results.push({ id: req.id, file: "printFile", ok: false, error: err?.message || "unknown" });
+        }
+      }
+
+      // Archive payment proof
+      if (req.paymentProof?.storagePath) {
+        const ext = (req.paymentProof.name || req.paymentProof.storagePath || "img").split(".").pop() || "jpg";
+        const archiveName = `[입금내역]${studentLabel}.${ext}`;
+        try {
+          const signedUrl = await printStorage.getSignedUrl(req.paymentProof.storagePath, 600);
+          if (!signedUrl) { results.push({ id: req.id, file: "paymentProof", ok: false, error: "signed URL 생성 실패" }); continue; }
+          const res = await archiveFileToGAS(gasUrl, signedUrl, archiveName, dateFolder, cfg.folderName);
+          results.push({ id: req.id, file: "paymentProof", ...res });
+        } catch (err) {
+          results.push({ id: req.id, file: "paymentProof", ok: false, error: err?.message || "unknown" });
+        }
+      }
+    }
+
+    const failed = results.filter(r => !r.ok);
+    if (failed.length > 0) {
+      console.warn("Archive failures:", failed);
+      return { ok: false, error: `${failed.length}건 아카이브 실패`, details: failed };
+    }
+    return { ok: true, results };
+  }, []);
+
+  // Helper: send one file to GAS for Drive archival (reuses existing no-cors fallback pattern)
+  async function archiveFileToGAS(gasUrl, signedUrl, fileName, dateFolder, folderName) {
+    const payload = {
+      action: "archive_print",
+      key: EDITABLE.apiKey,
+      fileUrl: signedUrl,
+      fileName,
+      dateFolder,
+      folderName,
+    };
+    try {
+      const res = await fetch(gasUrl, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        body: JSON.stringify(payload),
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch { data = null; }
+      if (!res.ok) return { ok: false, error: data?.error || text || `HTTP ${res.status}` };
+      if (data?.ok || data?.success) return { ok: true };
+      return { ok: true, data };
+    } catch {
+      // CORS fallback: no-cors POST
+      try {
+        await fetch(gasUrl, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload),
+        });
+        return { ok: true, opaque: true };
+      } catch (err2) {
+        return { ok: false, error: err2?.message || "archive_failed" };
+      }
+    }
+  }
+
   // ─── Auth ──────────────────────────────────────────────────────
   const updateRememberSession = useCallback(async (val) => {
     setRememberSession(val);
@@ -841,6 +953,7 @@ export default function App() {
             sendEmailNotification={sendEmailNotification}
             inquiries={inquiries} updateInquiries={updateInquiries}
             printRequests={printRequests} updatePrintRequests={updatePrintRequests}
+            archivePrintsToDrive={archivePrintsToDrive}
             visitCount={visitCount}
             analyticsData={analyticsData}
             dailyVisits={dailyVisits}

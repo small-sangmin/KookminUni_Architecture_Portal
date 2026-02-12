@@ -87,6 +87,10 @@ export const EDITABLE = {
     url: "https://script.google.com/macros/s/AKfycbzdJtq82TW6d6-Qtb9-eAS_IsqpguqmDK48WB9UR8oHI3Qr4IyMAadyGTKQKmM_wUOOeA/exec", // Google Apps Script 웹앱 URL (구글 드라이브 업로드용)
     folderName: "26-1 안전교육이수증",
   },
+  printArchive: {
+    gasUrl: "https://script.google.com/macros/s/AKfycbzI0-VCxT5FoArpOb3T6IKbjY5UYbbrWSsSHYSG1sIU1lD2WATgq1JESud0oFh-Q5ZBxA/exec", // Google Apps Script 웹앱 URL (출력 완료 파일 Drive 아카이브용) — 배포 후 입력
+    folderName: "Portal_완료된 출력물 모음",
+  },
   adminAccount: { username: "admin", password: "admin1234", name: "관리자" },
   apiKey: "kmu-arch-2026-secret",
 };

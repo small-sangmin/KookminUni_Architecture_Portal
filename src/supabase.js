@@ -4,8 +4,9 @@ import { createClient } from '@supabase/supabase-js'
 // Get credentials from environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || ''
 
-// Create Supabase client
+// Create Supabase client (anon — for DB operations)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   realtime: {
     params: {
@@ -13,6 +14,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     }
   }
 })
+
+// Admin client for Storage operations (bypasses RLS)
+const supabaseAdmin = supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey, { auth: { persistSession: false } })
+  : supabase
 
 // Supabase Store API
 export const supabaseStore = {
@@ -219,7 +225,7 @@ export const certificateStorage = {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
       const filePath = `${studentId}/${timestamp}_${safeName}`
 
-      const { data, error } = await supabase.storage
+      const { data, error } = await supabaseAdmin.storage
         .from(CERT_BUCKET)
         .upload(filePath, file, {
           cacheControl: '3600',
@@ -237,7 +243,7 @@ export const certificateStorage = {
 
   async getSignedUrl(filePath, expiresIn = 3600) {
     try {
-      const { data, error } = await supabase.storage
+      const { data, error } = await supabaseAdmin.storage
         .from(CERT_BUCKET)
         .createSignedUrl(filePath, expiresIn)
 
@@ -251,7 +257,7 @@ export const certificateStorage = {
 
   async download(filePath) {
     try {
-      const { data, error } = await supabase.storage
+      const { data, error } = await supabaseAdmin.storage
         .from(CERT_BUCKET)
         .download(filePath)
 
@@ -265,7 +271,7 @@ export const certificateStorage = {
 
   async remove(filePath) {
     try {
-      const { error } = await supabase.storage
+      const { error } = await supabaseAdmin.storage
         .from(CERT_BUCKET)
         .remove([filePath])
 
@@ -273,6 +279,76 @@ export const certificateStorage = {
       return true
     } catch (err) {
       console.error('Certificate delete error:', err)
+      return false
+    }
+  },
+}
+
+// ─── Print File Storage ──────────────────────────────────────
+const PRINT_BUCKET = 'prints'
+
+export const printStorage = {
+  async upload(requestId, file, prefix = 'file') {
+    try {
+      const timestamp = Date.now()
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const filePath = `${requestId}/${prefix}_${timestamp}_${safeName}`
+
+      const { data, error } = await supabaseAdmin.storage
+        .from(PRINT_BUCKET)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type,
+        })
+
+      if (error) throw error
+      return { path: data.path, error: null }
+    } catch (err) {
+      console.error('Print upload error:', err)
+      return { path: null, error: err.message }
+    }
+  },
+
+  async getSignedUrl(filePath, expiresIn = 3600) {
+    try {
+      const { data, error } = await supabaseAdmin.storage
+        .from(PRINT_BUCKET)
+        .createSignedUrl(filePath, expiresIn)
+
+      if (error) throw error
+      return data.signedUrl
+    } catch (err) {
+      console.error('Print signed URL error:', err)
+      return null
+    }
+  },
+
+  async download(filePath) {
+    try {
+      const { data, error } = await supabaseAdmin.storage
+        .from(PRINT_BUCKET)
+        .download(filePath)
+
+      if (error) throw error
+      return data // Blob
+    } catch (err) {
+      console.error('Print download error:', err)
+      return null
+    }
+  },
+
+  async remove(filePaths) {
+    try {
+      const paths = Array.isArray(filePaths) ? filePaths : [filePaths]
+      const { error } = await supabaseAdmin.storage
+        .from(PRINT_BUCKET)
+        .remove(paths)
+
+      if (error) throw error
+      return true
+    } catch (err) {
+      console.error('Print delete error:', err)
       return false
     }
   },
