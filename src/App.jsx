@@ -167,7 +167,7 @@ export default function App() {
           store.get("sheetConfig"),
           store.get("overdueFlags"),
           store.get("inquiries"),
-          store.get("printRequests"),
+          store.get("printRequests_v2"),
           store.get("visitCount"),
           store.get("visitedUsers"),
           store.get("analyticsData"),
@@ -245,7 +245,7 @@ export default function App() {
     supabaseStore.get("portal/printRequests_v2").then(serverData => {
       const serverItems = Array.isArray(serverData) ? serverData : [];
       setPrintRequests(serverItems);
-      store.set("printRequests", serverItems).catch(() => { });
+      store.set("printRequests_v2", serverItems).catch(() => { });
     });
 
     const unsubscribe = supabaseStore.subscribe("portal/printRequests_v2", (serverData) => {
@@ -253,7 +253,7 @@ export default function App() {
       if (Date.now() - lastLocalPrintWrite.current < 3000) return;
       if (Array.isArray(serverData)) {
         setPrintRequests(serverData);
-        store.set("printRequests", serverData).catch(() => { });
+        store.set("printRequests_v2", serverData).catch(() => { });
       }
     });
     return () => {
@@ -355,7 +355,7 @@ export default function App() {
   const updatePrintRequests = useCallback((updater) => {
     setPrintRequests(prev => {
       const next = typeof updater === "function" ? updater(prev) : updater;
-      persist("printRequests", next);
+      persist("printRequests_v2", next);
       lastLocalPrintWrite.current = Date.now();
       supabaseStore.set("portal/printRequests_v2", next).catch(() => { });
       return next;
