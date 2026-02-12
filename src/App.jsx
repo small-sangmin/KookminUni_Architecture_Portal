@@ -244,14 +244,14 @@ export default function App() {
     supabaseStore.get("portal/printRequests").then(serverData => {
       if (Array.isArray(serverData) && serverData.length > 0) {
         setPrintRequests(serverData);
-        store.set("printRequests", serverData).catch(() => {});
+        store.set("printRequests", serverData).catch(() => { });
       }
     });
 
     const unsubscribe = supabaseStore.subscribe("portal/printRequests", (serverData) => {
       if (Array.isArray(serverData)) {
         setPrintRequests(serverData);
-        store.set("printRequests", serverData).catch(() => {});
+        store.set("printRequests", serverData).catch(() => { });
       }
     });
     return () => {
@@ -354,7 +354,7 @@ export default function App() {
     setPrintRequests(prev => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       persist("printRequests", next);
-      supabaseStore.set("portal/printRequests", next).catch(() => {});
+      supabaseStore.set("portal/printRequests", next).catch(() => { });
       return next;
     });
   }, [persist]);
@@ -534,7 +534,7 @@ export default function App() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return { ok: true };
     } catch (err) {
-      // CORS 우회: no-cors POST → 실패 시 GET
+      // CORS  우회: no-cors POST → 실패 시 GET
       try {
         await fetch(url, {
           method: "POST",
