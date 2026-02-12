@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import supabaseStore, { printStorage } from "./supabase";
 import { EDITABLE, ROOMS, DEFAULT_EQUIPMENT_DB, DEFAULT_WORKERS } from "./constants/data";
 import theme, { darkColors, lightColors } from "./constants/theme";
@@ -238,7 +238,8 @@ export default function App() {
     };
   }, []);
 
-  // 출력 신청 데이터 실시간 동기화
+  // 출력 신청 데이터 실시간 동기화 (로컬 쓰기 직후 구독 콜백 무시)
+  const lastLocalPrintWrite = useRef(0);
   useEffect(() => {
     // 초기 로드: 서버 데이터가 있으면 서버 기준으로 동기화
     supabaseStore.get("portal/printRequests").then(serverData => {
@@ -249,6 +250,8 @@ export default function App() {
     });
 
     const unsubscribe = supabaseStore.subscribe("portal/printRequests", (serverData) => {
+      // 로컬 쓰기 직후(500ms 이내) 들어온 구독 이벤트는 무시하여 깜빡임 방지
+      if (Date.now() - lastLocalPrintWrite.current < 500) return;
       if (Array.isArray(serverData)) {
         setPrintRequests(serverData);
         store.set("printRequests", serverData).catch(() => { });
@@ -354,6 +357,7 @@ export default function App() {
     setPrintRequests(prev => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       persist("printRequests", next);
+      lastLocalPrintWrite.current = Date.now();
       supabaseStore.set("portal/printRequests", next).catch(() => { });
       return next;
     });
