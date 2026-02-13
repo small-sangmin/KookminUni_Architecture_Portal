@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
 import { ROOMS, TIME_SLOTS } from "../constants/data";
 import theme from "../constants/theme";
-import { uid, ts, dateStr, tomorrow, addDays, formatDate } from "../utils/helpers";
+import { uid, ts, dateStr, tomorrow, addDays, formatDate, emailTemplate } from "../utils/helpers";
 import Icons from "../components/Icons";
-import { Badge, Card, Button, Input, SectionTitle, Empty } from "../components/ui";
+import { Badge, Card, Button, Input, SectionTitle, Empty, AlertPopup } from "../components/ui";
 
 function RoomReservation({ user, reservations, updateReservations, addLog, addNotification, syncReservationToSheet, sendEmailNotification, isMobile }) {
   const [selectedRoom, setSelectedRoom] = useState(null);
@@ -50,9 +50,9 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
       addNotification(`🏠 실기실 예약: ${user.name} → ${room.name} (${formatDate(selectedDate)} ${slotLabels[0]}${slotLabels.length > 1 ? ` 외 ${slotLabels.length - 1}건` : ""})`, "room");
       sendEmailNotification({
         to: user.email || undefined,
-        subject: `[실기실 예약 확정] ${user.name} · ${room.name}`,
-        body: [
-          "국민대학교 건축대학 실기실 예약이 확정되었습니다.",
+        subject: `[국민대 건축대학] 실기실 예약 확정`,
+        body: emailTemplate(user.name, [
+          "실기실 예약이 확정되었습니다.",
           "",
           "[예약 정보]",
           `- 예약자: ${user.name} (${user.id})`,
@@ -68,9 +68,7 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
           "- 예약 변경/취소가 필요하면 근로학생 또는 관리자에게 문의해주세요.",
           "",
           "※※※ 신분증 또는 학생증 지참 무조건 해주셔야합니다 ※※※",
-          "",
-          "국민대학교 건축대학 교학팀",
-        ].join("\n"),
+        ].join("\n")),
       });
       syncReservationToSheet?.(res);
       setSuccess(res);
@@ -262,78 +260,45 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
       </div>
 
       {/* ═══ 예약 완료 강조 팝업 ═══ */}
-      {showPopup && (
+      <AlertPopup
+        isVisible={showPopup}
+        icon="✅"
+        title="예약 신청 완료!"
+        description="실기실 예약이 정상적으로 접수되었습니다."
+        buttonText="확인했습니다"
+        onClose={() => setShowPopup(false)}
+        color={theme.accent}
+      >
         <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
-          animation: "fadeIn 0.3s ease",
+          background: theme.surface, borderRadius: 14,
+          padding: "18px 16px", border: `1px solid ${theme.border}`,
         }}>
           <div style={{
-            background: theme.card, borderRadius: 20, padding: "36px 32px 28px",
-            maxWidth: 420, width: "90%", textAlign: "center",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.4), 0 0 0 2px " + theme.accent,
-            animation: "popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+            fontSize: 14, fontWeight: 700, color: theme.text, lineHeight: 1.8,
+            wordBreak: "keep-all", marginBottom: 14,
           }}>
-            <div style={{ fontSize: 56, marginBottom: 16 }}>
-              {"✅"}
+            📌 실기실 예약 시간 <span style={{ color: theme.accent, fontWeight: 800, fontSize: 16 }}>5분 전</span> 교학팀으로 방문해주세요.
+          </div>
+          <div style={{
+            padding: "14px 14px", borderRadius: 12,
+            background: "linear-gradient(135deg, #ff5252, #d50000)",
+            textAlign: "center",
+          }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", lineHeight: 1.6 }}>
+              ⚠️ 교학팀 방문 시
             </div>
             <div style={{
-              fontSize: 22, fontWeight: 900, color: theme.accent, marginBottom: 20,
-              lineHeight: 1.3,
+              fontSize: 20, fontWeight: 900, color: "#ffeb3b", lineHeight: 1.6,
+              letterSpacing: 1, textShadow: "0 2px 8px rgba(0,0,0,0.3)",
             }}>
-              예약 신청 완료!
+              🪪 신분증 및 학생증
             </div>
-            <div style={{
-              background: theme.yellowBg || "#fff8e1",
-              border: `2px solid ${theme.yellow || "#f9a825"}`,
-              borderRadius: 14, padding: "20px 18px", marginBottom: 20,
-            }}>
-              <div style={{
-                fontSize: 15, fontWeight: 700, color: theme.text, lineHeight: 1.8,
-                wordBreak: "keep-all",
-              }}>
-                {"📌"} 실기실 예약 시간 <span style={{ color: theme.accent, fontSize: 17 }}>5분 전</span> 교학팀으로 방문해주세요.
-              </div>
-              <div style={{
-                marginTop: 16, padding: "14px 12px",
-                background: "linear-gradient(135deg, #ff5252, #d50000)",
-                borderRadius: 10,
-              }}>
-                <div style={{
-                  fontSize: 18, fontWeight: 900, color: "#fff", lineHeight: 1.6,
-                  textShadow: "0 1px 4px rgba(0,0,0,0.3)",
-                }}>
-                  {"⚠️"} 교학팀 방문 시
-                </div>
-                <div style={{
-                  fontSize: 22, fontWeight: 900, color: "#ffeb3b", lineHeight: 1.6,
-                  textShadow: "0 2px 8px rgba(0,0,0,0.4)",
-                  letterSpacing: 1,
-                }}>
-                  {"🪪"} 신분증 및 학생증
-                </div>
-                <div style={{
-                  fontSize: 22, fontWeight: 900, color: "#fff", lineHeight: 1.6,
-                  textShadow: "0 1px 4px rgba(0,0,0,0.3)",
-                }}>
-                  꼭!! 지참해주세요!! {"🙏"}
-                </div>
-              </div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "#fff", lineHeight: 1.6 }}>
+              꼭!! 지참해주세요!! 🙏
             </div>
-            <Button size="lg" onClick={() => setShowPopup(false)} style={{
-              width: "100%", justifyContent: "center", fontSize: 16, fontWeight: 700,
-            }}>
-              확인했습니다
-            </Button>
           </div>
         </div>
-      )}
-
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes popIn { from { opacity: 0; transform: scale(0.8) translateY(20px) } to { opacity: 1; transform: scale(1) translateY(0) } }
-      `}</style>
+      </AlertPopup>
     </div>
   );
 }

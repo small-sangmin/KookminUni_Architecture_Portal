@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import supabaseStore, { printStorage } from "./supabase";
 import { EDITABLE, ROOMS, DEFAULT_EQUIPMENT_DB, DEFAULT_WORKERS } from "./constants/data";
 import theme, { darkColors, lightColors } from "./constants/theme";
-import { uid, ts, dateStr, ACTIVE_PORTAL_SESSION_KEY } from "./utils/helpers";
+import { uid, ts, dateStr, ACTIVE_PORTAL_SESSION_KEY, emailTemplate } from "./utils/helpers";
 import store from "./utils/storage";
 import PortalLoadingScreen from "./components/PortalLoadingScreen";
 import LoginPage from "./pages/LoginPage";
@@ -186,6 +186,23 @@ export default function App() {
         if (certs) setCertificates(certs);
         if (res) setReservations(res);
         if (eq) setEquipRentals(eq);
+
+        // 학생별 키 마이그레이션 (1회성)
+        const studentMigrated = await store.get("__student_keys_migrated_v1__");
+        if (!studentMigrated && (res || eq)) {
+          const safeRes = Array.isArray(res) ? res : [];
+          const safeEq = Array.isArray(eq) ? eq : [];
+          const allStudentIds = new Set();
+          for (const r of safeRes) if (r.studentId) allStudentIds.add(r.studentId);
+          for (const r of safeEq) if (r.studentId) allStudentIds.add(r.studentId);
+          const migrationPromises = [];
+          for (const sid of allStudentIds) {
+            migrationPromises.push(store.set(`students/${sid}/reservations`, safeRes.filter(r => r.studentId === sid)));
+            migrationPromises.push(store.set(`students/${sid}/equipRentals`, safeEq.filter(r => r.studentId === sid)));
+          }
+          await Promise.all(migrationPromises);
+          await store.set("__student_keys_migrated_v1__", true);
+        }
         if (lg) setLogs(lg);
         if (notif) setNotifications(notif);
         if (sheet) setSheetConfig(sheet);
@@ -261,6 +278,10 @@ export default function App() {
 
   // ─── Persist helpers ───────────────────────────────────────────
   const persist = useCallback(async (key, data) => { await store.set(key, data); }, []);
+  const persistStudentData = useCallback(async (studentId, dataType, data) => {
+    if (!studentId) return;
+    await store.set(`students/${studentId}/${dataType}`, data);
+  }, []);
 
   const addLog = useCallback((action, type, extra = {}) => {
     setLogs(prev => {
@@ -282,17 +303,31 @@ export default function App() {
     setReservations(prev => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       persist("reservations", next);
+      // 영향받는 학생별 키 업데이트 (dual-write)
+      const affected = new Set();
+      for (const r of prev) if (r.studentId) affected.add(r.studentId);
+      for (const r of next) if (r.studentId) affected.add(r.studentId);
+      for (const sid of affected) {
+        persistStudentData(sid, "reservations", next.filter(r => r.studentId === sid));
+      }
       return next;
     });
-  }, [persist]);
+  }, [persist, persistStudentData]);
 
   const updateEquipRentals = useCallback((updater) => {
     setEquipRentals(prev => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       persist("equipRentals", next);
+      // 영향받는 학생별 키 업데이트 (dual-write)
+      const affected = new Set();
+      for (const r of prev) if (r.studentId) affected.add(r.studentId);
+      for (const r of next) if (r.studentId) affected.add(r.studentId);
+      for (const sid of affected) {
+        persistStudentData(sid, "equipRentals", next.filter(r => r.studentId === sid));
+      }
       return next;
     });
-  }, [persist]);
+  }, [persist, persistStudentData]);
 
   const updateWorkers = useCallback((updater) => {
     setWorkers(prev => {
@@ -575,8 +610,8 @@ export default function App() {
           addNotification(`⏰ 연체 알림: ${r.studentName} → ${r.items?.map(i => i.name).join(", ")} (반납일 ${r.returnDate})`, "equipment", true);
           addLog(`[연체] ${r.studentName}(${r.studentId}) → ${r.items?.map(i => i.name).join(", ")} | 반납일 ${r.returnDate}`, "equipment", { studentId: r.studentId });
           sendEmailNotification({
-            subject: `[연체 알림] ${r.studentName} · 기구 반납 지연`,
-            body: [
+            subject: `[국민대 건축대학] 물품 반납 지연 안내`,
+            body: emailTemplate(r.studentName, [
               "물품 대여 반납 기한이 지났습니다.",
               "",
               "[대여 정보]",
@@ -585,9 +620,8 @@ export default function App() {
               `- 대여 품목: ${r.items?.map(i => i.name).join(", ")}`,
               `- 반납 예정일: ${r.returnDate}`,
               "",
-              "즉시 반납 안내 부탁드립니다.",
-              "국민대학교 건축대학 교학팀",
-            ].join("\n"),
+              "즉시 반납 부탁드립니다.",
+            ].join("\n")),
           });
         }
       }
@@ -873,14 +907,28 @@ export default function App() {
 
   // ─── Reset data ────────────────────────────────────────────────
   const resetAllData = async () => {
+    // 학생별 키 정리: 현재 데이터에서 studentId 수집
+    const studentIds = new Set();
+    for (const r of reservations) if (r.studentId) studentIds.add(r.studentId);
+    for (const r of equipRentals) if (r.studentId) studentIds.add(r.studentId);
+
     const empty = [];
     setReservations(empty); setEquipRentals(empty); setLogs(empty); setNotifications(empty);
     setWorkers(DEFAULT_WORKERS);
-    await Promise.all([
+
+    const cleanupPromises = [
       persist("reservations", empty), persist("equipRentals", empty),
       persist("logs", empty), persist("notifications", empty),
       persist("workers", DEFAULT_WORKERS),
-    ]);
+    ];
+    // 학생별 per-student 키 삭제
+    for (const sid of studentIds) {
+      cleanupPromises.push(store.set(`students/${sid}/reservations`, null));
+      cleanupPromises.push(store.set(`students/${sid}/equipRentals`, null));
+    }
+    // 마이그레이션 플래그도 초기화 (재마이그레이션 가능하도록)
+    cleanupPromises.push(store.set("__student_keys_migrated_v1__", null));
+    await Promise.all(cleanupPromises);
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;

@@ -21,6 +21,7 @@ function StudentInquiries({ user, inquiries, updateInquiries }) {
       content: inquiryContent.trim(),
       name: user.name,
       contact: user.id,
+      email: user.email || "",
       createdAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
       status: "pending",
       answer: null,

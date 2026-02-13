@@ -67,7 +67,7 @@ export const EDITABLE = {
     { id: "003", name: "근로학생C", shift: "야간 (18–21시)", username: "worker3", password: "1234" },
   ],
   safetySheet: {
-    url: "https://script.google.com/macros/s/AKfycbwTbgP51KGhGWIFY8oODXg1XUA3Q2lYEKvCgMD24Aqvwz12wKlhT7yZkvY3zvlievjFrg/exec",
+    url: "https://script.google.com/macros/s/AKfycbw5gNesXsFsYEHaTOsG50Al_S3y-PLeEEm_3apr2DKO1fQDsHN4Cwh-7wCslKsUvKVR_A/exec",
     sheetName: "시트1",
     columns: {
       studentId: "학번",
@@ -76,6 +76,7 @@ export const EDITABLE = {
       dept: "전공",
       safetyTrained: "안전교육",
       email: "이메일",
+      password: "비밀번호",
     },
   },
   emailNotify: {

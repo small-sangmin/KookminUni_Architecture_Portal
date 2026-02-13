@@ -75,7 +75,7 @@ function WorkerPortal({ user, onLogout, reservations, updateReservations, equipR
         <PrintManagement printRequests={safePrintRequests} updatePrintRequests={updatePrintRequests} addLog={addLog} workerName={user.name} sendEmailNotification={sendEmailNotification} archivePrintsToDrive={archivePrintsToDrive} />
       )}
       {tab === "inquiries" && (
-        <InquiriesPanel inquiries={inquiries} updateInquiries={updateInquiries} workerName={user.name} addLog={addLog} />
+        <InquiriesPanel inquiries={inquiries} updateInquiries={updateInquiries} workerName={user.name} addLog={addLog} sendEmailNotification={sendEmailNotification} />
       )}
       {tab === "logs" && (
         <LogViewer logs={logs} addLog={addLog} />

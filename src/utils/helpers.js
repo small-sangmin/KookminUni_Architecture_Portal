@@ -15,3 +15,11 @@ export const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n)
 export const formatDate = (d) => { if (!d) return ""; const [y, m, dd] = d.split("-"); return `${m}/${dd}`; };
 
 export const ACTIVE_PORTAL_SESSION_KEY = "kmu_active_portal_session";
+
+/**
+ * 이메일 본문 양식 (B — 깔끔 간결체)
+ * @param {string} name - 수신자 이름
+ * @param {string} body - 본문 내용 (여러 줄 문자열)
+ */
+export const emailTemplate = (name, body) =>
+  `${name}님, 안녕하세요.\n\n${body}\n\n감사합니다.\n\n──\n국민대학교 건축대학 교학팀\n복지관 602호실 | 02-910-6525\n※ 본 메일은 자동 발송되었습니다.`;

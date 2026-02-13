@@ -36,7 +36,7 @@ function StudentPortal({ user, onLogout, reservations, updateReservations, equip
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
   const isSafe = user.safetyTrained;
-  const myInquiries = inquiries?.filter(i => i.name === user.name) || [];
+  const myInquiries = inquiries?.filter(i => i.isLoggedIn === true && i.contact === user.id) || [];
   const myPrintRequests = printRequests?.filter(p => p.studentId === user.id) || [];
   const today = new Date().toISOString().slice(0, 10);
   const myReservations = reservations?.filter(r => r.studentId === user.id) || [];
@@ -420,7 +420,7 @@ function StudentPortal({ user, onLogout, reservations, updateReservations, equip
             <PrintRequest user={user} printRequests={myPrintRequests} updatePrintRequests={updatePrintRequests} addLog={addLog} addNotification={addNotification} syncPrintToSheet={syncPrintToSheet} sendEmailNotification={sendEmailNotification} isMobile={isMobile} />
           )}
           {tab === "history" && (
-            <StudentHistory user={user} reservations={reservations} equipRentals={equipRentals} updateReservations={updateReservations} sendEmailNotification={sendEmailNotification} addLog={addLog} addNotification={addNotification} />
+            <StudentHistory user={user} reservations={reservations} equipRentals={equipRentals} updateReservations={updateReservations} updateEquipRentals={updateEquipRentals} sendEmailNotification={sendEmailNotification} addLog={addLog} addNotification={addNotification} />
           )}
           {tab === "inquiries" && (
             <StudentInquiries user={user} inquiries={myInquiries} updateInquiries={updateInquiries} />

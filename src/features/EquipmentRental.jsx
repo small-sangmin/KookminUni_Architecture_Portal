@@ -3,7 +3,7 @@ import { EDITABLE } from "../constants/data";
 import theme from "../constants/theme";
 import { uid, ts, dateStr, tomorrow, addDays } from "../utils/helpers";
 import Icons from "../components/Icons";
-import { Badge, Card, Button, Input, SectionTitle, Empty } from "../components/ui";
+import { Badge, Card, Button, Input, SectionTitle, Empty, AlertPopup } from "../components/ui";
 
 function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, isMobile }) {
   const [selected, setSelected] = useState(null);
@@ -230,78 +230,45 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
       })()}
 
       {/* ═══ 대여 신청 완료 강조 팝업 ═══ */}
-      {showPopup && (
+      <AlertPopup
+        isVisible={showPopup}
+        icon="✅"
+        title="대여 신청 완료!"
+        description="물품 대여가 정상적으로 접수되었습니다."
+        buttonText="확인했습니다"
+        onClose={() => setShowPopup(false)}
+        color={theme.green}
+      >
         <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
-          animation: "fadeIn 0.3s ease",
+          background: theme.surface, borderRadius: 14,
+          padding: "18px 16px", border: `1px solid ${theme.border}`,
         }}>
           <div style={{
-            background: theme.card, borderRadius: 20, padding: "36px 32px 28px",
-            maxWidth: 420, width: "90%", textAlign: "center",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.4), 0 0 0 2px " + theme.accent,
-            animation: "popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+            fontSize: 14, fontWeight: 700, color: theme.text, lineHeight: 1.8,
+            wordBreak: "keep-all", marginBottom: 14,
           }}>
-            <div style={{ fontSize: 56, marginBottom: 16 }}>
-              {"✅"}
+            📌 대여 신청해주신 물품 교학팀에서 준비가 되면 확인 메일 보내드리겠습니다.
+          </div>
+          <div style={{
+            padding: "14px 14px", borderRadius: 12,
+            background: "linear-gradient(135deg, #ff5252, #d50000)",
+            textAlign: "center",
+          }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", lineHeight: 1.6 }}>
+              ⚠️ 물품 받으러 교학팀에 오실 때는
             </div>
             <div style={{
-              fontSize: 22, fontWeight: 900, color: theme.accent, marginBottom: 20,
-              lineHeight: 1.3,
+              fontSize: 20, fontWeight: 900, color: "#ffeb3b", lineHeight: 1.6,
+              letterSpacing: 1, textShadow: "0 2px 8px rgba(0,0,0,0.3)",
             }}>
-              대여 신청 완료!
+              🪪 신분증 및 학생증
             </div>
-            <div style={{
-              background: theme.yellowBg || "#fff8e1",
-              border: `2px solid ${theme.yellow || "#f9a825"}`,
-              borderRadius: 14, padding: "20px 18px", marginBottom: 20,
-            }}>
-              <div style={{
-                fontSize: 15, fontWeight: 700, color: theme.text, lineHeight: 1.8,
-                wordBreak: "keep-all",
-              }}>
-                대여신청해주신 물품 교학팀에서 준비가 되면 확인 메일 보내드리겠습니다.
-              </div>
-              <div style={{
-                marginTop: 16, padding: "14px 12px",
-                background: `linear-gradient(135deg, #ff5252, #d50000)`,
-                borderRadius: 10,
-              }}>
-                <div style={{
-                  fontSize: 18, fontWeight: 900, color: "#fff", lineHeight: 1.6,
-                  textShadow: "0 1px 4px rgba(0,0,0,0.3)",
-                }}>
-                  {"⚠️"} 물품 받으러 교학팀에 오실 때는
-                </div>
-                <div style={{
-                  fontSize: 22, fontWeight: 900, color: "#ffeb3b", lineHeight: 1.6,
-                  textShadow: "0 2px 8px rgba(0,0,0,0.4)",
-                  letterSpacing: 1,
-                }}>
-                  {"🪪"} 신분증 및 학생증
-                </div>
-                <div style={{
-                  fontSize: 22, fontWeight: 900, color: "#fff", lineHeight: 1.6,
-                  textShadow: "0 1px 4px rgba(0,0,0,0.3)",
-                }}>
-                  꼭!! 지참해주세요!! {"🙏"}
-                </div>
-              </div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "#fff", lineHeight: 1.6 }}>
+              꼭!! 지참해주세요!! 🙏
             </div>
-            <Button size="lg" onClick={() => setShowPopup(false)} style={{
-              width: "100%", justifyContent: "center", fontSize: 16, fontWeight: 700,
-            }}>
-              확인했습니다
-            </Button>
           </div>
         </div>
-      )}
-
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes popIn { from { opacity: 0; transform: scale(0.8) translateY(20px) } to { opacity: 1; transform: scale(1) translateY(0) } }
-      `}</style>
+      </AlertPopup>
     </div>
   );
 }

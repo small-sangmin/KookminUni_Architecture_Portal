@@ -1,10 +1,10 @@
 import { useState } from "react";
 import theme from "../constants/theme";
-import { ts } from "../utils/helpers";
+import { ts, emailTemplate } from "../utils/helpers";
 import Icons from "../components/Icons";
 import { Badge, Card, Button, Input, SectionTitle, Empty } from "../components/ui";
 
-function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
+function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog, sendEmailNotification }) {
   const [filter, setFilter] = useState("all"); // all | pending | answered
   const [selectedInquiry, setSelectedInquiry] = useState(null);
   const [answerText, setAnswerText] = useState("");
@@ -23,6 +23,14 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog }) {
         : i
     ));
     addLog(`[문의답변] "${selectedInquiry?.title}" 답변 완료 (${workerName})`, "inquiry");
+    // 로그인 문의 학생에게 답변 알림 이메일 발송
+    if (selectedInquiry?.email && sendEmailNotification) {
+      sendEmailNotification({
+        to: selectedInquiry.email,
+        subject: `[국민대 건축대학] 문의 답변 안내`,
+        body: emailTemplate(selectedInquiry.name, `문의하신 "${selectedInquiry.title}"에 대한 답변은 다음과 같습니다.\n\n──────────────────\n${answerText.trim()}\n──────────────────\n\n추가 문의사항은 포털 사이트의 문의 기능을 이용해주세요.`),
+      });
+    }
     setAnswerText("");
     setSelectedInquiry(null);
   };

@@ -12,6 +12,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
   const [mode, setMode] = useState("student");
   const [sid, setSid] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.id || "") : "");
   const [sname, setSname] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.name || "") : "");
+  const [sPin, setSPin] = useState("");
   const [wUser, setWUser] = useState("");
   const [wPass, setWPass] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -27,6 +28,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
   const [certYear, setCertYear] = useState("");
   const [certMajor, setCertMajor] = useState("");
   const [certEmail, setCertEmail] = useState("");
+  const [certPin, setCertPin] = useState("");
   const [showCertUpload, setShowCertUpload] = useState(false);
   const [showSafetyInfo, setShowSafetyInfo] = useState(false);
   const [showInquiry, setShowInquiry] = useState(false);
@@ -136,6 +138,18 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         setAuthLoading(false);
         return;
       }
+      // 비밀번호(PIN) 검증
+      const certPin = certificates?.[sidTrim]?.pin || await store.get(`studentPin_${sidTrim}`);
+      if (!certPin) {
+        setError("안전교육이수증을 먼저 업로드해주세요.");
+        setAuthLoading(false);
+        return;
+      }
+      if (certPin !== sPin.trim()) {
+        setError("비밀번호가 일치하지 않습니다.");
+        setAuthLoading(false);
+        return;
+      }
       const freshWarnings = await store.get("warnings");
       const warnInfo = freshWarnings?.[sidTrim] || warnings?.[sidTrim];
       const student = {
@@ -173,6 +187,10 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
       setError("학번, 이름, 학년, 전공, 이메일을 먼저 입력해주세요.");
       return;
     }
+    if (!/^\d{4}$/.test(certPin)) {
+      setError("비밀번호는 숫자 4자리로 입력해주세요.");
+      return;
+    }
     setUploading(true);
     setUploadSuccess("");
     setError("");
@@ -188,6 +206,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         studentYear: certYear.trim(),
         studentMajor: certMajor.trim(),
         studentEmail: certEmail.trim(),
+        pin: certPin.trim(),
         fileName: uploadFile.name,
         fileSize: uploadFile.size,
         fileType: uploadFile.type,
@@ -196,6 +215,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
       };
       const updatedCerts = { ...(certificates || {}), [sid]: certMeta };
       await store.set("certificates", updatedCerts);
+      await store.set(`studentPin_${sid}`, certPin.trim());
       updateCertificates?.(() => updatedCerts);
       setUploading(false);
       setUploadSuccess("✅ 업로드 완료!");
@@ -1367,6 +1387,16 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <Input label="학번" placeholder="예: 2021001" value={sid} onChange={e => setSid(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
                 <Input label="이름" placeholder="예: 김건축" value={sname} onChange={e => setSname(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
+                <Input
+                  label="비밀번호 (4자리 숫자)"
+                  placeholder="이수증 업로드 시 설정한 비밀번호"
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={sPin}
+                  onChange={e => setSPin(e.target.value.replace(/[^0-9]/g, ""))}
+                  onKeyDown={e => e.key === "Enter" && handleSubmit()}
+                />
                 {error && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: theme.radiusSm, background: theme.redBg, border: `1px solid ${theme.redBorder}`, color: theme.red, fontSize: 13 }}>
                     <Icons.alert size={16} /> {error}
@@ -1381,7 +1411,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                   />
                   로그아웃 후에도 로그인 기억
                 </label>
-                <Button size="lg" onClick={handleSubmit} disabled={!sid || !sname || studentChecking || authLoading} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>
+                <Button size="lg" onClick={handleSubmit} disabled={!sid || !sname || sPin.length !== 4 || studentChecking || authLoading} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>
                   {studentChecking || authLoading ? "확인 중..." : "로그인"}
                 </Button>
               </div>
@@ -1517,6 +1547,15 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                           placeholder="예: student@school.ac.kr"
                           value={certEmail}
                           onChange={e => setCertEmail(e.target.value)}
+                        />
+                        <Input
+                          label="비밀번호 (4자리 숫자)"
+                          placeholder="로그인 시 사용할 비밀번호"
+                          type="password"
+                          inputMode="numeric"
+                          maxLength={4}
+                          value={certPin}
+                          onChange={e => setCertPin(e.target.value.replace(/[^0-9]/g, ""))}
                         />
                         <input
                           ref={fileInputRef}

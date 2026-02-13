@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { EDITABLE, ROOMS, DEFAULT_EQUIPMENT_DB } from "../constants/data";
 import theme from "../constants/theme";
-import { uid, ts } from "../utils/helpers";
+import { uid, ts, emailTemplate } from "../utils/helpers";
 import store from "../utils/storage";
 import { certificateStorage } from "../supabase";
 import Icons from "../components/Icons";
@@ -92,8 +92,11 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
     reader.readAsDataURL(file);
   };
 
-  // 이수증 개수 계산
-  const certificateCount = certificates ? Object.keys(certificates).length : 0;
+  // 이수증 개수 계산 (승인 완료된 항목 제외)
+  const pendingCertificates = certificates
+    ? Object.fromEntries(Object.entries(certificates).filter(([_, c]) => !c.approved))
+    : {};
+  const certificateCount = Object.keys(pendingCertificates).length;
 
   useEffect(() => {
     setSheetUrl(sheetConfig?.reservationWebhookUrl || "");
@@ -223,6 +226,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
           studentYear: cert.studentYear || "",
           studentMajor: cert.studentMajor || "",
           studentEmail: cert.studentEmail || "",
+          password: cert.pin || "",
           sheetName: EDITABLE.safetySheet?.sheetName || "",
           columns: EDITABLE.safetySheet?.columns || {},
         };
@@ -311,7 +315,8 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
 
       updateCertificates(prev => {
         const next = { ...prev };
-        delete next[cert.studentId];
+        // PIN은 로그인 검증용으로 유지, 나머지 파일 데이터만 제거
+        next[cert.studentId] = { pin: cert.pin, approved: true };
         return next;
       });
       // 서버에서 파일 삭제
@@ -326,7 +331,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
         sendEmailNotification({
           to: cert.studentEmail,
           subject: `[국민대 건축대학] 안전교육이수증 승인 완료`,
-          body: `안녕하세요, ${cert.studentName}님.\n\n교학팀에서 안전교육이수증 확인을 완료하였습니다.\n\n해당 메일을 받으신 시점부터 포털 로그인이 가능합니다.\n\n감사합니다.\n국민대학교 건축대학 교학팀`
+          body: emailTemplate(cert.studentName, "교학팀에서 안전교육이수증 확인을 완료하였습니다.\n\n해당 메일을 받으신 시점부터 포털 로그인이 가능합니다."),
         });
       }
 
@@ -357,19 +362,13 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
       sendEmailNotification({
         to: cert.studentEmail,
         subject: `[국민대 건축대학] 안전교육 이수증 반려 안내`,
-        body: [
-          `${cert.studentName}님 안녕하세요.`,
-          "국민대학교 건축대학 교학팀입니다.",
-          "",
+        body: emailTemplate(cert.studentName, [
           "제출하신 안전교육 이수증이 반려되었습니다.",
           "",
-          reason ? `[반려 사유]\n${reason}` : "",
-          "",
+          reason ? `[반려 사유]\n${reason}\n` : "",
           "이수증을 다시 확인하신 후 재업로드 부탁드립니다.",
           "문의사항은 포털 사이트의 문의 기능을 이용해주세요.",
-          "",
-          "국민대학교 건축대학 교학팀",
-        ].filter(Boolean).join("\n"),
+        ].filter(Boolean).join("\n")),
       });
     }
     setCertModal(null);
@@ -966,11 +965,11 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 14, lineHeight: 1.6 }}>
               학생들이 업로드한 안전교육이수증을 확인하고 관리합니다.
             </div>
-            {!Object.keys(certificates || {}).length ? (
+            {!Object.keys(pendingCertificates).length ? (
               <Empty icon={<Icons.file size={28} />} text="업로드된 이수증이 없습니다" />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {Object.entries(certificates).map(([studentId, cert]) => (
+                {Object.entries(pendingCertificates).map(([studentId, cert]) => (
                   <Card
                     key={studentId}
                     style={{ background: theme.surface, padding: 14, cursor: "pointer" }}

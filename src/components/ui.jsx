@@ -74,6 +74,121 @@ export const Empty = ({ icon, text }) => (
 
 export const Divider = () => <div style={{ height: 1, background: theme.border, margin: "20px 0" }} />;
 
+// ─── Alert Popup (ref: AlertCard) ───────────────────────────────
+export const AlertPopup = ({ isVisible, icon, title, description, children, buttonText = "확인", onClose, color }) => {
+  if (!isVisible) return null;
+  const accent = color || theme.accent;
+  return (
+    <>
+      <div
+        style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)",
+          animation: "alertFadeIn 0.3s ease",
+        }}
+        onClick={onClose}
+      >
+        <div
+          style={{
+            position: "relative", maxWidth: 400, width: "90%",
+            borderRadius: 20, overflow: "hidden",
+            boxShadow: `0 25px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)`,
+            animation: "alertSlideUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div style={{
+            background: `linear-gradient(135deg, ${accent}, ${accent}cc)`,
+            padding: "28px 28px 22px", position: "relative",
+          }}>
+            {/* Dismiss */}
+            <button onClick={onClose} style={{
+              position: "absolute", top: 14, right: 14,
+              width: 32, height: 32, borderRadius: "50%",
+              background: "rgba(255,255,255,0.15)", border: "none",
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              color: "rgba(255,255,255,0.8)", fontSize: 18, fontWeight: 300,
+              transition: "background 0.2s",
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.25)"}
+              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.15)"}
+            >
+              ✕
+            </button>
+            {/* Icon */}
+            {icon && (
+              <div style={{
+                width: 48, height: 48, borderRadius: "50%",
+                background: "rgba(255,255,255,0.15)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                marginBottom: 16, fontSize: 24,
+                animation: "alertPulse 2s ease-in-out infinite",
+              }}>
+                {icon}
+              </div>
+            )}
+            {/* Title */}
+            <div style={{
+              fontSize: 22, fontWeight: 800, color: "#fff",
+              letterSpacing: "-0.3px", lineHeight: 1.3,
+              animation: "alertItemIn 0.4s ease 0.1s both",
+            }}>
+              {title}
+            </div>
+            {/* Description */}
+            {description && (
+              <div style={{
+                fontSize: 13, color: "rgba(255,255,255,0.75)",
+                marginTop: 8, lineHeight: 1.5, maxWidth: "85%",
+                animation: "alertItemIn 0.4s ease 0.2s both",
+              }}>
+                {description}
+              </div>
+            )}
+          </div>
+
+          {/* Body */}
+          <div style={{
+            background: theme.card, padding: "20px 28px 28px",
+          }}>
+            {/* Custom content */}
+            {children && (
+              <div style={{ marginBottom: 20, animation: "alertItemIn 0.4s ease 0.3s both" }}>
+                {children}
+              </div>
+            )}
+            {/* Action button */}
+            <button onClick={onClose} style={{
+              width: "100%", padding: "15px 20px",
+              borderRadius: 14, border: "none",
+              background: accent, color: "#0a0a0a",
+              fontSize: 16, fontWeight: 700, fontFamily: theme.font,
+              cursor: "pointer", transition: "all 0.2s",
+              boxShadow: `0 4px 16px ${accent}40`,
+              animation: "alertItemIn 0.4s ease 0.4s both",
+            }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.02)"; e.currentTarget.style.boxShadow = `0 6px 24px ${accent}60`; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = `0 4px 16px ${accent}40`; }}
+              onMouseDown={e => e.currentTarget.style.transform = "scale(0.97)"}
+              onMouseUp={e => e.currentTarget.style.transform = "scale(1.02)"}
+            >
+              {buttonText}
+            </button>
+          </div>
+        </div>
+      </div>
+      <style>{`
+        @keyframes alertFadeIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes alertSlideUp { from { opacity: 0; transform: scale(0.9) translateY(30px) } to { opacity: 1; transform: scale(1) translateY(0) } }
+        @keyframes alertItemIn { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
+        @keyframes alertPulse { 0%, 100% { transform: scale(1) } 50% { transform: scale(1.08) } }
+      `}</style>
+    </>
+  );
+};
+
 // ─── Tab Component ───────────────────────────────────────────────
 export const Tabs = ({ tabs, active, onChange, isMobile }) => (
   <div style={{ display: "flex", gap: 2, background: theme.surface, borderRadius: theme.radius, padding: 3, marginBottom: isMobile ? 16 : 24, border: `1px solid ${theme.border}`, ...(isMobile ? { overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" } : {}) }}>
