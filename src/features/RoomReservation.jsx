@@ -277,11 +277,11 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
             fontSize: 14, fontWeight: 700, color: theme.text, lineHeight: 1.8,
             wordBreak: "keep-all", marginBottom: 14,
           }}>
-            📌 실기실 예약 시간 <span style={{ color: theme.accent, fontWeight: 800, fontSize: 16 }}>5분 전</span> 교학팀으로 방문해주세요.
+            📌 실기실 예약 시간 <span style={{ color: theme.red, fontWeight: 800, fontSize: 16 }}>5분 전</span> 교학팀으로 방문해주세요.
           </div>
           <div style={{
             padding: "14px 14px", borderRadius: 12,
-            background: "linear-gradient(135deg, #ff5252, #d50000)",
+            background: "linear-gradient(135deg, #e66b6b, #c11515)",
             textAlign: "center",
           }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", lineHeight: 1.6 }}>

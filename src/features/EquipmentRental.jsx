@@ -251,7 +251,7 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
           </div>
           <div style={{
             padding: "14px 14px", borderRadius: 12,
-            background: "linear-gradient(135deg, #ff5252, #d50000)",
+            background: "linear-gradient(135deg, #e66b6b, #c11515)",
             textAlign: "center",
           }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", lineHeight: 1.6 }}>

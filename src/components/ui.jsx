@@ -84,7 +84,7 @@ export const AlertPopup = ({ isVisible, icon, title, description, children, butt
         style={{
           position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999,
           display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)",
+          background: "rgba(0,0,0,0.75)", backdropFilter: "blur(10px)",
           animation: "alertFadeIn 0.3s ease",
         }}
         onClick={onClose}
