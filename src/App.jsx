@@ -822,7 +822,10 @@ export default function App() {
   const updateRememberSession = useCallback((val) => {
     setRememberSession(val);
     store.localSet("rememberSession", val);
-    if (!val) store.localSet("session", null);
+    if (!val) {
+      store.localSet("session", null);
+      setSavedCredentials(null);
+    }
   }, []);
 
   const handleLogin = async (user, role) => {
@@ -833,8 +836,13 @@ export default function App() {
     try {
       sessionStorage.setItem(ACTIVE_PORTAL_SESSION_KEY, JSON.stringify({ user, role, loggedAt: Date.now() }));
     } catch { }
-    if (rememberSession) store.localSet("session", { user, role, page: role });
-    else store.localSet("session", null);
+    if (rememberSession) {
+      store.localSet("session", { user, role, page: role });
+      setSavedCredentials({ user, role });
+    } else {
+      store.localSet("session", null);
+      setSavedCredentials(null);
+    }
 
     // 학생 로그인 시 방문 횟수 증가 (로그인할 때마다 +1)
     if (role === "student" && user?.id) {
