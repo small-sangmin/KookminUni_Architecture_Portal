@@ -126,11 +126,9 @@ export default function App() {
   useEffect(() => {
     (async () => {
       try {
-        // 1단계: 로그인 화면에 꼭 필요한 2개만 먼저 로드 → 즉시 화면 표시
-        const [session, remember] = await Promise.all([
-          store.get("session"),
-          store.get("rememberSession"),
-        ]);
+        // 1단계: 로그인 기억은 로컬 전용 (다른 사용자와 공유되지 않도록)
+        const session = store.localGet("session");
+        const remember = store.localGet("rememberSession");
 
         const rememberPref = remember ?? true;
         setRememberSession(rememberPref);
@@ -821,10 +819,10 @@ export default function App() {
   }
 
   // ─── Auth ──────────────────────────────────────────────────────
-  const updateRememberSession = useCallback(async (val) => {
+  const updateRememberSession = useCallback((val) => {
     setRememberSession(val);
-    await store.set("rememberSession", val);
-    if (!val) await store.set("session", null);
+    store.localSet("rememberSession", val);
+    if (!val) store.localSet("session", null);
   }, []);
 
   const handleLogin = async (user, role) => {
@@ -835,8 +833,8 @@ export default function App() {
     try {
       sessionStorage.setItem(ACTIVE_PORTAL_SESSION_KEY, JSON.stringify({ user, role, loggedAt: Date.now() }));
     } catch { }
-    if (rememberSession) store.set("session", { user, role, page: role });
-    else store.set("session", null);
+    if (rememberSession) store.localSet("session", { user, role, page: role });
+    else store.localSet("session", null);
 
     // 학생 로그인 시 방문 횟수 증가 (로그인할 때마다 +1)
     if (role === "student" && user?.id) {
@@ -862,7 +860,7 @@ export default function App() {
     try {
       sessionStorage.removeItem(ACTIVE_PORTAL_SESSION_KEY);
     } catch { }
-    if (!rememberSession) store.set("session", null);
+    if (!rememberSession) store.localSet("session", null);
   };
 
   // ─── Reset data ────────────────────────────────────────────────

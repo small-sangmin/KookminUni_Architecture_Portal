@@ -63,14 +63,22 @@ if (!window.storage) {
     },
   };
 
+  // 로그인 세션 데이터는 개인 기기 전용이므로 서버에 올리지 않음
+  const LOCAL_ONLY_KEYS = ["session", "rememberSession"];
+
   (async () => {
+    // Supabase에 이전에 올라간 세션 데이터 정리
+    for (const k of LOCAL_ONLY_KEYS) {
+      supabaseStore.set(serverKey(k), null).catch(() => {});
+    }
+
     const alreadyMigrated = await supabaseStore.get(serverKey(MIGRATION_FLAG_KEY));
     if (alreadyMigrated) return;
 
     const writes = [];
     for (let i = 0; i < localStorage.length; i += 1) {
       const key = localStorage.key(i);
-      if (!key) continue;
+      if (!key || LOCAL_ONLY_KEYS.includes(key)) continue;
       const value = localStorage.getItem(key);
       if (value === null) continue;
       writes.push(supabaseStore.set(serverKey(key), value));
