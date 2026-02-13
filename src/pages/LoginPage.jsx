@@ -12,7 +12,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
   const [mode, setMode] = useState("student");
   const [sid, setSid] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.id || "") : "");
   const [sname, setSname] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.name || "") : "");
-  const [wUser, setWUser] = useState(() => savedCredentials?.role === "worker" ? (savedCredentials.user?.username || "") : savedCredentials?.role === "admin" ? (savedCredentials.user?.username || "") : "");
+  const [wUser, setWUser] = useState("");
   const [wPass, setWPass] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
@@ -1409,15 +1409,6 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                     <Icons.alert size={16} /> {error}
                   </div>
                 )}
-                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: theme.textMuted }}>
-                  <input
-                    type="checkbox"
-                    checked={!!rememberSession}
-                    onChange={e => onRememberSessionChange?.(e.target.checked)}
-                    style={{ width: 14, height: 14 }}
-                  />
-                  로그아웃 후에도 로그인 기억
-                </label>
                 <Button size="lg" onClick={handleSubmit} disabled={authLoading} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>
                   {authLoading ? "로그인 중..." : (mode === "admin" ? "관리자 로그인" : "관리 화면 접속")}
                 </Button>

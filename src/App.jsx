@@ -836,7 +836,7 @@ export default function App() {
     try {
       sessionStorage.setItem(ACTIVE_PORTAL_SESSION_KEY, JSON.stringify({ user, role, loggedAt: Date.now() }));
     } catch { }
-    if (rememberSession) {
+    if (role === "student" && rememberSession) {
       store.localSet("session", { user, role, page: role });
       setSavedCredentials({ user, role });
     } else {
