@@ -257,6 +257,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             studentYear: cert.studentYear || "",
             studentMajor: cert.studentMajor || "",
             studentEmail: cert.studentEmail || "",
+            password: cert.pin || "",
             sheetName: EDITABLE.safetySheet?.sheetName || "",
           });
           try {

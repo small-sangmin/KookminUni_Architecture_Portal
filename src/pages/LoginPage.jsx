@@ -1539,6 +1539,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                               <option value="">선택</option>
                               <option value="5년제">5년제</option>
                               <option value="4년제">4년제</option>
+                              <option value="미정">미정</option>
                             </select>
                           </div>
                         </div>
@@ -1593,7 +1594,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                         {uploadFile && (
                           <button
                             onClick={handleConfirmUpload}
-                            disabled={uploading}
+                            disabled={uploading || certPin.length !== 4}
                             style={{
                               display: "flex",
                               alignItems: "center",
