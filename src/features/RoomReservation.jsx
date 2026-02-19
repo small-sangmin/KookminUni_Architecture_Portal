@@ -5,7 +5,7 @@ import { uid, ts, dateStr, tomorrow, addDays, formatDate, emailTemplate } from "
 import Icons from "../components/Icons";
 import { Badge, Card, Button, Input, SectionTitle, Empty, AlertPopup } from "../components/ui";
 
-function RoomReservation({ user, reservations, updateReservations, addLog, addNotification, syncReservationToSheet, sendEmailNotification, isMobile }) {
+function RoomReservation({ user, reservations, updateReservations, addLog, addNotification, syncReservationToSheet, sendEmailNotification, roomStatus, isMobile }) {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [selectedDate, setSelectedDate] = useState(tomorrow());
   const [selectedSlots, setSelectedSlots] = useState([]);
@@ -113,27 +113,29 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {ROOMS.map(room => {
               const sel = selectedRoom === room.id;
+              const isDisabled = roomStatus?.[room.id] === false;
               const todayBookings = reservations.filter(r =>
                 r.roomId === room.id &&
                 r.date === selectedDate &&
                 !["cancelled", "rejected"].includes(r.status)
               ).length;
               return (
-                <Card key={room.id} onClick={() => setSelectedRoom(room.id)} style={{
-                  padding: 16, cursor: "pointer",
-                  borderColor: sel ? theme.accent : theme.border,
-                  background: sel ? theme.accentBg : theme.card,
+                <Card key={room.id} onClick={() => !isDisabled && setSelectedRoom(room.id)} style={{
+                  padding: 16, cursor: isDisabled ? "not-allowed" : "pointer",
+                  borderColor: isDisabled ? theme.redBorder : sel ? theme.accent : theme.border,
+                  background: isDisabled ? theme.redBg : sel ? theme.accentBg : theme.card,
                   transition: "all 0.2s",
-                  borderLeft: sel ? `3px solid ${theme.accent}` : `3px solid transparent`,
+                  borderLeft: isDisabled ? `3px solid ${theme.red}` : sel ? `3px solid ${theme.accent}` : `3px solid transparent`,
+                  opacity: isDisabled ? 0.7 : 1,
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: sel ? theme.accent : theme.text }}>{room.name}</div>
-                    <Badge color={sel ? "accent" : "dim"}>{room.floor}</Badge>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: isDisabled ? theme.red : sel ? theme.accent : theme.text }}>{room.name}</div>
+                    {isDisabled ? <Badge color="red">예약 불가</Badge> : <Badge color={sel ? "accent" : "dim"}>{room.floor}</Badge>}
                   </div>
                   <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 6 }}>{room.building}</div>
                   <div style={{ fontSize: 11, color: theme.textDim, marginTop: 4, display: "flex", justifyContent: "space-between" }}>
                     <span>{room.equipment}</span>
-                    {todayBookings > 0 && <Badge color="yellow" style={{ fontSize: 10 }}>오늘 {todayBookings}건</Badge>}
+                    {!isDisabled && todayBookings > 0 && <Badge color="yellow" style={{ fontSize: 10 }}>오늘 {todayBookings}건</Badge>}
                   </div>
                 </Card>
               );
@@ -160,6 +162,27 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
               <div style={{ fontSize: 13, color: theme.textDim, textAlign: "center" }}>
                 왼쪽 목록에서 원하는 실기실을 클릭하면<br />예약 정보를 입력할 수 있습니다
               </div>
+            </div>
+          ) : roomStatus?.[selectedRoom] === false ? (
+            <div style={{
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              background: theme.redBg,
+              borderRadius: 16,
+              border: `2px dashed ${theme.redBorder}`,
+              padding: 40,
+            }}>
+              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.7 }}>🚫</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: theme.red, marginBottom: 8 }}>현재 예약이 불가능한 실기실입니다</div>
+              <div style={{ fontSize: 13, color: theme.textDim, textAlign: "center" }}>
+                관리자에 의해 예약이 중지된 상태입니다.<br />다른 실기실을 선택해주세요.
+              </div>
+              <Button variant="ghost" size="sm" style={{ marginTop: 16 }} onClick={() => setSelectedRoom(null)}>
+                다른 실기실 선택
+              </Button>
             </div>
           ) : (
             <div>

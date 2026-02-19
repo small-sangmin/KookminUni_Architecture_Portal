@@ -74,6 +74,11 @@ export default function App() {
   const [analyticsData, setAnalyticsData] = useState(null); // 관리 대시보드 analytics 스냅샷
   const [visitedUsers, setVisitedUsers] = useState({}); // 방문한 고유 사용자 목록
   const [dailyVisits, setDailyVisits] = useState({}); // 일별 방문자 수 { "2026-02-11": 5, ... }
+  const [roomStatus, setRoomStatus] = useState(() => {
+    const def = {};
+    ROOMS.forEach(r => { def[r.id] = true; });
+    return def;
+  }); // 실기실 예약 ON/OFF 상태
   const [dataLoaded, setDataLoaded] = useState(false);
 
   // ─── Community & Exhibition (shared between LoginPage & AdminPortal) ──
@@ -96,6 +101,7 @@ export default function App() {
     setCommunityPostsRaw(prev => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       store.set("communityPosts", next);
+      supabaseStore.set("portal/communityPosts", next).catch(() => { });
       return next;
     });
   }, []);
@@ -153,7 +159,7 @@ export default function App() {
         setDataLoaded(true);
 
         // 2단계: 나머지 데이터 백그라운드 로드 (화면 표시 후)
-        const [wk, warn, blk, certs, res, eq, lg, notif, sheet, overdue, inq, prints, visits, visitors, analytics, cmPosts, exhPosts, exhDataOld, eqDB, dVisits] = await Promise.all([
+        const [wk, warn, blk, certs, res, eq, lg, notif, sheet, overdue, inq, prints, visits, visitors, analytics, cmPosts, exhPosts, exhDataOld, eqDB, dVisits, savedRoomStatus] = await Promise.all([
           store.get("workers"),
           store.get("warnings"),
           store.get("blacklist"),
@@ -174,12 +180,21 @@ export default function App() {
           store.get("exhibitionData"),
           store.get("equipmentDB"),
           store.get("dailyVisits"),
+          store.get("roomStatus"),
         ]);
-        if (Array.isArray(wk) && wk.length > 0) {
+        // 근로학생: Supabase를 단일 진실 원천(SSOT)으로 사용
+        const serverWorkers = await supabaseStore.get("portal/workers");
+        if (Array.isArray(serverWorkers) && serverWorkers.length > 0) {
+          setWorkers(serverWorkers);
+          store.set("workers", serverWorkers).catch(() => { });
+        } else if (Array.isArray(wk) && wk.length > 0) {
           setWorkers(wk);
+          // 로컬에만 있던 데이터를 Supabase에 동기화
+          supabaseStore.set("portal/workers", wk).catch(() => { });
         } else {
           setWorkers(DEFAULT_WORKERS);
           store.set("workers", DEFAULT_WORKERS).catch(() => { });
+          supabaseStore.set("portal/workers", DEFAULT_WORKERS).catch(() => { });
         }
         if (warn) setWarnings(warn);
         if (blk) setBlacklist(blk);
@@ -213,7 +228,18 @@ export default function App() {
         if (visitors) setVisitedUsers(visitors);
         if (dVisits) setDailyVisits(dVisits);
         if (analytics) setAnalyticsData(analytics);
-        if (cmPosts) setCommunityPostsRaw(cmPosts); else store.set("communityPosts", defaultPosts);
+        // 커뮤니티: Supabase SSOT
+        const serverCmPosts = await supabaseStore.get("portal/communityPosts");
+        if (Array.isArray(serverCmPosts) && serverCmPosts.length > 0) {
+          setCommunityPostsRaw(serverCmPosts);
+          store.set("communityPosts", serverCmPosts).catch(() => { });
+        } else if (cmPosts) {
+          setCommunityPostsRaw(cmPosts);
+          supabaseStore.set("portal/communityPosts", cmPosts).catch(() => { });
+        } else {
+          store.set("communityPosts", defaultPosts);
+          supabaseStore.set("portal/communityPosts", defaultPosts).catch(() => { });
+        }
         if (exhPosts) {
           setExhibitionPostsRaw(exhPosts);
         } else if (exhDataOld) {
@@ -222,6 +248,18 @@ export default function App() {
           store.set("exhibitionPosts", migrated);
         } else {
           store.set("exhibitionPosts", defaultExhibitionPosts);
+        }
+        // roomStatus: Supabase를 단일 진실 원천(SSOT)으로 사용
+        const serverRoomStatus = await supabaseStore.get("portal/roomStatus");
+        if (serverRoomStatus && typeof serverRoomStatus === "object") {
+          const defaultStatus = {};
+          ROOMS.forEach(r => { defaultStatus[r.id] = true; });
+          const merged = { ...defaultStatus, ...serverRoomStatus };
+          setRoomStatus(merged);
+          store.set("roomStatus", merged).catch(() => { });
+        } else if (savedRoomStatus && typeof savedRoomStatus === "object") {
+          setRoomStatus(prev => ({ ...prev, ...savedRoomStatus }));
+          supabaseStore.set("portal/roomStatus", { ...roomStatus, ...savedRoomStatus }).catch(() => { });
         }
         if (eqDB) {
           // 저장된 물품 DB의 ID 목록과 기본 물품 DB의 ID 목록이 다르면 코드가 업데이트된 것이므로 새 목록 사용
@@ -246,6 +284,35 @@ export default function App() {
     const unsubscribe = supabaseStore.subscribe("portal/workers", (serverWorkers) => {
       if (Array.isArray(serverWorkers)) {
         setWorkers(serverWorkers);
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, []);
+
+  // 커뮤니티 게시글: Supabase 실시간 동기화
+  useEffect(() => {
+    const unsubscribe = supabaseStore.subscribe("portal/communityPosts", (serverPosts) => {
+      if (Array.isArray(serverPosts)) {
+        setCommunityPostsRaw(serverPosts);
+        store.set("communityPosts", serverPosts).catch(() => { });
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, []);
+
+  // 실기실 ON/OFF 상태: Supabase 실시간 동기화
+  useEffect(() => {
+    const unsubscribe = supabaseStore.subscribe("portal/roomStatus", (serverStatus) => {
+      if (serverStatus && typeof serverStatus === "object") {
+        const defaultStatus = {};
+        ROOMS.forEach(r => { defaultStatus[r.id] = true; });
+        const merged = { ...defaultStatus, ...serverStatus };
+        setRoomStatus(merged);
+        store.set("roomStatus", merged).catch(() => { });
       }
     });
     return () => {
@@ -286,6 +353,14 @@ export default function App() {
   const addLog = useCallback((action, type, extra = {}) => {
     setLogs(prev => {
       const next = [{ id: uid(), time: ts(), action, type, ...extra }, ...prev].slice(0, 500);
+      persist("logs", next);
+      return next;
+    });
+  }, [persist]);
+
+  const updateLogs = useCallback((updater) => {
+    setLogs(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
       persist("logs", next);
       return next;
     });
@@ -333,6 +408,7 @@ export default function App() {
     setWorkers(prev => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       persist("workers", next);
+      supabaseStore.set("portal/workers", next).catch(() => { });
       return next;
     });
   }, [persist]);
@@ -381,6 +457,15 @@ export default function App() {
     setInquiries(prev => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       persist("inquiries", next);
+      return next;
+    });
+  }, [persist]);
+
+  const updateRoomStatus = useCallback((updater) => {
+    setRoomStatus(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      persist("roomStatus", next);
+      supabaseStore.set("portal/roomStatus", next).catch(() => { });
       return next;
     });
   }, [persist]);
@@ -920,6 +1005,7 @@ export default function App() {
       persist("reservations", empty), persist("equipRentals", empty),
       persist("logs", empty), persist("notifications", empty),
       persist("workers", DEFAULT_WORKERS),
+      supabaseStore.set("portal/workers", DEFAULT_WORKERS),
     ];
     // 학생별 per-student 키 삭제
     for (const sid of studentIds) {
@@ -994,6 +1080,7 @@ export default function App() {
             updateInquiries={updateInquiries}
             printRequests={printRequests}
             updatePrintRequests={updatePrintRequests}
+            roomStatus={roomStatus}
             isMobile={isMobile}
             isDark={isDark} toggleDark={toggleDark}
           />
@@ -1023,7 +1110,7 @@ export default function App() {
             onLogout={handleLogout}
             reservations={reservations} updateReservations={updateReservations}
             workers={workers} updateWorkers={updateWorkers}
-            logs={logs} addLog={addLog}
+            logs={logs} addLog={addLog} updateLogs={updateLogs}
             sheetConfig={sheetConfig} updateSheetConfig={updateSheetConfig}
             warnings={warnings} updateWarnings={updateWarnings}
             blacklist={blacklist} updateBlacklist={updateBlacklist}
@@ -1033,6 +1120,7 @@ export default function App() {
             communityPosts={communityPosts} setCommunityPosts={setCommunityPosts}
             exhibitionPosts={exhibitionPosts} setExhibitionPosts={setExhibitionPosts}
             equipmentDB={equipmentDB} setEquipmentDB={setEquipmentDB}
+            roomStatus={roomStatus} updateRoomStatus={updateRoomStatus}
             isMobile={isMobile}
             isDark={isDark} toggleDark={toggleDark}
           />

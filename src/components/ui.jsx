@@ -190,11 +190,11 @@ export const AlertPopup = ({ isVisible, icon, title, description, children, butt
 };
 
 // ─── Tab Component ───────────────────────────────────────────────
-export const Tabs = ({ tabs, active, onChange, isMobile }) => (
-  <div style={{ display: "flex", gap: 2, background: theme.surface, borderRadius: theme.radius, padding: 3, marginBottom: isMobile ? 16 : 24, border: `1px solid ${theme.border}`, ...(isMobile ? { overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" } : {}) }}>
+export const Tabs = ({ tabs, active, onChange, isMobile, wrap }) => (
+  <div style={{ display: "flex", gap: 2, background: theme.surface, borderRadius: theme.radius, padding: 3, marginBottom: isMobile ? 16 : 24, border: `1px solid ${theme.border}`, ...(wrap ? { flexWrap: "wrap" } : {}), ...(isMobile && !wrap ? { overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" } : {}) }}>
     {tabs.map(t => (
       <button key={t.id} onClick={() => onChange(t.id)} style={{
-        flex: isMobile ? "0 0 auto" : 1, padding: isMobile ? "8px 14px" : "10px 8px", borderRadius: theme.radiusSm + 1, border: "none", cursor: "pointer",
+        flex: wrap ? (isMobile ? "1 1 calc(50% - 2px)" : "1 1 calc(25% - 2px)") : (isMobile ? "0 0 auto" : 1), padding: isMobile ? "8px 14px" : "10px 8px", borderRadius: theme.radiusSm + 1, border: "none", cursor: "pointer",
         fontSize: isMobile ? 11.5 : 12.5, fontWeight: 600, fontFamily: theme.font, transition: "all 0.2s", whiteSpace: "nowrap",
         background: active === t.id ? theme.card : "transparent",
         color: active === t.id ? theme.text : theme.textMuted,

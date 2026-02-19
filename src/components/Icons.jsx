@@ -42,6 +42,7 @@ const Icons = {
   loading: (p) => <I {...p} d={<><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></>} style={{ animation: "spin 1s linear infinite", ...p?.style }} />,
   sun: (p) => <I {...p} d={<><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></>} />,
   moon: (p) => <I {...p} d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />,
+  power: (p) => <I {...p} d={<><path d="M18.36 6.64a9 9 0 11-12.73 0" /><path d="M12 2v10" /></>} />,
 };
 
 export default Icons;

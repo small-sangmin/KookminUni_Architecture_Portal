@@ -9,7 +9,7 @@ import { Badge, Card, Button, Input, SectionTitle, Empty, Divider, Tabs } from "
 
 const ADMIN_ACCOUNT = EDITABLE.adminAccount;
 
-function AdminPortal({ onLogout, reservations, updateReservations, workers, updateWorkers, logs, addLog, sheetConfig, updateSheetConfig, warnings, updateWarnings, blacklist, updateBlacklist, certificates, updateCertificates, sendEmailNotification, communityPosts, setCommunityPosts, exhibitionPosts, setExhibitionPosts, equipmentDB, setEquipmentDB, isMobile, isDark, toggleDark }) {
+function AdminPortal({ onLogout, reservations, updateReservations, workers, updateWorkers, logs, addLog, updateLogs, sheetConfig, updateSheetConfig, warnings, updateWarnings, blacklist, updateBlacklist, certificates, updateCertificates, sendEmailNotification, communityPosts, setCommunityPosts, exhibitionPosts, setExhibitionPosts, equipmentDB, setEquipmentDB, roomStatus, updateRoomStatus, isMobile, isDark, toggleDark }) {
   const [tab, setTabRaw] = useState("accounts");
   const setTab = useCallback((newTab) => {
     setTabRaw(prev => {
@@ -38,6 +38,9 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
   const [certFileData, setCertFileData] = useState(null);
   const [certFileLoading, setCertFileLoading] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [logSelectMode, setLogSelectMode] = useState(false);
+  const [selectedLogIds, setSelectedLogIds] = useState(new Set());
+  const [logDeleteConfirm, setLogDeleteConfirm] = useState(false);
 
   const openCertModal = async (cert) => {
     setCertModal(cert);
@@ -410,6 +413,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
         <Tabs
           tabs={[
             { id: "accounts", label: "근로학생 계정", icon: <Icons.users size={15} /> },
+            { id: "roomToggle", label: "실기실 ON/OFF", icon: <Icons.power size={15} /> },
             { id: "discipline", label: "경고/블랙리스트", icon: <Icons.alert size={15} /> },
             { id: "certificates", label: "이수증 관리", icon: <Icons.file size={15} />, badge: certificateCount, badgeCircle: true },
             { id: "equipment", label: "물품 관리", icon: <Icons.tool size={15} /> },
@@ -417,7 +421,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             { id: "adminLog", label: "관리 이력", icon: <Icons.log size={15} /> },
             { id: "integration", label: "연동 설정", icon: <Icons.refresh size={15} /> },
           ]}
-          active={tab} onChange={setTab} isMobile={isMobile}
+          active={tab} onChange={setTab} isMobile={isMobile} wrap
         />
       </div>
 
@@ -501,6 +505,58 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             ))}
           </div>
           {workers.length === 0 && <Empty icon={<Icons.users size={32} />} text="등록된 근로학생 계정이 없습니다" />}
+        </div>
+      )}
+
+      {tab === "roomToggle" && (
+        <div>
+          <SectionTitle icon={<Icons.power size={16} color={theme.accent} />}>실기실 예약 ON/OFF</SectionTitle>
+          <Card style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 16, lineHeight: 1.6 }}>
+              각 실기실의 예약 가능 여부를 제어합니다. OFF로 설정하면 학생이 해당 실기실을 예약할 수 없습니다.
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {ROOMS.map(room => {
+                const isOn = roomStatus?.[room.id] !== false;
+                return (
+                  <div key={room.id} style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    padding: "14px 18px", borderRadius: theme.radius,
+                    background: theme.surface, border: `1px solid ${isOn ? theme.greenBorder : theme.redBorder}`,
+                    transition: "all 0.2s",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{
+                        width: 10, height: 10, borderRadius: "50%",
+                        background: isOn ? theme.green : theme.red,
+                        boxShadow: `0 0 6px ${isOn ? theme.green : theme.red}`,
+                      }} />
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>{room.name}</div>
+                        <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>{room.building} · {room.floor} · {room.equipment}</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const newVal = !isOn;
+                        updateRoomStatus(prev => ({ ...prev, [room.id]: newVal }));
+                        addLog(`[관리자] 실기실 ${room.name} 예약 ${newVal ? "활성화(ON)" : "비활성화(OFF)"}`, "admin");
+                      }}
+                      style={{
+                        padding: "8px 20px", borderRadius: 20, border: "none",
+                        background: isOn ? theme.green : theme.red,
+                        color: "#fff", fontSize: 13, fontWeight: 700,
+                        cursor: "pointer", transition: "all 0.2s",
+                        fontFamily: theme.font, minWidth: 70,
+                      }}
+                    >
+                      {isOn ? "ON" : "OFF"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
         </div>
       )}
 
@@ -939,14 +995,81 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
       {tab === "adminLog" && (
         <div>
           <SectionTitle icon={<Icons.log size={16} color={theme.accent} />}>관리자 작업 이력</SectionTitle>
+          {adminLogs.length > 0 && (
+            <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
+              {logSelectMode ? (
+                <>
+                  <Button size="sm" variant="ghost" onClick={() => {
+                    if (selectedLogIds.size === adminLogs.length) {
+                      setSelectedLogIds(new Set());
+                    } else {
+                      setSelectedLogIds(new Set(adminLogs.map(l => l.id)));
+                    }
+                  }}>
+                    {selectedLogIds.size === adminLogs.length ? "전체 해제" : "전체 선택"}
+                  </Button>
+                  <div style={{ fontSize: 12, color: theme.textMuted }}>
+                    {selectedLogIds.size}건 선택
+                  </div>
+                  {logDeleteConfirm ? (
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <span style={{ fontSize: 12, color: theme.red, fontWeight: 600 }}>삭제하시겠습니까?</span>
+                      <Button size="sm" variant="danger" onClick={() => {
+                        updateLogs(prev => prev.filter(l => !selectedLogIds.has(l.id)));
+                        setSelectedLogIds(new Set());
+                        setLogDeleteConfirm(false);
+                        setLogSelectMode(false);
+                      }}>확인</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setLogDeleteConfirm(false)}>취소</Button>
+                    </div>
+                  ) : (
+                    <Button size="sm" variant="danger" disabled={selectedLogIds.size === 0} onClick={() => setLogDeleteConfirm(true)}>
+                      <Icons.trash size={14} /> 선택 삭제
+                    </Button>
+                  )}
+                  <div style={{ flex: 1 }} />
+                  <Button size="sm" variant="ghost" onClick={() => { setLogSelectMode(false); setSelectedLogIds(new Set()); setLogDeleteConfirm(false); }}>취소</Button>
+                </>
+              ) : (
+                <Button size="sm" variant="ghost" onClick={() => setLogSelectMode(true)}>
+                  <Icons.trash size={14} /> 선택 삭제
+                </Button>
+              )}
+            </div>
+          )}
           <Card style={{ padding: 0, overflow: "hidden" }}>
             {adminLogs.length === 0 ? (
               <Empty icon={<Icons.log size={28} />} text="관리 이력이 없습니다" />
             ) : (
               <div style={{ maxHeight: 400, overflowY: "auto" }}>
                 {adminLogs.map(log => (
-                  <div key={log.id} style={{ padding: "12px 18px", borderBottom: `1px solid ${theme.border}`, borderLeft: `3px solid ${theme.red}` }}>
+                  <div key={log.id}
+                    style={{
+                      padding: "12px 18px", borderBottom: `1px solid ${theme.border}`,
+                      borderLeft: `3px solid ${selectedLogIds.has(log.id) ? theme.accent : theme.red}`,
+                      background: selectedLogIds.has(log.id) ? theme.accentBg : "transparent",
+                      cursor: logSelectMode ? "pointer" : "default",
+                      transition: "background 0.15s",
+                    }}
+                    onClick={() => {
+                      if (!logSelectMode) return;
+                      setSelectedLogIds(prev => {
+                        const next = new Set(prev);
+                        if (next.has(log.id)) next.delete(log.id);
+                        else next.add(log.id);
+                        return next;
+                      });
+                    }}
+                  >
                     <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                      {logSelectMode && (
+                        <input
+                          type="checkbox"
+                          checked={selectedLogIds.has(log.id)}
+                          onChange={() => {}}
+                          style={{ marginTop: 2, accentColor: theme.accent, cursor: "pointer" }}
+                        />
+                      )}
                       <code style={{ fontSize: 11, color: theme.textDim, fontFamily: theme.fontMono, whiteSpace: "nowrap", marginTop: 1 }}>{log.time}</code>
                       <div style={{ fontSize: 13, color: theme.text, lineHeight: 1.5 }}>{log.action}</div>
                     </div>

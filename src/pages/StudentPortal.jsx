@@ -17,7 +17,7 @@ const PRINT_TYPE_LABELS = {
   COLOR: "컬러",
 };
 
-function StudentPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, syncReservationToSheet, syncPrintToSheet, sendEmailNotification, warnings, inquiries, updateInquiries, printRequests, updatePrintRequests, isMobile, isDark, toggleDark }) {
+function StudentPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, syncReservationToSheet, syncPrintToSheet, sendEmailNotification, warnings, inquiries, updateInquiries, printRequests, updatePrintRequests, roomStatus, isMobile, isDark, toggleDark }) {
   const [tab, setTabRaw] = useState("dashboard");
   const [dashboardDetail, setDashboardDetail] = useState(null);
   const [detailSubmitting, setDetailSubmitting] = useState(false);
@@ -410,6 +410,7 @@ function StudentPortal({ user, onLogout, reservations, updateReservations, equip
               addNotification={addNotification}
               syncReservationToSheet={syncReservationToSheet}
               sendEmailNotification={sendEmailNotification}
+              roomStatus={roomStatus}
               isMobile={isMobile}
             />
           )}
