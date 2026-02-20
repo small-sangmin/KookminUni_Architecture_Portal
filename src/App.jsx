@@ -124,6 +124,7 @@ export default function App() {
     setEquipmentDBRaw(prev => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       store.set("equipmentDB", next);
+      supabaseStore.set("portal/equipmentDB", next).catch(() => { });
       return next;
     });
   }, []);
@@ -261,16 +262,27 @@ export default function App() {
           setRoomStatus(prev => ({ ...prev, ...savedRoomStatus }));
           supabaseStore.set("portal/roomStatus", { ...roomStatus, ...savedRoomStatus }).catch(() => { });
         }
-        if (eqDB) {
+        // 물품 DB: Supabase를 단일 진실 원천(SSOT)으로 사용
+        const serverEqDB = await supabaseStore.get("portal/equipmentDB");
+        if (Array.isArray(serverEqDB) && serverEqDB.length > 0) {
+          setEquipmentDBRaw(serverEqDB);
+          store.set("equipmentDB", serverEqDB).catch(() => { });
+        } else if (eqDB) {
           // 저장된 물품 DB의 ID 목록과 기본 물품 DB의 ID 목록이 다르면 코드가 업데이트된 것이므로 새 목록 사용
           const savedIds = eqDB.map(e => e.id).sort().join(",");
           const defaultIds = DEFAULT_EQUIPMENT_DB.map(e => e.id).sort().join(",");
           if (savedIds !== defaultIds) {
             setEquipmentDBRaw(DEFAULT_EQUIPMENT_DB);
             store.set("equipmentDB", DEFAULT_EQUIPMENT_DB);
+            supabaseStore.set("portal/equipmentDB", DEFAULT_EQUIPMENT_DB).catch(() => { });
           } else {
             setEquipmentDBRaw(eqDB);
+            // 로컬에만 있던 데이터를 Supabase에 동기화
+            supabaseStore.set("portal/equipmentDB", eqDB).catch(() => { });
           }
+        } else {
+          store.set("equipmentDB", DEFAULT_EQUIPMENT_DB).catch(() => { });
+          supabaseStore.set("portal/equipmentDB", DEFAULT_EQUIPMENT_DB).catch(() => { });
         }
       } catch (error) {
         console.error("Initial data load failed:", error);
@@ -297,6 +309,19 @@ export default function App() {
       if (Array.isArray(serverPosts)) {
         setCommunityPostsRaw(serverPosts);
         store.set("communityPosts", serverPosts).catch(() => { });
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, []);
+
+  // 물품 DB: Supabase 실시간 동기화
+  useEffect(() => {
+    const unsubscribe = supabaseStore.subscribe("portal/equipmentDB", (serverEqDB) => {
+      if (Array.isArray(serverEqDB) && serverEqDB.length > 0) {
+        setEquipmentDBRaw(serverEqDB);
+        store.set("equipmentDB", serverEqDB).catch(() => { });
       }
     });
     return () => {
