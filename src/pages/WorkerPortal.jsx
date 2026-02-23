@@ -7,7 +7,7 @@ import PrintManagement from "../features/PrintManagement";
 import InquiriesPanel from "../features/InquiriesPanel";
 import LogViewer from "../features/LogViewer";
 
-function WorkerPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, logs, addLog, notifications, markNotifRead, markAllNotifsRead, unreadCount, sendEmailNotification, inquiries, updateInquiries, printRequests, updatePrintRequests, archivePrintsToDrive, visitCount, analyticsData, dailyVisits, isMobile, isDark, toggleDark }) {
+function WorkerPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, logs, addLog, notifications, markNotifRead, markAllNotifsRead, unreadCount, sendEmailNotification, inquiries, updateInquiries, printRequests, updatePrintRequests, refreshPrintRequests, archivePrintsToDrive, visitCount, analyticsData, dailyVisits, isMobile, isDark, toggleDark }) {
   const [tab, setTabRaw] = useState("dashboard");
   const safePrintRequests = Array.isArray(printRequests) ? printRequests : [];
   const setTab = useCallback((newTab) => {
@@ -72,7 +72,7 @@ function WorkerPortal({ user, onLogout, reservations, updateReservations, equipR
         />
       )}
       {tab === "print" && (
-        <PrintManagement printRequests={safePrintRequests} updatePrintRequests={updatePrintRequests} addLog={addLog} workerName={user.name} sendEmailNotification={sendEmailNotification} archivePrintsToDrive={archivePrintsToDrive} />
+        <PrintManagement printRequests={safePrintRequests} updatePrintRequests={updatePrintRequests} refreshPrintRequests={refreshPrintRequests} addLog={addLog} workerName={user.name} sendEmailNotification={sendEmailNotification} archivePrintsToDrive={archivePrintsToDrive} />
       )}
       {tab === "inquiries" && (
         <InquiriesPanel inquiries={inquiries} updateInquiries={updateInquiries} workerName={user.name} addLog={addLog} sendEmailNotification={sendEmailNotification} />

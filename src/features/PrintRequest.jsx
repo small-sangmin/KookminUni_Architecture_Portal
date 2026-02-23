@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import theme from "../constants/theme";
 import { uid, ts } from "../utils/helpers";
 import Icons from "../components/Icons";
-import { Badge, Card, Button, Input, SectionTitle, Empty } from "../components/ui";
+import { Badge, Card, Button, Input, SectionTitle, Empty, AlertPopup } from "../components/ui";
 import supabaseStore, { printStorage } from "../supabase";
 
 // ─── Print Request (출력 신청) ───────────────────────────────────
@@ -55,6 +55,8 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
   const [printFile, setPrintFile] = useState(null);
   const [paymentProof, setPaymentProof] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
+  const [lastRequest, setLastRequest] = useState(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const printFileRef = useRef(null);
   const paymentFileRef = useRef(null);
@@ -136,11 +138,12 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
         body: `출력 신청이 접수되었습니다.\n\n- 학생: ${user.name} (${user.id})\n- 용지: ${paperSize}\n- 재질: ${colorModeLabel}\n- 매수: ${copies}장\n- +600 추가: ${plus600Count}개\n- 금액: ${totalPrice.toLocaleString()}원\n\n근로학생이 확인 후 출력해드립니다.`,
       });
 
+      setLastRequest(newRequest);
       setPrintFile(null);
       setPaymentProof(null);
       setCopies(1);
       setPlus600Count(0);
-      alert("출력 신청이 완료되었습니다! 근로학생이 확인 후 출력해드립니다.");
+      setShowPopup(true);
     } catch (err) {
       console.error("Print request submit error:", err);
       alert("출력 신청 중 오류가 발생했습니다. 다시 시도해주세요.");
@@ -417,6 +420,74 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
           {submitting ? "신청 중..." : "출력 신청하기"}
         </Button>
       </Card>
+
+      {/* ═══ 로딩 오버레이 ═══ */}
+      {submitting && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 99998,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)",
+        }}>
+          <div style={{
+            width: 48, height: 48, border: `3px solid ${theme.border}`,
+            borderTopColor: theme.accent, borderRadius: "50%",
+            animation: "spin 0.8s linear infinite", marginBottom: 16,
+          }} />
+          <div style={{ fontSize: 15, fontWeight: 600, color: "#fff" }}>출력 신청 중...</div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 6 }}>파일 업로드 및 접수 처리 중입니다</div>
+        </div>
+      )}
+
+      {/* ═══ 출력 신청 완료 팝업 ═══ */}
+      <AlertPopup
+        isVisible={showPopup}
+        icon="✅"
+        title="출력 신청 완료!"
+        description="출력 신청이 정상적으로 접수되었습니다."
+        buttonText="확인했습니다"
+        onClose={() => setShowPopup(false)}
+        color={theme.green}
+      >
+        <div style={{
+          background: theme.surface, borderRadius: 14,
+          padding: "18px 16px", border: `1px solid ${theme.border}`,
+        }}>
+          {lastRequest && (
+            <div style={{ fontSize: 13, color: theme.textMuted, lineHeight: 1.8, marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>용지</span><strong style={{ color: theme.text }}>{lastRequest.paperSize}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>재질</span><strong style={{ color: theme.text }}>{PRINT_TYPE_LABELS[lastRequest.colorMode]}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>매수</span><strong style={{ color: theme.text }}>{lastRequest.copies}장</strong>
+              </div>
+              {lastRequest.plus600Count > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>+600 추가</span><strong style={{ color: theme.text }}>{lastRequest.plus600Count}개</strong>
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, paddingTop: 8, borderTop: `1px solid ${theme.border}` }}>
+                <span style={{ fontWeight: 600 }}>총 금액</span>
+                <strong style={{ color: theme.accent, fontSize: 16 }}>{lastRequest.totalPrice?.toLocaleString()}원</strong>
+              </div>
+            </div>
+          )}
+          <div style={{
+            padding: "14px 14px", borderRadius: 12,
+            background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}cc)`,
+            textAlign: "center",
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", lineHeight: 1.6 }}>
+              📌 근로학생이 확인 후 출력해드립니다
+            </div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", marginTop: 4 }}>
+              출력 완료 시 알림을 보내드립니다
+            </div>
+          </div>
+        </div>
+      </AlertPopup>
     </div>
   );
 }

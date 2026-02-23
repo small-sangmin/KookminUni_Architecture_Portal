@@ -14,7 +14,7 @@ const PRINT_TYPE_LABELS = {
   COLOR: "컬러",
 };
 
-function PrintManagement({ printRequests, updatePrintRequests, addLog, workerName, sendEmailNotification, archivePrintsToDrive }) {
+function PrintManagement({ printRequests, updatePrintRequests, refreshPrintRequests, addLog, workerName, sendEmailNotification, archivePrintsToDrive }) {
   const [filter, setFilter] = useState("pending");
   const [modalRequest, setModalRequest] = useState(null);
   const [paymentImageUrl, setPaymentImageUrl] = useState(null);
@@ -27,6 +27,13 @@ function PrintManagement({ printRequests, updatePrintRequests, addLog, workerNam
   const [rejectReason, setRejectReason] = useState("");
   const [rejectTargetId, setRejectTargetId] = useState(null);
   const requests = Array.isArray(printRequests) ? printRequests : [];
+
+  // 마운트 시 서버에서 최신 데이터 강제 로드 (쓰기 없이 state만 갱신)
+  useEffect(() => {
+    if (typeof refreshPrintRequests === "function") {
+      refreshPrintRequests();
+    }
+  }, []);
 
   const filtered = requests.filter(p => {
     if (filter === "pending") return p.status === "pending";

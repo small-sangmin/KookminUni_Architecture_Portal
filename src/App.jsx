@@ -224,7 +224,17 @@ export default function App() {
         if (sheet) setSheetConfig(sheet);
         if (overdue) setOverdueFlags(overdue);
         if (inq) setInquiries(inq);
-        // printRequests는 Supabase 실시간 동기화에서 관리 (아래 useEffect)
+        // 출력 신청: Supabase를 단일 진실 원천(SSOT)으로 사용
+        const serverPrintsRaw = await supabaseStore.get("portal/printRequests_v2");
+        const serverPrintsParsed = parseArrayData(serverPrintsRaw);
+        const localPrintsParsed = Array.isArray(prints) ? prints : parseArrayData(prints);
+        const resolvedPrints = (serverPrintsParsed && serverPrintsParsed.length > 0)
+          ? serverPrintsParsed
+          : (localPrintsParsed && localPrintsParsed.length > 0) ? localPrintsParsed : null;
+        if (resolvedPrints) {
+          setPrintRequests(resolvedPrints);
+          store.set("printRequests_v2", resolvedPrints).catch(() => { });
+        }
         if (visits) setVisitCount(visits);
         if (visitors) setVisitedUsers(visitors);
         if (dVisits) setDailyVisits(dVisits);
@@ -264,24 +274,27 @@ export default function App() {
         }
         // 물품 DB: Supabase를 단일 진실 원천(SSOT)으로 사용
         const serverEqDB = await supabaseStore.get("portal/equipmentDB");
-        if (Array.isArray(serverEqDB) && serverEqDB.length > 0) {
-          setEquipmentDBRaw(serverEqDB);
-          store.set("equipmentDB", serverEqDB).catch(() => { });
-        } else if (eqDB) {
-          // 저장된 물품 DB의 ID 목록과 기본 물품 DB의 ID 목록이 다르면 코드가 업데이트된 것이므로 새 목록 사용
-          const savedIds = eqDB.map(e => e.id).sort().join(",");
-          const defaultIds = DEFAULT_EQUIPMENT_DB.map(e => e.id).sort().join(",");
-          if (savedIds !== defaultIds) {
-            setEquipmentDBRaw(DEFAULT_EQUIPMENT_DB);
-            store.set("equipmentDB", DEFAULT_EQUIPMENT_DB);
-            supabaseStore.set("portal/equipmentDB", DEFAULT_EQUIPMENT_DB).catch(() => { });
+        const resolvedEqDB = Array.isArray(serverEqDB) && serverEqDB.length > 0
+          ? serverEqDB
+          : Array.isArray(eqDB) && eqDB.length > 0 ? eqDB : null;
+        if (resolvedEqDB) {
+          // 기본 물품 중 저장 데이터에 없는 항목이 있으면 코드가 업데이트된 것이므로 병합
+          const savedIdSet = new Set(resolvedEqDB.map(e => e.id));
+          const missingDefaults = DEFAULT_EQUIPMENT_DB.filter(d => !savedIdSet.has(d.id));
+          if (missingDefaults.length > 0) {
+            const merged = [...resolvedEqDB, ...missingDefaults];
+            setEquipmentDBRaw(merged);
+            store.set("equipmentDB", merged);
+            supabaseStore.set("portal/equipmentDB", merged).catch(() => { });
           } else {
-            setEquipmentDBRaw(eqDB);
-            // 로컬에만 있던 데이터를 Supabase에 동기화
-            supabaseStore.set("portal/equipmentDB", eqDB).catch(() => { });
+            setEquipmentDBRaw(resolvedEqDB);
+            if (!serverEqDB) {
+              // 로컬에만 있던 데이터를 Supabase에 동기화
+              supabaseStore.set("portal/equipmentDB", resolvedEqDB).catch(() => { });
+            }
           }
         } else {
-          store.set("equipmentDB", DEFAULT_EQUIPMENT_DB).catch(() => { });
+          store.set("equipmentDB", DEFAULT_EQUIPMENT_DB);
           supabaseStore.set("portal/equipmentDB", DEFAULT_EQUIPMENT_DB).catch(() => { });
         }
       } catch (error) {
@@ -291,81 +304,72 @@ export default function App() {
     })();
   }, []);
 
-  // 근로학생 계정은 서버 데이터(portal/workers)를 기준으로 실시간 동기화
-  useEffect(() => {
-    const unsubscribe = supabaseStore.subscribe("portal/workers", (serverWorkers) => {
-      if (Array.isArray(serverWorkers)) {
-        setWorkers(serverWorkers);
-      }
-    });
-    return () => {
-      if (typeof unsubscribe === "function") unsubscribe();
-    };
-  }, []);
+  // JSON 문자열 또는 배열 데이터를 안전하게 파싱하는 헬퍼
+  const parseArrayData = (raw) => {
+    let parsed = raw;
+    if (typeof parsed === "string") {
+      try { parsed = JSON.parse(parsed); } catch { return null; }
+    }
+    return Array.isArray(parsed) ? parsed : null;
+  };
 
-  // 커뮤니티 게시글: Supabase 실시간 동기화
-  useEffect(() => {
-    const unsubscribe = supabaseStore.subscribe("portal/communityPosts", (serverPosts) => {
-      if (Array.isArray(serverPosts)) {
-        setCommunityPostsRaw(serverPosts);
-        store.set("communityPosts", serverPosts).catch(() => { });
-      }
-    });
-    return () => {
-      if (typeof unsubscribe === "function") unsubscribe();
-    };
-  }, []);
-
-  // 물품 DB: Supabase 실시간 동기화
-  useEffect(() => {
-    const unsubscribe = supabaseStore.subscribe("portal/equipmentDB", (serverEqDB) => {
-      if (Array.isArray(serverEqDB) && serverEqDB.length > 0) {
-        setEquipmentDBRaw(serverEqDB);
-        store.set("equipmentDB", serverEqDB).catch(() => { });
-      }
-    });
-    return () => {
-      if (typeof unsubscribe === "function") unsubscribe();
-    };
-  }, []);
-
-  // 실기실 ON/OFF 상태: Supabase 실시간 동기화
-  useEffect(() => {
-    const unsubscribe = supabaseStore.subscribe("portal/roomStatus", (serverStatus) => {
-      if (serverStatus && typeof serverStatus === "object") {
-        const defaultStatus = {};
-        ROOMS.forEach(r => { defaultStatus[r.id] = true; });
-        const merged = { ...defaultStatus, ...serverStatus };
-        setRoomStatus(merged);
-        store.set("roomStatus", merged).catch(() => { });
-      }
-    });
-    return () => {
-      if (typeof unsubscribe === "function") unsubscribe();
-    };
-  }, []);
-
-  // 출력 신청 데이터: Supabase가 단일 진실 원천(Single Source of Truth)
+  // ─── 폴링 기반 크로스브라우저 동기화 (Realtime 할당량 절약) ──────
+  // 30초마다 서버에서 최신 데이터를 가져옴
+  const POLL_INTERVAL = 30_000;
   const lastLocalPrintWrite = useRef(0);
-  useEffect(() => {
-    // 서버에서 데이터 로드 — 서버가 비어있으면 빈 상태 유지
-    supabaseStore.get("portal/printRequests_v2").then(serverData => {
-      const serverItems = Array.isArray(serverData) ? serverData : [];
-      setPrintRequests(serverItems);
-      store.set("printRequests_v2", serverItems).catch(() => { });
-    });
 
-    const unsubscribe = supabaseStore.subscribe("portal/printRequests_v2", (serverData) => {
-      // 로컬 쓰기 직후(3초 이내) 들어온 구독 이벤트는 무시
-      if (Date.now() - lastLocalPrintWrite.current < 3000) return;
-      if (Array.isArray(serverData)) {
-        setPrintRequests(serverData);
-        store.set("printRequests_v2", serverData).catch(() => { });
+  useEffect(() => {
+    let active = true;
+
+    const pollServerData = async () => {
+      if (!active) return;
+      try {
+        const [serverWorkers, serverCmPosts, serverEqDB, serverRoomStatus, serverPrints] = await Promise.all([
+          supabaseStore.get("portal/workers"),
+          supabaseStore.get("portal/communityPosts"),
+          supabaseStore.get("portal/equipmentDB"),
+          supabaseStore.get("portal/roomStatus"),
+          supabaseStore.get("portal/printRequests_v2"),
+        ]);
+
+        // 근로학생 계정
+        const wkItems = parseArrayData(serverWorkers);
+        if (wkItems && wkItems.length > 0) setWorkers(wkItems);
+
+        // 커뮤니티 게시글
+        const cmItems = parseArrayData(serverCmPosts);
+        if (cmItems && cmItems.length > 0) {
+          setCommunityPostsRaw(cmItems);
+        }
+
+        // 물품 DB
+        const eqItems = parseArrayData(serverEqDB);
+        if (eqItems && eqItems.length > 0) setEquipmentDBRaw(eqItems);
+
+        // 실기실 ON/OFF
+        let roomData = serverRoomStatus;
+        if (typeof roomData === "string") {
+          try { roomData = JSON.parse(roomData); } catch { roomData = null; }
+        }
+        if (roomData && typeof roomData === "object" && !Array.isArray(roomData)) {
+          const defaultStatus = {};
+          ROOMS.forEach(r => { defaultStatus[r.id] = true; });
+          setRoomStatus(prev => ({ ...defaultStatus, ...roomData }));
+        }
+
+        // 출력 신청 (로컬 쓰기 직후 3초 이내는 건너뜀)
+        if (Date.now() - lastLocalPrintWrite.current > 3000) {
+          const printItems = parseArrayData(serverPrints);
+          console.log("[PRINT SYNC] 폴링 읽기 - raw:", typeof serverPrints, "parsed:", printItems?.length ?? "null");
+          if (printItems) setPrintRequests(printItems);
+        }
+      } catch (e) {
+        console.warn("[Poll] server sync failed:", e);
       }
-    });
-    return () => {
-      if (typeof unsubscribe === "function") unsubscribe();
     };
+
+    const timerId = setInterval(pollServerData, POLL_INTERVAL);
+    return () => { active = false; clearInterval(timerId); };
   }, []);
 
   // ─── Persist helpers ───────────────────────────────────────────
@@ -498,12 +502,33 @@ export default function App() {
   const updatePrintRequests = useCallback((updater) => {
     setPrintRequests(prev => {
       const next = typeof updater === "function" ? updater(prev) : updater;
-      persist("printRequests_v2", next);
       lastLocalPrintWrite.current = Date.now();
-      supabaseStore.set("portal/printRequests_v2", next).catch(() => { });
+      persist("printRequests_v2", next).then(() => {
+        console.log("[PRINT SYNC] persist 성공, items:", next?.length);
+      });
+      supabaseStore.set("portal/printRequests_v2", next).then(ok => {
+        console.log("[PRINT SYNC] supabase direct 쓰기:", ok ? "성공" : "실패");
+      }).catch(e => {
+        console.error("[PRINT SYNC] supabase direct 쓰기 에러:", e);
+      });
       return next;
     });
   }, [persist]);
+
+  // 서버에서 최신 출력 신청 데이터를 읽어 state만 갱신
+  const refreshPrintRequests = useCallback(async () => {
+    const serverData = await supabaseStore.get("portal/printRequests_v2");
+    const items = parseArrayData(serverData);
+    if (items) {
+      setPrintRequests(items);
+      return;
+    }
+    // 직접 조회 실패 시 window.storage 경로로 재시도
+    const localData = await store.get("printRequests_v2");
+    if (Array.isArray(localData) && localData.length > 0) {
+      setPrintRequests(localData);
+    }
+  }, []);
   // Auto-prune old student history records to reduce stored data size.
   useEffect(() => {
     if (!dataLoaded) return;
@@ -1121,7 +1146,7 @@ export default function App() {
             unreadCount={unreadCount}
             sendEmailNotification={sendEmailNotification}
             inquiries={inquiries} updateInquiries={updateInquiries}
-            printRequests={printRequests} updatePrintRequests={updatePrintRequests}
+            printRequests={printRequests} updatePrintRequests={updatePrintRequests} refreshPrintRequests={refreshPrintRequests}
             archivePrintsToDrive={archivePrintsToDrive}
             visitCount={visitCount}
             analyticsData={analyticsData}
