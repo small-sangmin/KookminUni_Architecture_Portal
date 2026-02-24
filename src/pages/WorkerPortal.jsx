@@ -28,7 +28,10 @@ function WorkerPortal({ user, onLogout, reservations, updateReservations, equipR
   const pendingPrints = safePrintRequests.filter(p => p.status === "pending" || p.status === "processing").length;
 
   return (
-    <div className="fade-in" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+    <>
+    <div className="aurora-bg" />
+    <div style={{ position: "fixed", inset: 0, zIndex: 0, background: isDark ? "rgba(26,27,30,0.7)" : "rgba(248,250,252,0.7)", pointerEvents: "none" }} />
+    <div className="fade-in" style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 1 }}>
       {/* Header */}
       <div style={{ padding: "20px 0 16px", borderBottom: `1px solid ${theme.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
@@ -81,6 +84,7 @@ function WorkerPortal({ user, onLogout, reservations, updateReservations, equipR
         <LogViewer logs={logs} addLog={addLog} />
       )}
     </div>
+    </>
   );
 }
 

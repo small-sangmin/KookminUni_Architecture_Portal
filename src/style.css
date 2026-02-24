@@ -65,6 +65,15 @@
   animation: aurora-move 40s linear infinite reverse;
 }
 
+/* 포털용 오로라 (투명도 조절) */
+.aurora-bg.aurora-bg-portal::before {
+  opacity: 0.45 !important;
+}
+
+.aurora-bg.aurora-bg-portal::after {
+  opacity: 0.36 !important;
+}
+
 /* 다크모드 오로라 */
 .dark .aurora-bg {
   background: #18181b;

@@ -1348,7 +1348,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
             <div style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center" }}>
               {/* Header */}
               <div style={{ textAlign: "center", marginBottom: 30 }}>
-                <h1 style={{ fontSize: 30, fontWeight: 800, color: theme.green, lineHeight: 1.3, letterSpacing: "-0.5px" }}>Sign in to Portal</h1>
+                <h1 style={{ fontSize: 30, fontWeight: 800, color: "#158a3d", lineHeight: 1.3, letterSpacing: "-0.5px" }}>Sign in to Portal</h1>
                 <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 8 }}>Kookmin University School of Architecture Portal</div>
 
                 {/* Feature Boxes */}
@@ -1402,9 +1402,12 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
           const signUpForm = (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, width: '100%', height: '100%', justifyContent: 'center' }}>
               <div style={{ textAlign: "center", marginBottom: 16 }}>
-                <h1 style={{ fontSize: 30, fontWeight: 800, color: theme.green, marginBottom: 8 }}>Create Account</h1>
+                <h1 style={{ fontSize: 30, fontWeight: 800, color: "#158a3d", marginBottom: 8 }}>Create Account</h1>
                 <h2 style={{ fontSize: 18, fontWeight: 800, color: theme.textMuted, marginBottom: 8 }}>안전교육이수증 업로드</h2>
                 <div style={{ fontSize: 13, color: theme.textMuted }}>학번과 이름을 입력한 후 파일을 선택해주세요.</div>
+                <div style={{ marginTop: 10 }}>
+                  <div onClick={() => setShowSafetyInfo(true)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 14px", background: "rgba(212,93,93,0.15)", border: `1px solid ${theme.red}`, borderRadius: 20, cursor: "pointer", transition: "all 0.2s" }}><span style={{ fontSize: 12, fontWeight: 700, color: theme.red }}>⚠️ 미이수자 안내 꼭 읽어주세요</span></div>
+                </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -1427,11 +1430,9 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               <button onClick={() => fileInputRef.current?.click()} disabled={uploading} style={{ display: "flex", alignItems: "center", gap: 8, cursor: uploading ? "not-allowed" : "pointer", padding: "10px 16px", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: theme.radiusSm, fontSize: 13, color: theme.text, transition: "all 0.2s", fontFamily: theme.font, width: "100%", justifyContent: "flex-start", opacity: uploading ? 0.5 : 1 }}>
                 <Icons.file size={16} />{uploadFile ? uploadFile.name : "파일 선택"}
               </button>
-              {uploadFile && (
-                <button onClick={handleConfirmUpload} disabled={uploading || certPin.length !== 4} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: uploading ? "not-allowed" : "pointer", padding: "12px 16px", background: theme.blue, border: "none", borderRadius: theme.radiusSm, fontSize: 13, fontWeight: 600, color: "#fff", transition: "all 0.2s", fontFamily: theme.font, width: "100%", opacity: uploading ? 0.5 : 1 }}>
-                  {uploading ? <Icons.loading size={16} /> : <Icons.upload size={16} />}{uploading ? "업로드 중..." : "업로드"}
-                </button>
-              )}
+              <button onClick={handleConfirmUpload} disabled={uploading || !uploadFile || !certSid.trim() || !certSname.trim() || !certYear.trim() || !certMajor.trim() || !certEmail.trim() || certPin.length !== 4} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: (uploading || !uploadFile || !certSid.trim() || !certSname.trim() || !certYear.trim() || !certMajor.trim() || !certEmail.trim() || certPin.length !== 4) ? "not-allowed" : "pointer", padding: "12px 16px", background: (!uploadFile || !certSid.trim() || !certSname.trim() || !certYear.trim() || !certMajor.trim() || !certEmail.trim() || certPin.length !== 4) ? theme.border : theme.blue, border: "none", borderRadius: theme.radiusSm, fontSize: 13, fontWeight: 600, color: "#fff", transition: "all 0.2s", fontFamily: theme.font, width: "100%", opacity: (uploading || !uploadFile || !certSid.trim() || !certSname.trim() || !certYear.trim() || !certMajor.trim() || !certEmail.trim() || certPin.length !== 4) ? 0.5 : 1 }}>
+                {uploading ? <Icons.loading size={16} /> : <Icons.upload size={16} />}{uploading ? "업로드 중..." : "업로드"}
+              </button>
               {uploadSuccess && (
                 <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: theme.radiusSm, background: theme.greenBg, border: `1px solid ${theme.greenBorder}`, color: theme.green, fontSize: 12 }}><Icons.check size={14} /> {uploadSuccess}</div>
               )}
@@ -1439,9 +1440,6 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                 <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: theme.radiusSm, background: theme.accentBg, border: `1px solid ${theme.accentBorder}`, color: theme.accent, fontSize: 11 }}><Icons.file size={14} />기존 업로드: {certificates[certSid.trim()].fileName}</div>
               )}
 
-              <div style={{ textAlign: "center", marginTop: 10 }}>
-                <div onClick={() => setShowSafetyInfo(true)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 14px", background: "rgba(212,93,93,0.15)", border: `1px solid ${theme.red}`, borderRadius: 20, cursor: "pointer", transition: "all 0.2s" }}><span style={{ fontSize: 12, fontWeight: 700, color: theme.red }}>⚠️ 미이수자 안내 꼭 읽어주세요</span></div>
-              </div>
             </div>
           );
 
@@ -1504,7 +1502,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               {/* Overlay Container */}
               <div style={{ position: 'absolute', top: 0, left: '50%', width: '50%', height: '100%', overflow: 'hidden', transition: 'transform 0.6s ease-in-out', transform: isSignUp ? 'translateX(-100%)' : 'translateX(0)', zIndex: 100 }}>
                 {/* Overlay Background */}
-                <div style={{ position: 'absolute', top: 0, left: '-100%', width: '200%', height: '100%', background: `linear-gradient(135deg, ${theme.green} 0%, #1f7b5a 100%)`, color: '#fff', transition: 'transform 0.6s ease-in-out', transform: isSignUp ? 'translateX(50%)' : 'translateX(0)' }}>
+                <div style={{ position: 'absolute', top: 0, left: '-100%', width: '200%', height: '100%', background: `linear-gradient(135deg, #5aac7a 0%, #2d6e4a 100%)`, color: '#fff', transition: 'transform 0.6s ease-in-out', transform: isSignUp ? 'translateX(50%)' : 'translateX(0)' }}>
                   {/* Watermark Logo */}
                   <img src="/kmu-logo.svg" alt="" style={{ position: 'absolute', top: '50%', left: '25%', transform: 'translate(-50%, -50%)', width: '60%', height: '60%', objectFit: 'contain', opacity: 0.3, pointerEvents: 'none', zIndex: 0 }} />
                   <img src="/kmu-logo.svg" alt="" style={{ position: 'absolute', top: '50%', left: '75%', transform: 'translate(-50%, -50%)', width: '60%', height: '60%', objectFit: 'contain', opacity: 0.3, pointerEvents: 'none', zIndex: 0 }} />
