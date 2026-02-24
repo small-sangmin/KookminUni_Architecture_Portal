@@ -80,6 +80,14 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
     return Math.max(0.72, Math.min(1, widthRatio, heightRatio));
   }, [viewportSize]);
 
+  // 로그인 카드와 커뮤니티 패널이 겹치는지 동적 계산
+  const shouldStackCommunity = useMemo(() => {
+    if (isMobile) return true;
+    const loginRight = viewportSize.width / 2 + (850 * loginScale) / 2;
+    const communityLeft = viewportSize.width - 60 - 420;
+    return loginRight + 20 > communityLeft;
+  }, [viewportSize.width, loginScale, isMobile]);
+
   useEffect(() => {
     const onResize = () => {
       const width = window.innerWidth;
@@ -259,15 +267,19 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
   };
 
   return (
+    <>
+    {/* Aurora 배경 - 전체 화면 고정 (CSS) */}
+    <div className="aurora-bg" />
     <div style={{
       flex: 1,
       display: "flex",
-      flexDirection: (isMobile || isCompactLayout) ? "column" : "row",
+      flexDirection: shouldStackCommunity ? "column" : "row",
       alignItems: "center",
-      justifyContent: (isMobile || isCompactLayout) ? "flex-start" : "center",
+      justifyContent: shouldStackCommunity ? "flex-start" : "center",
       paddingBottom: 60,
       position: "relative",
-      overflow: "auto"
+      overflow: "auto",
+      zIndex: 1,
     }}>
       {authLoading && <PortalLoadingScreen isDark={isDark} overlay />}
       {/* Theme Toggle */}
@@ -581,20 +593,20 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
 
       {/* Exhibition Poster - Right Side */}
       <div style={{
-        position: (isMobile || isCompactLayout) ? "relative" : "fixed",
-        right: (isMobile || isCompactLayout) ? "auto" : 60,
-        top: (isMobile || isCompactLayout) ? "auto" : "50%",
-        transform: (isMobile || isCompactLayout) ? "none" : `translateY(-50%) scale(${loginScale})`,
+        position: shouldStackCommunity ? "relative" : "fixed",
+        right: shouldStackCommunity ? "auto" : 60,
+        top: shouldStackCommunity ? "auto" : "50%",
+        transform: shouldStackCommunity ? "none" : `translateY(-50%) scale(${loginScale})`,
         display: "flex",
         flexDirection: "column",
         gap: 10,
         zIndex: 10,
-        width: (isMobile || isCompactLayout) ? "100%" : 420,
-        maxWidth: (isMobile || isCompactLayout) ? 850 : "none",
-        margin: (isMobile || isCompactLayout) ? "20px auto 0" : 0,
+        width: shouldStackCommunity ? "100%" : 420,
+        maxWidth: shouldStackCommunity ? 850 : "none",
+        margin: shouldStackCommunity ? "20px auto 0" : 0,
         padding: isMobile ? "0 4px" : 0,
         transformOrigin: "top right",
-        order: (isMobile || isCompactLayout) ? 999 : "unset",
+        order: shouldStackCommunity ? 999 : "unset",
       }}>
         {/* Tab Header */}
         <div style={{
@@ -1288,7 +1300,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
       </div>
 
 
-      <div className="fade-in" style={{ width: "100%", maxWidth: isMobile ? "100%" : 850, position: "relative", zIndex: isCompactLayout ? 30 : 1, transform: isMobile ? "none" : `scale(${loginScale})`, transformOrigin: "center top", padding: isMobile ? "0 4px" : 0, order: isCompactLayout ? 1 : "unset" }}>
+      <div className="fade-in" style={{ width: "100%", maxWidth: isMobile ? "100%" : 850, position: "relative", zIndex: shouldStackCommunity ? 30 : 1, transform: isMobile ? "none" : `scale(${loginScale})`, transformOrigin: "center top", padding: isMobile ? "0 4px" : 0, order: shouldStackCommunity ? 1 : "unset" }}>
 
         {/* Mobile Guide Panel */}
         {isMobile && (
@@ -1752,6 +1764,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         </div>
       </div>
     </div>
+    </>
   );
 }
 
