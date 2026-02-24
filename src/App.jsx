@@ -1086,6 +1086,7 @@ export default function App() {
         ::-webkit-scrollbar-thumb { background: ${theme.border}; border-radius: 3px; }
         ::selection { background: ${theme.accent}; color: ${isDark ? '#000' : '#fff'}; }
         input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(${isDark ? 0.7 : 0}); }
+        *, *::before, *::after { box-sizing: border-box; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
@@ -1094,7 +1095,7 @@ export default function App() {
         .slide-in { animation: slideIn 0.25s ease forwards; }
       `}</style>
 
-      <div style={{ maxWidth: 880, margin: "0 auto", padding: isMobile ? "0 10px" : "0 16px", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <div style={{ width: "100%", maxWidth: 880, margin: "0 auto", padding: isMobile ? "0 10px" : "0 16px", minHeight: "100vh", display: "flex", flexDirection: "column", boxSizing: "border-box", overflowX: "hidden" }}>
         {page === "login" && (
           <LoginPage
             onLogin={handleLogin}
