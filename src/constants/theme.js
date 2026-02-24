@@ -12,15 +12,15 @@ export const darkColors = {
 };
 
 export const lightColors = {
-  bg: "#f0f1f3", surface: "#e8e9ec", surfaceHover: "#dcdde0",
-  card: "#ffffff", border: "#d0d2d6", borderLight: "#c0c2c6",
-  text: "#1a1b1e", textMuted: "#5a5d65", textDim: "#9a9da5",
-  accent: "#e8a832", accentDim: "#b8862d",
-  accentBg: "rgba(232,168,50,0.12)", accentBorder: "rgba(232,168,50,0.3)",
-  blue: "#2e73c0", blueBg: "rgba(46,115,192,0.1)", blueBorder: "rgba(46,115,192,0.25)",
-  green: "#3a9a58", greenBg: "rgba(58,154,88,0.1)", greenBorder: "rgba(58,154,88,0.25)",
-  red: "#c0392b", redBg: "rgba(192,57,43,0.08)", redBorder: "rgba(192,57,43,0.2)",
-  yellow: "#b89a2a", yellowBg: "rgba(184,154,42,0.1)", yellowBorder: "rgba(184,154,42,0.2)",
+  bg: "#f4f5f8", surface: "#eaeef2", surfaceHover: "#dfe4e9",
+  card: "#ffffff", border: "#d9dce1", borderLight: "#e2e5ea",
+  text: "#2b2d31", textMuted: "#6b6e76", textDim: "#9ea2aa",
+  accent: "#d9972b", accentDim: "#b07b23",
+  accentBg: "rgba(217,151,43,0.12)", accentBorder: "rgba(217,151,43,0.3)",
+  blue: "#357abd", blueBg: "rgba(53,122,189,0.1)", blueBorder: "rgba(53,122,189,0.25)",
+  green: "#409e63", greenBg: "rgba(64,158,99,0.1)", greenBorder: "rgba(64,158,99,0.25)",
+  red: "#c94638", redBg: "rgba(201,70,56,0.08)", redBorder: "rgba(201,70,56,0.2)",
+  yellow: "#c2a334", yellowBg: "rgba(194,163,52,0.1)", yellowBorder: "rgba(194,163,52,0.2)",
 };
 
 // Mutable theme object - updated at render time via Object.assign(theme, darkColors/lightColors)

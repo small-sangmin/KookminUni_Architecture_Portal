@@ -1,0 +1,45 @@
+﻿[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m??[39m 24 modules transformed.
+node.exe : [31mx[39m Build failed in 73ms
+위치 줄:1 문자:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([31mx[39m Build failed in 73ms:S 
+   tring) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[31merror during build:
+[31m[vite:esbuild] Transform failed with 1 error:
+C:/Users/samki/KookminUni_Architecture_Portal/src/pages/LoginPage.jsx:847:55: ER
+ROR: Unterminated string literal[31m
+file: [36mC:/Users/samki/KookminUni_Architecture_Portal/src/pages/LoginPage.jsx
+:847:55[31m
+[33m
+[33mUnterminated string literal[33m
+846|                          <div style={{ fontSize: 20, fontWeight: 600, color
+: expandedExhId === exhPost.id ? theme.accent : theme.text, transition: "color 0
+.2s" }}>
+847|                            {exhPost.title || "?袁⑸뻻??}
+848|                          </div>
+   |     ^
+849|                          <div style={{ fontSize: 10, color: theme.textMuted
+, marginTop: 3 }}>
+850|                            ?諭?{exhPost.dates || "沃섎챷??} 夷??諭?{exhPost.locat
+ion || "沃섎챷??}
+[31m
+    at failureErrorWithLog (C:\Users\samki\KookminUni_Architecture_Portal\node_m
+odules\esbuild\lib\main.js:1472:15)
+    at C:\Users\samki\KookminUni_Architecture_Portal\node_modules\esbuild\lib\ma
+in.js:755:50
+    at responseCallbacks.<computed> (C:\Users\samki\KookminUni_Architecture_Port
+al\node_modules\esbuild\lib\main.js:622:9)
+    at handleIncomingPacket (C:\Users\samki\KookminUni_Architecture_Portal\node_
+modules\esbuild\lib\main.js:677:12)
+    at Socket.readFromStdout (C:\Users\samki\KookminUni_Architecture_Portal\node
+_modules\esbuild\lib\main.js:600:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)[39m

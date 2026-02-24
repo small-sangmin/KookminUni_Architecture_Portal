@@ -246,13 +246,13 @@ export default function App() {
           // 로컬이 더 최신이면 Supabase에 동기화
           if (localTs > serverTs) {
             console.log("[PRINT LOAD] 로컬이 더 최신 → Supabase에 동기화");
-            supabaseStore.set("portal/printRequests_v2", localPrintsParsed).catch(() => {});
+            supabaseStore.set("portal/printRequests_v2", localPrintsParsed).catch(() => { });
           }
         } else if (serverPrintsParsed?.length > 0) {
           resolvedPrints = serverPrintsParsed;
         } else if (localPrintsParsed?.length > 0) {
           resolvedPrints = localPrintsParsed;
-          supabaseStore.set("portal/printRequests_v2", localPrintsParsed).catch(() => {});
+          supabaseStore.set("portal/printRequests_v2", localPrintsParsed).catch(() => { });
         }
 
         if (resolvedPrints) {
@@ -952,8 +952,8 @@ export default function App() {
     // 날짜 폴더 (첫 번째 요청의 createdAt 기준)
     const firstReq = requestsToArchive[0];
     const dateFolder = firstReq?.createdAt
-      ? (() => { const d = new Date(firstReq.createdAt); return `${String(d.getFullYear()).slice(-2)}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`; })()
-      : (() => { const d = new Date(); return `${String(d.getFullYear()).slice(-2)}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`; })();
+      ? (() => { const d = new Date(firstReq.createdAt); return `${String(d.getFullYear()).slice(-2)}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`; })()
+      : (() => { const d = new Date(); return `${String(d.getFullYear()).slice(-2)}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`; })();
 
     const payload = {
       action,
@@ -1199,7 +1199,8 @@ export default function App() {
           opacity: 0.5,
           pointerEvents: "none",
           zIndex: 1000,
-          objectFit: "contain"
+          objectFit: "contain",
+          filter: isDark ? "none" : "brightness(0)",
         }}
       />
     </div>

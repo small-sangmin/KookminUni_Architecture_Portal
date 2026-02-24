@@ -10,7 +10,6 @@ import PortalLoadingScreen from "../components/PortalLoadingScreen";
 
 function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSession, onRememberSessionChange, blacklist, warnings, certificates, updateCertificates, inquiries, updateInquiries, savedCredentials, communityPosts, setCommunityPosts, exhibitionPosts, isMobile, isDark, toggleDark }) {
   const [mode, setMode] = useState("student");
-  const [isSignUp, setIsSignUp] = useState(false);
   const [sid, setSid] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.id || "") : "");
   const [sname, setSname] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.name || "") : "");
   const [sPin, setSPin] = useState("");
@@ -65,7 +64,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
   const [haedongHover, setHaedongHover] = useState(false);
   const [certHover, setCertHover] = useState(false);
   const [showUploadConfirm, setShowUploadConfirm] = useState(false);
-  const [isCompactLayout, setIsCompactLayout] = useState(() => window.innerWidth <= 1400);
+  const [isCompactLayout, setIsCompactLayout] = useState(() => window.innerWidth <= 1200);
   const [viewportSize, setViewportSize] = useState(() => ({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -84,7 +83,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
     const onResize = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
-      setIsCompactLayout(width <= 1400);
+      setIsCompactLayout(width <= 1200);
       setViewportSize({ width, height });
     };
     onResize();
@@ -297,11 +296,10 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         {/* Horizontal Guide Content */}
         <div style={{
           background: theme.card,
-          backdropFilter: "blur(12px)",
+          backdropFilter: "blur(10px)",
           border: `1px solid ${theme.border}`,
           borderRadius: 12,
           padding: "14px 20px",
-          boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.3)" : "0 8px 32px rgba(0,0,0,0.06)",
         }}>
           {/* Title Row */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
@@ -367,7 +365,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         display: isMobile ? "none" : "flex",
         flexDirection: "column",
         gap: 8,
-        zIndex: 9999,
+        zIndex: isCompactLayout ? 2 : 100,
         transformOrigin: "left center",
       }}>
         {/* Banner Title */}
@@ -405,9 +403,8 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               color: theme.text,
               fontSize: 13,
               fontWeight: 500,
-              transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+              transition: "all 0.2s ease",
               minWidth: 140,
-              boxShadow: isDark ? "0 4px 12px rgba(0,0,0,0.2)" : "0 4px 12px rgba(0,0,0,0.04)",
             }}
             onMouseEnter={e => {
               e.currentTarget.style.background = `${link.color}20`;
@@ -445,10 +442,9 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               color: theme.text,
               fontSize: 13,
               fontWeight: 500,
-              transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+              transition: "all 0.2s ease",
               minWidth: 140,
               transform: certHover ? "translateX(4px)" : "translateX(0)",
-              boxShadow: isDark ? "0 4px 12px rgba(0,0,0,0.2)" : "0 4px 12px rgba(0,0,0,0.04)",
             }}
             onMouseEnter={() => setCertHover(true)}
             onMouseLeave={() => setCertHover(false)}
@@ -503,10 +499,9 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
               color: theme.text,
               fontSize: 13,
               fontWeight: 500,
-              transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+              transition: "all 0.2s ease",
               minWidth: 140,
               transform: haedongHover ? "translateX(4px)" : "translateX(0)",
-              boxShadow: isDark ? "0 4px 12px rgba(0,0,0,0.2)" : "0 4px 12px rgba(0,0,0,0.04)",
             }}
             onMouseEnter={() => setHaedongHover(true)}
             onMouseLeave={() => setHaedongHover(false)}
@@ -584,10 +579,10 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         right: 60,
         top: "50%",
         transform: `translateY(-50%) scale(${loginScale})`,
-        display: isMobile || isCompactLayout ? "none" : "flex",
+        display: isMobile ? "none" : "flex",
         flexDirection: "column",
         gap: 10,
-        zIndex: 10,
+        zIndex: isCompactLayout ? 2 : 10,
         width: 420,
         transformOrigin: "top right",
       }}>
@@ -599,7 +594,6 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
           borderRadius: 8,
           padding: 4,
           border: `1px solid ${theme.border}`,
-          boxShadow: isDark ? "0 4px 16px rgba(0,0,0,0.2)" : "0 4px 16px rgba(0,0,0,0.05)",
         }}>
           <button
             onClick={() => setRightPanelTab("community")}
@@ -653,11 +647,10 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
             ) : (
               <div style={{
                 background: theme.card,
-                backdropFilter: "blur(12px)",
+                backdropFilter: "blur(10px)",
                 border: `1px solid ${theme.border}`,
                 borderRadius: 10,
                 overflow: "hidden",
-                boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.3)" : "0 8px 32px rgba(0,0,0,0.06)",
               }}>
                 {exhibitionPosts.map((exhPost, idx) => (
                   <div key={exhPost.id}>
@@ -755,11 +748,10 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
             {/* New Post Input */}
             <div style={{
               background: theme.card,
-              backdropFilter: "blur(12px)",
+              backdropFilter: "blur(10px)",
               border: `1px solid ${theme.border}`,
               borderRadius: 10,
               padding: 14,
-              boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.3)" : "0 8px 32px rgba(0,0,0,0.06)",
             }}>
               <textarea
                 value={newPostContent}
@@ -822,12 +814,11 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
             {/* Posts List */}
             <div style={{
               background: theme.card,
-              backdropFilter: "blur(12px)",
+              backdropFilter: "blur(10px)",
               border: `1px solid ${theme.border}`,
               borderRadius: 10,
               maxHeight: 350,
               overflowY: "auto",
-              boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.3)" : "0 8px 32px rgba(0,0,0,0.06)",
             }}>
               {communityPosts.length === 0 ? (
                 <div style={{ padding: 30, textAlign: "center", color: theme.textDim, fontSize: 13 }}>
@@ -1282,8 +1273,25 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         )}
       </div>
 
+      {/* Background Logo */}
+      <img
+        src="/kmu-logo.svg"
+        alt="KMU Logo"
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "500px",
+          height: "500px",
+          opacity: 0.15,
+          pointerEvents: "none",
+          zIndex: 0,
+          objectFit: "contain"
+        }}
+      />
 
-      <div className="fade-in" style={{ width: "100%", maxWidth: isMobile ? "100%" : 850, position: "relative", zIndex: isCompactLayout ? 30 : 1, transform: isMobile ? "none" : `scale(${loginScale})`, transformOrigin: "center top", padding: isMobile ? "0 4px" : 0 }}>
+      <div className="fade-in" style={{ width: "100%", maxWidth: isMobile ? "100%" : 420, position: "relative", zIndex: isCompactLayout ? 30 : 1, transform: isMobile ? "none" : `scale(${loginScale})`, transformOrigin: "center top", padding: isMobile ? "0 4px" : 0 }}>
 
         {/* Mobile Guide Panel */}
         {isMobile && (
@@ -1325,198 +1333,311 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         )}
 
         {/* Main Login Section */}
-        {(() => {
-          const signInForm = (
-            <div style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center" }}>
-              {/* Header */}
-              <div style={{ textAlign: "center", marginBottom: 30 }}>
-                <h1 style={{ fontSize: 30, fontWeight: 800, color: theme.green, lineHeight: 1.3, letterSpacing: "-0.5px" }}>Sign in to Portal</h1>
-                <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 8 }}>Kookmin University School of Architecture Portal</div>
+        <div>
+          {/* Header */}
+          <div style={{ textAlign: "center", marginBottom: 30 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: theme.accent, letterSpacing: "3px", textTransform: "uppercase", marginBottom: 12 }}>The Best School of Architecture</div>
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: theme.text, lineHeight: 1.3, letterSpacing: "-0.5px" }}>국민대 건축대학 포털사이트</h1>
+            <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 8 }}>Kookmin University School of Architecture Portal</div>
 
-                {/* Feature Boxes */}
-                <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 20 }}>
-                  <div style={{ padding: "6px 12px", borderRadius: 8, background: "linear-gradient(135deg, #6BA3D6 0%, #5A8FC2 100%)", color: "#fff", fontSize: 11, fontWeight: 600, boxShadow: "0 4px 12px rgba(107, 163, 214, 0.4)" }}>🏠 실기실 예약</div>
-                  <div style={{ padding: "6px 12px", borderRadius: 8, background: "linear-gradient(135deg, #6EBD8E 0%, #5DAD7D 100%)", color: "#fff", fontSize: 11, fontWeight: 600, boxShadow: "0 4px 12px rgba(110, 189, 142, 0.4)" }}>🔧 물품 대여</div>
-                  <div style={{ padding: "6px 12px", borderRadius: 8, background: "linear-gradient(135deg, #E9A56A 0%, #D9955A 100%)", color: "#fff", fontSize: 11, fontWeight: 600, boxShadow: "0 4px 12px rgba(233, 165, 106, 0.4)" }}>🖨️ 출력물 보내기</div>
-                </div>
-              </div>
-
-              {/* Role Switch */}
-              <div style={{ display: "flex", gap: 2, background: theme.surface, borderRadius: theme.radius, padding: 3, marginBottom: 20, border: `1px solid ${theme.border}` }}>
-                {[{ id: "student", label: "학생", icon: <Icons.user size={15} /> }, { id: "worker", label: "근로학생", icon: <Icons.tool size={15} /> }, { id: "admin", label: "관리자", icon: <Icons.shield size={15} /> }].map(r => (
-                  <button key={r.id} disabled={authLoading} onClick={() => { setMode(r.id); setError(""); setWUser(""); setWPass(""); }} style={{ flex: 1, padding: "10px 6px", borderRadius: 8, border: "none", cursor: authLoading ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 600, fontFamily: theme.font, transition: "all 0.2s", background: mode === r.id ? theme.card : "transparent", color: mode === r.id ? theme.text : theme.textMuted, opacity: authLoading ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, boxShadow: mode === r.id ? "0 1px 4px rgba(0,0,0,0.3)" : "none" }}>{r.icon} {r.label}</button>
-                ))}
-              </div>
-
-              {/* Login Form */}
-              {mode === "student" ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  <Input label="학번" placeholder="예: 2021001" value={sid} onChange={e => setSid(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
-                  <Input label="이름" placeholder="예: 김건축" value={sname} onChange={e => setSname(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
-                  <Input label="비밀번호 (4자리 숫자)" placeholder="이수증 업로드 시 설정한 비밀번호" type="password" inputMode="numeric" maxLength={4} value={sPin} onChange={e => setSPin(e.target.value.replace(/[^0-9]/g, ""))} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
-                  {error && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: theme.radiusSm, background: theme.redBg, border: `1px solid ${theme.redBorder}`, color: theme.red, fontSize: 13 }}><Icons.alert size={16} /> {error}</div>
-                  )}
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: theme.textMuted }}>
-                    <input type="checkbox" checked={!!rememberSession} onChange={e => onRememberSessionChange?.(e.target.checked)} style={{ width: 14, height: 14 }} /> 로그아웃 후에도 로그인 기억
-                  </label>
-                  <Button size="lg" onClick={handleSubmit} disabled={!sid || !sname || sPin.length !== 4 || studentChecking || authLoading} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>{studentChecking || authLoading ? "확인 중..." : "로그인"}</Button>
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  <Input label="아이디" placeholder={mode === "admin" ? "관리자 아이디" : "근로학생 아이디"} value={wUser} onChange={e => setWUser(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "0.5px", textTransform: "uppercase" }}>비밀번호</label>
-                    <div style={{ position: "relative" }}>
-                      <input type={showPass ? "text" : "password"} placeholder="비밀번호 입력" value={wPass} onChange={e => setWPass(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()} style={{ width: "100%", padding: "10px 42px 10px 14px", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: theme.radiusSm, color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }} onFocus={e => e.target.style.borderColor = theme.accent} onBlur={e => e.target.style.borderColor = theme.border} />
-                      <button onClick={() => setShowPass(!showPass)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 2 }}><Icons.eyeOff size={16} /></button>
-                    </div>
-                  </div>
-                  {error && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: theme.radiusSm, background: theme.redBg, border: `1px solid ${theme.redBorder}`, color: theme.red, fontSize: 13 }}><Icons.alert size={16} /> {error}</div>
-                  )}
-                  <Button size="lg" onClick={handleSubmit} disabled={authLoading} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>{authLoading ? "로그인 중..." : (mode === "admin" ? "관리자 로그인" : "관리 화면 접속")}</Button>
-                </div>
-              )}
+            {/* Feature Boxes */}
+            <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 20 }}>
+              <div style={{
+                padding: "8px 16px", borderRadius: 8,
+                background: "linear-gradient(135deg, #6BA3D6 0%, #5A8FC2 100%)",
+                color: "#fff", fontSize: 12, fontWeight: 600,
+                boxShadow: "0 2px 8px rgba(107, 163, 214, 0.3)",
+              }}>🏠 실기실 예약</div>
+              <div style={{
+                padding: "8px 16px", borderRadius: 8,
+                background: "linear-gradient(135deg, #6EBD8E 0%, #5DAD7D 100%)",
+                color: "#fff", fontSize: 12, fontWeight: 600,
+                boxShadow: "0 2px 8px rgba(110, 189, 142, 0.3)",
+              }}>🔧 물품 대여</div>
+              <div style={{
+                padding: "8px 16px", borderRadius: 8,
+                background: "linear-gradient(135deg, #E9A56A 0%, #D9955A 100%)",
+                color: "#fff", fontSize: 12, fontWeight: 600,
+                boxShadow: "0 2px 8px rgba(233, 165, 106, 0.3)",
+              }}>🖨️ 출력물 보내기</div>
             </div>
-          );
+          </div>
 
-          const signUpForm = (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, width: '100%', height: '100%', justifyContent: 'center' }}>
-              <div style={{ textAlign: "center", marginBottom: 16 }}>
-                <h1 style={{ fontSize: 30, fontWeight: 800, color: theme.green, marginBottom: 8 }}>Create Account</h1>
-                <h2 style={{ fontSize: 18, fontWeight: 800, color: theme.textMuted, marginBottom: 8 }}>안전교육이수증 업로드</h2>
-                <div style={{ fontSize: 13, color: theme.textMuted }}>학번과 이름을 입력한 후 파일을 선택해주세요.</div>
-              </div>
+          {/* Role Switch */}
+          <div style={{ display: "flex", gap: 2, background: theme.surface, borderRadius: theme.radius, padding: 3, marginBottom: 24, border: `1px solid ${theme.border}` }}>
+            {[
+              { id: "student", label: "학생", icon: <Icons.user size={15} /> },
+              { id: "worker", label: "근로학생", icon: <Icons.tool size={15} /> },
+              { id: "admin", label: "관리자", icon: <Icons.shield size={15} /> },
+            ].map(r => (
+              <button key={r.id} disabled={authLoading} onClick={() => { setMode(r.id); setError(""); setWUser(""); setWPass(""); }} style={{
+                flex: 1, padding: "11px 8px", borderRadius: 8, border: "none", cursor: authLoading ? "not-allowed" : "pointer",
+                fontSize: 13, fontWeight: 600, fontFamily: theme.font, transition: "all 0.2s",
+                background: mode === r.id ? theme.card : "transparent",
+                color: mode === r.id ? theme.text : theme.textMuted, opacity: authLoading ? 0.6 : 1,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                boxShadow: mode === r.id ? "0 1px 4px rgba(0,0,0,0.3)" : "none",
+              }}>{r.icon} {r.label}</button>
+            ))}
+          </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <Input label="학번" placeholder="예: 2021001" value={certSid} onChange={e => setCertSid(e.target.value)} />
-                <Input label="이름" placeholder="예: 김건축" value={certSname} onChange={e => setCertSname(e.target.value)} />
+          {/* Login Form */}
+          <Card style={{ background: theme.card, backdropFilter: "blur(10px)", border: `1px solid ${theme.border}` }}>
+            {mode === "student" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <Input label="학번" placeholder="예: 2021001" value={sid} onChange={e => setSid(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
+                <Input label="이름" placeholder="예: 김건축" value={sname} onChange={e => setSname(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
+                <Input
+                  label="비밀번호 (4자리 숫자)"
+                  placeholder="이수증 업로드 시 설정한 비밀번호"
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={sPin}
+                  onChange={e => setSPin(e.target.value.replace(/[^0-9]/g, ""))}
+                  onKeyDown={e => e.key === "Enter" && handleSubmit()}
+                />
+                {error && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: theme.radiusSm, background: theme.redBg, border: `1px solid ${theme.redBorder}`, color: theme.red, fontSize: 13 }}>
+                    <Icons.alert size={16} /> {error}
+                  </div>
+                )}
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: theme.textMuted }}>
+                  <input
+                    type="checkbox"
+                    checked={!!rememberSession}
+                    onChange={e => onRememberSessionChange?.(e.target.checked)}
+                    style={{ width: 14, height: 14 }}
+                  />
+                  로그아웃 후에도 로그인 기억
+                </label>
+                <Button size="lg" onClick={handleSubmit} disabled={!sid || !sname || sPin.length !== 4 || studentChecking || authLoading} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>
+                  {studentChecking || authLoading ? "확인 중..." : "로그인"}
+                </Button>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <Input label="학년" placeholder="예: 2" value={certYear} onChange={e => setCertYear(e.target.value)} />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <Input label="아이디" placeholder={mode === "admin" ? "관리자 아이디" : "근로학생 아이디"} value={wUser} onChange={e => setWUser(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "0.5px", textTransform: "uppercase" }}>전공</label>
-                  <select value={certMajor} onChange={e => setCertMajor(e.target.value)} style={{ width: "100%", padding: "10px 14px", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: theme.radiusSm, color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s", height: 42 }} onFocus={e => e.target.style.borderColor = theme.accent} onBlur={e => e.target.style.borderColor = theme.border}>
-                    <option value="">선택</option><option value="5년제">5년제</option><option value="4년제">4년제</option><option value="미정">미정</option>
-                  </select>
-                </div>
-              </div>
-              <Input label="이메일" placeholder="예: student@school.ac.kr" value={certEmail} onChange={e => setCertEmail(e.target.value)} />
-              <Input label="비밀번호 (4자리 숫자)" placeholder="로그인 시 사용할 비밀번호" type="password" inputMode="numeric" maxLength={4} value={certPin} onChange={e => setCertPin(e.target.value.replace(/[^0-9]/g, ""))} />
-
-              <input ref={fileInputRef} type="file" accept="image/*,.pdf" onChange={handleFileUpload} style={{ display: "none" }} />
-              <button onClick={() => fileInputRef.current?.click()} disabled={uploading} style={{ display: "flex", alignItems: "center", gap: 8, cursor: uploading ? "not-allowed" : "pointer", padding: "10px 16px", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: theme.radiusSm, fontSize: 13, color: theme.text, transition: "all 0.2s", fontFamily: theme.font, width: "100%", justifyContent: "flex-start", opacity: uploading ? 0.5 : 1 }}>
-                <Icons.file size={16} />{uploadFile ? uploadFile.name : "파일 선택"}
-              </button>
-              {uploadFile && (
-                <button onClick={handleConfirmUpload} disabled={uploading || certPin.length !== 4} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: uploading ? "not-allowed" : "pointer", padding: "12px 16px", background: theme.blue, border: "none", borderRadius: theme.radiusSm, fontSize: 13, fontWeight: 600, color: "#fff", transition: "all 0.2s", fontFamily: theme.font, width: "100%", opacity: uploading ? 0.5 : 1 }}>
-                  {uploading ? <Icons.loading size={16} /> : <Icons.upload size={16} />}{uploading ? "업로드 중..." : "업로드"}
-                </button>
-              )}
-              {uploadSuccess && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: theme.radiusSm, background: theme.greenBg, border: `1px solid ${theme.greenBorder}`, color: theme.green, fontSize: 12 }}><Icons.check size={14} /> {uploadSuccess}</div>
-              )}
-              {certificates?.[certSid.trim()] && certSid.trim() && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: theme.radiusSm, background: theme.accentBg, border: `1px solid ${theme.accentBorder}`, color: theme.accent, fontSize: 11 }}><Icons.file size={14} />기존 업로드: {certificates[certSid.trim()].fileName}</div>
-              )}
-
-              <div style={{ textAlign: "center", marginTop: 10 }}>
-                <div onClick={() => setShowSafetyInfo(true)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 14px", background: "rgba(212,93,93,0.15)", border: `1px solid ${theme.red}`, borderRadius: 20, cursor: "pointer", transition: "all 0.2s" }}><span style={{ fontSize: 12, fontWeight: 700, color: theme.red }}>⚠️ 미이수자 안내 꼭 읽어주세요</span></div>
-              </div>
-            </div>
-          );
-
-          if (isMobile) {
-            return (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                <Card style={{ background: theme.card, backdropFilter: "blur(12px)", border: `1px solid ${theme.border}`, boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.4)" : "0 8px 32px rgba(0,0,0,0.08)" }}>
-                  {signInForm}
-                </Card>
-                <Card
-                  onClick={isSignUp ? undefined : () => setIsSignUp(true)}
-                  hover={false}
-                  style={{
-                    background: isSignUp ? "#fff" : theme.card,
-                    backdropFilter: "blur(12px)",
-                    border: `1px solid ${theme.border}`,
-                    boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.4)" : "0 8px 32px rgba(0,0,0,0.08)",
-                    cursor: isSignUp ? "default" : "pointer",
-                    transition: "all 0.3s ease",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isSignUp ? 12 : 6 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 800, color: theme.green }}>
-                      <Icons.upload size={18} color={theme.green} />
-                      Create Account
-                    </div>
-                    {isSignUp && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setIsSignUp(false); }}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 2 }}
-                      >
-                        <Icons.x size={16} />
-                      </button>
-                    )}
+                  <label style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "0.5px", textTransform: "uppercase" }}>비밀번호</label>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={showPass ? "text" : "password"} placeholder="비밀번호 입력"
+                      value={wPass} onChange={e => setWPass(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && handleSubmit()}
+                      style={{ width: "100%", padding: "10px 42px 10px 14px", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: theme.radiusSm, color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
+                      onFocus={e => e.target.style.borderColor = theme.accent}
+                      onBlur={e => e.target.style.borderColor = theme.border}
+                    />
+                    <button onClick={() => setShowPass(!showPass)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 2 }}>
+                      {showPass ? <Icons.eyeOff size={16} /> : <Icons.eye size={16} />}
+                    </button>
                   </div>
-                  {!isSignUp ? (
+                </div>
+                {error && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: theme.radiusSm, background: theme.redBg, border: `1px solid ${theme.redBorder}`, color: theme.red, fontSize: 13 }}>
+                    <Icons.alert size={16} /> {error}
+                  </div>
+                )}
+                <Button size="lg" onClick={handleSubmit} disabled={authLoading} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>
+                  {authLoading ? "로그인 중..." : (mode === "admin" ? "관리자 로그인" : "관리 화면 접속")}
+                </Button>
+              </div>
+            )}
+          </Card>
+
+
+
+        </div>
+
+        {/* Safety Certificate Upload Banner (Student Mode Only) */}
+        {mode === "student" && (
+          <div style={{ marginTop: 16, width: "100%" }}>
+            <Card
+              key={showCertUpload ? "cert-expanded" : "cert-collapsed"}
+              onClick={showCertUpload ? undefined : () => setShowCertUpload(true)}
+              hover={false}
+              style={{
+                background: theme.card,
+                borderColor: theme.border,
+                cursor: showCertUpload ? "default" : "pointer",
+                transition: "all 0.3s ease",
+              }}
+            >
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: theme.blue }}>
+                    <Icons.upload size={18} color={theme.blue} />
+                    안전교육이수증 업로드
+                  </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div
+                        onClick={(e) => { e.stopPropagation(); setShowSafetyInfo(true); }}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 4,
+                          padding: "4px 10px",
+                          background: "rgba(212,93,93,0.15)", border: `1px solid ${theme.red}`,
+                          borderRadius: theme.radiusSm, cursor: "pointer",
+                          transition: "all 0.2s", whiteSpace: "nowrap",
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = "rgba(212,93,93,0.25)"}
+                        onMouseLeave={e => e.currentTarget.style.background = "rgba(212,93,93,0.15)"}
+                      >
+                        <span style={{ fontSize: 11, fontWeight: 700, color: theme.red }}>꼭 먼저 읽어주세요</span>
+                      </div>
+                      {showCertUpload && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setShowCertUpload(false); }}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 2 }}
+                        >
+                          <Icons.x size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {!showCertUpload ? (
                     <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.5 }}>
-                      안전교육이수증 업로드 (처음 이용 시 클릭)
+                      안전교육이수증을 업로드하려면 클릭하세요
                     </div>
                   ) : (
-                    signUpForm
+                    <>
+                      <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 12, lineHeight: 1.5 }}>
+                        학번과 이름을 입력한 후 파일을 선택해주세요.
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
+                          <Input
+                            label="학번"
+                            placeholder="예: 2021001"
+                            value={certSid}
+                            onChange={e => setCertSid(e.target.value)}
+                          />
+                          <Input
+                            label="이름"
+                            placeholder="예: 김건축"
+                            value={certSname}
+                            onChange={e => setCertSname(e.target.value)}
+                          />
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
+                          <Input
+                            label="학년"
+                            placeholder="예: 2"
+                            value={certYear}
+                            onChange={e => setCertYear(e.target.value)}
+                          />
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            <label style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "0.5px", textTransform: "uppercase" }}>전공</label>
+                            <select
+                              value={certMajor}
+                              onChange={e => setCertMajor(e.target.value)}
+                              style={{ width: "100%", padding: "10px 14px", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: theme.radiusSm, color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s", height: 42 }}
+                              onFocus={e => e.target.style.borderColor = theme.accent}
+                              onBlur={e => e.target.style.borderColor = theme.border}
+                            >
+                              <option value="">선택</option>
+                              <option value="5년제">5년제</option>
+                              <option value="4년제">4년제</option>
+                              <option value="미정">미정</option>
+                            </select>
+                          </div>
+                        </div>
+                        <Input
+                          label="이메일"
+                          placeholder="예: student@school.ac.kr"
+                          value={certEmail}
+                          onChange={e => setCertEmail(e.target.value)}
+                        />
+                        <Input
+                          label="비밀번호 (4자리 숫자)"
+                          placeholder="로그인 시 사용할 비밀번호"
+                          type="password"
+                          inputMode="numeric"
+                          maxLength={4}
+                          value={certPin}
+                          onChange={e => setCertPin(e.target.value.replace(/[^0-9]/g, ""))}
+                        />
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={handleFileUpload}
+                          style={{ display: "none" }}
+                        />
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploading}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            cursor: uploading ? "not-allowed" : "pointer",
+                            padding: "10px 16px",
+                            background: theme.surface,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: theme.radiusSm,
+                            fontSize: 13,
+                            color: theme.text,
+                            transition: "all 0.2s",
+                            fontFamily: theme.font,
+                            width: "100%",
+                            justifyContent: "flex-start",
+                            opacity: uploading ? 0.5 : 1
+                          }}
+                          onMouseEnter={e => { if (!uploading) { e.currentTarget.style.borderColor = theme.blue; e.currentTarget.style.background = theme.surfaceHover; } }}
+                          onMouseLeave={e => { if (!uploading) { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.surface; } }}
+                        >
+                          <Icons.file size={16} />
+                          {uploadFile ? uploadFile.name : "파일 선택"}
+                        </button>
+                        {uploadFile && (
+                          <button
+                            onClick={handleConfirmUpload}
+                            disabled={uploading || certPin.length !== 4}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 8,
+                              cursor: uploading ? "not-allowed" : "pointer",
+                              padding: "12px 16px",
+                              background: theme.blue,
+                              border: "none",
+                              borderRadius: theme.radiusSm,
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: "#fff",
+                              transition: "all 0.2s",
+                              fontFamily: theme.font,
+                              width: "100%",
+                              opacity: uploading ? 0.5 : 1
+                            }}
+                            onMouseEnter={e => { if (!uploading) e.currentTarget.style.opacity = "0.9"; }}
+                            onMouseLeave={e => { if (!uploading) e.currentTarget.style.opacity = "1"; }}
+                          >
+                            {uploading ? <Icons.loading size={16} /> : <Icons.upload size={16} />}
+                            {uploading ? "업로드 중..." : "업로드"}
+                          </button>
+                        )}
+                        {uploadSuccess && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: theme.radiusSm, background: theme.greenBg, border: `1px solid ${theme.greenBorder}`, color: theme.green, fontSize: 12 }}>
+                            <Icons.check size={14} /> {uploadSuccess}
+                          </div>
+                        )}
+                        {certificates?.[certSid.trim()] && certSid.trim() && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: theme.radiusSm, background: theme.accentBg, border: `1px solid ${theme.accentBorder}`, color: theme.accent, fontSize: 11 }}>
+                            <Icons.file size={14} />
+                            기존 업로드: {certificates[certSid.trim()].fileName} ({new Date(certificates[certSid.trim()].uploadDate).toLocaleDateString()})
+                          </div>
+                        )}
+                      </div>
+                    </>
                   )}
-                </Card>
               </div>
-            );
-          }
-
-          return (
-            <div style={{ position: 'relative', width: 850, height: 620, background: theme.card, borderRadius: 20, boxShadow: isDark ? "0 12px 48px rgba(0,0,0,0.5)" : "0 12px 48px rgba(0,0,0,0.08)", overflow: 'hidden', border: `1px solid ${theme.border}` }}>
-              {/* Sign In Container */}
-              <div style={{ position: 'absolute', top: 0, left: 0, width: '50%', height: '100%', padding: '40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', transition: 'all 0.6s ease-in-out', transform: isSignUp ? 'translateX(100%)' : 'translateX(0)', opacity: isSignUp ? 0 : 1, zIndex: isSignUp ? 1 : 5, pointerEvents: isSignUp ? 'none' : 'auto' }}>
-                {signInForm}
-              </div>
-
-              {/* Sign Up Container */}
-              <div style={{ position: 'absolute', top: 0, left: 0, width: '50%', height: '100%', padding: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'center', transition: 'all 0.6s ease-in-out', transform: isSignUp ? 'translateX(100%)' : 'translateX(0)', opacity: isSignUp ? 1 : 0, zIndex: isSignUp ? 5 : 1, pointerEvents: isSignUp ? 'auto' : 'none' }}>
-                {signUpForm}
-              </div>
-
-              {/* Overlay Container */}
-              <div style={{ position: 'absolute', top: 0, left: '50%', width: '50%', height: '100%', overflow: 'hidden', transition: 'transform 0.6s ease-in-out', transform: isSignUp ? 'translateX(-100%)' : 'translateX(0)', zIndex: 100 }}>
-                {/* Overlay Background */}
-                <div style={{ position: 'absolute', top: 0, left: '-100%', width: '200%', height: '100%', background: `linear-gradient(135deg, ${theme.green} 0%, #1f7b5a 100%)`, color: '#fff', transition: 'transform 0.6s ease-in-out', transform: isSignUp ? 'translateX(50%)' : 'translateX(0)' }}>
-                  {/* Watermark Logo */}
-                  <img src="/kmu-logo.svg" alt="" style={{ position: 'absolute', top: '50%', left: '25%', transform: 'translate(-50%, -50%)', width: '60%', height: '60%', objectFit: 'contain', opacity: 0.3, pointerEvents: 'none', zIndex: 0 }} />
-                  <img src="/kmu-logo.svg" alt="" style={{ position: 'absolute', top: '50%', left: '75%', transform: 'translate(-50%, -50%)', width: '60%', height: '60%', objectFit: 'contain', opacity: 0.3, pointerEvents: 'none', zIndex: 0 }} />
-
-                  {/* Overlay Left (Sign In Prompt) */}
-                  <div style={{ position: 'absolute', top: 0, left: 0, width: '50%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 40px', transition: 'transform 0.6s ease-in-out', transform: isSignUp ? 'translateX(0)' : 'translateX(-20%)' }}>
-                    <img src="/kmu-logo.png" alt="KMU Logo" style={{ width: 140, marginBottom: 20, filter: "brightness(0) invert(1)", opacity: 0.9 }} />
-                    <h2 style={{ fontSize: 32, fontWeight: 800, marginBottom: 16 }}>반갑습니다!</h2>
-                    <p style={{ fontSize: 13, marginBottom: 30, lineHeight: 1.6, opacity: 0.9 }}>
-                      안전교육이수증 업로드를 마치셨다면<br />기존 계정으로 로그인해주세요.
-                    </p>
-                    <button onClick={() => setIsSignUp(false)} style={{ background: 'transparent', border: '2px solid #fff', color: '#fff', padding: '10px 40px', borderRadius: 30, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', outline: 'none' }}>SIGN IN</button>
-                  </div>
-
-                  {/* Overlay Right (Sign Up Prompt) */}
-                  <div style={{ position: 'absolute', top: 0, right: 0, width: '50%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 40px', transition: 'transform 0.6s ease-in-out', transform: isSignUp ? 'translateX(20%)' : 'translateX(0)' }}>
-                    <img src="/kmu-logo.png" alt="KMU Logo" style={{ width: 140, marginBottom: 20, filter: "brightness(0) invert(1)", opacity: 0.9 }} />
-                    <h2 style={{ fontSize: 32, fontWeight: 800, marginBottom: 16 }}>환영합니다!</h2>
-                    <p style={{ fontSize: 13, marginBottom: 30, lineHeight: 1.6, opacity: 0.9 }}>
-                      건축대학 포털을 처음 이용하시나요?<br />안전교육이수증을 먼저 업로드해주세요.
-                    </p>
-                    <button onClick={() => setIsSignUp(true)} style={{ background: 'transparent', border: '2px solid #fff', color: '#fff', padding: '10px 40px', borderRadius: 30, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', outline: 'none' }}>SIGN UP</button>
-                  </div>
-
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
+            </Card>
+          </div>
+        )}
 
         {/* Safety Info Modal */}
         {showSafetyInfo && (
@@ -1651,97 +1772,97 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
             }}
           >
             <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: theme.accent }}>
-                  <Icons.file size={18} color={theme.accent} />
-                  문의사항
-                </div>
-                {showInquiry && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setShowInquiry(false); }}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 2 }}
-                  >
-                    <Icons.x size={16} />
-                  </button>
-                )}
-              </div>
-
-              {!showInquiry ? (
-                <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.5 }}>
-                  비로그인 문의 (로그인 가능한 학생은 "문의 내역" 탭을 이용해주세요)
-                </div>
-              ) : (
-                <>
-                  <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 8, lineHeight: 1.5 }}>
-                    로그인이 어려운 분들을 위한 문의 창입니다.
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: theme.accent }}>
+                    <Icons.file size={18} color={theme.accent} />
+                    문의사항
                   </div>
-                  <div style={{ fontSize: 11, color: theme.yellow, marginBottom: 12, padding: "8px 12px", background: theme.yellowBg, borderRadius: theme.radiusSm, border: `1px solid ${theme.yellowBorder}` }}>
-                    ⚠️ 로그인 가능한 학생은 로그인 후 "문의 내역" 탭에서 문의해주세요. 답변 확인이 가능합니다.
-                  </div>
-                  <div style={{ fontSize: 11, color: theme.accent, marginBottom: 12, padding: "8px 12px", background: theme.accentBg, borderRadius: theme.radiusSm, border: `1px solid ${theme.accentBorder}` }}>
-                    📞 비로그인 문의는 근로학생이 연락처로 직접 답변드립니다.
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
-                      <Input
-                        label="이름 *"
-                        placeholder="이름을 입력하세요"
-                        value={inquiryName}
-                        onChange={e => setInquiryName(e.target.value)}
-                      />
-                      <Input
-                        label="연락처 *"
-                        placeholder="전화번호 또는 이메일"
-                        value={inquiryContact}
-                        onChange={e => setInquiryContact(e.target.value)}
-                      />
-                    </div>
-                    <Input
-                      label="제목"
-                      placeholder="문의 제목을 입력하세요"
-                      value={inquiryTitle}
-                      onChange={e => setInquiryTitle(e.target.value)}
-                    />
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "0.5px", textTransform: "uppercase" }}>내용</label>
-                      <textarea
-                        placeholder="문의 내용을 자세히 작성해주세요"
-                        value={inquiryContent}
-                        onChange={e => setInquiryContent(e.target.value)}
-                        style={{
-                          width: "100%",
-                          padding: "10px 14px",
-                          background: theme.surface,
-                          border: `1px solid ${theme.border}`,
-                          borderRadius: theme.radiusSm,
-                          color: theme.text,
-                          fontSize: 14,
-                          fontFamily: theme.font,
-                          outline: "none",
-                          boxSizing: "border-box",
-                          transition: "border-color 0.2s",
-                          minHeight: 100,
-                          resize: "vertical"
-                        }}
-                        onFocus={e => e.target.style.borderColor = theme.accent}
-                        onBlur={e => e.target.style.borderColor = theme.border}
-                      />
-                    </div>
-                    <Button
-                      variant="primary"
-                      onClick={handleInquirySubmit}
-                      disabled={!inquiryTitle.trim() || !inquiryContent.trim() || !inquiryName.trim() || !inquiryContact.trim() || inquirySubmitting}
+                  {showInquiry && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setShowInquiry(false); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 2 }}
                     >
-                      {inquirySubmitting ? "등록 중..." : "문의 등록"}
-                    </Button>
-                    {inquirySuccess && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: theme.radiusSm, background: theme.greenBg, border: `1px solid ${theme.greenBorder}`, color: theme.green, fontSize: 12 }}>
-                        <Icons.check size={14} /> {inquirySuccess}
-                      </div>
-                    )}
+                      <Icons.x size={16} />
+                    </button>
+                  )}
+                </div>
+
+                {!showInquiry ? (
+                  <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.5 }}>
+                    비로그인 문의 (로그인 가능한 학생은 "문의 내역" 탭을 이용해주세요)
                   </div>
-                </>
-              )}
+                ) : (
+                  <>
+                    <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 8, lineHeight: 1.5 }}>
+                      로그인이 어려운 분들을 위한 문의 창입니다.
+                    </div>
+                    <div style={{ fontSize: 11, color: theme.yellow, marginBottom: 12, padding: "8px 12px", background: theme.yellowBg, borderRadius: theme.radiusSm, border: `1px solid ${theme.yellowBorder}` }}>
+                      ⚠️ 로그인 가능한 학생은 로그인 후 "문의 내역" 탭에서 문의해주세요. 답변 확인이 가능합니다.
+                    </div>
+                    <div style={{ fontSize: 11, color: theme.accent, marginBottom: 12, padding: "8px 12px", background: theme.accentBg, borderRadius: theme.radiusSm, border: `1px solid ${theme.accentBorder}` }}>
+                      📞 비로그인 문의는 근로학생이 연락처로 직접 답변드립니다.
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
+                        <Input
+                          label="이름 *"
+                          placeholder="이름을 입력하세요"
+                          value={inquiryName}
+                          onChange={e => setInquiryName(e.target.value)}
+                        />
+                        <Input
+                          label="연락처 *"
+                          placeholder="전화번호 또는 이메일"
+                          value={inquiryContact}
+                          onChange={e => setInquiryContact(e.target.value)}
+                        />
+                      </div>
+                      <Input
+                        label="제목"
+                        placeholder="문의 제목을 입력하세요"
+                        value={inquiryTitle}
+                        onChange={e => setInquiryTitle(e.target.value)}
+                      />
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <label style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "0.5px", textTransform: "uppercase" }}>내용</label>
+                        <textarea
+                          placeholder="문의 내용을 자세히 작성해주세요"
+                          value={inquiryContent}
+                          onChange={e => setInquiryContent(e.target.value)}
+                          style={{
+                            width: "100%",
+                            padding: "10px 14px",
+                            background: theme.surface,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: theme.radiusSm,
+                            color: theme.text,
+                            fontSize: 14,
+                            fontFamily: theme.font,
+                            outline: "none",
+                            boxSizing: "border-box",
+                            transition: "border-color 0.2s",
+                            minHeight: 100,
+                            resize: "vertical"
+                          }}
+                          onFocus={e => e.target.style.borderColor = theme.accent}
+                          onBlur={e => e.target.style.borderColor = theme.border}
+                        />
+                      </div>
+                      <Button
+                        variant="primary"
+                        onClick={handleInquirySubmit}
+                        disabled={!inquiryTitle.trim() || !inquiryContent.trim() || !inquiryName.trim() || !inquiryContact.trim() || inquirySubmitting}
+                      >
+                        {inquirySubmitting ? "등록 중..." : "문의 등록"}
+                      </Button>
+                      {inquirySuccess && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: theme.radiusSm, background: theme.greenBg, border: `1px solid ${theme.greenBorder}`, color: theme.green, fontSize: 12 }}>
+                          <Icons.check size={14} /> {inquirySuccess}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
             </div>
           </Card>
         </div>
