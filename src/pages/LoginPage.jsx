@@ -276,6 +276,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
       flexDirection: shouldStackCommunity ? "column" : "row",
       alignItems: "center",
       justifyContent: shouldStackCommunity ? "flex-start" : "center",
+      paddingTop: isMobile ? 0 : 140,
       paddingBottom: 60,
       position: "relative",
       overflow: "auto",
@@ -380,7 +381,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
         display: isMobile ? "none" : "flex",
         flexDirection: "column",
         gap: 8,
-        zIndex: 9999,
+        zIndex: (haedongHover || certHover) ? 9999 : 5,
         transformOrigin: "left center",
       }}>
         {/* Banner Title */}
@@ -1300,7 +1301,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
       </div>
 
 
-      <div className="fade-in" style={{ width: "100%", maxWidth: isMobile ? "100%" : 850, position: "relative", zIndex: shouldStackCommunity ? 30 : 1, transform: isMobile ? "none" : `scale(${loginScale})`, transformOrigin: "center top", padding: isMobile ? "0 4px" : 0, order: shouldStackCommunity ? 1 : "unset" }}>
+      <div className="fade-in" style={{ width: "100%", maxWidth: isMobile ? "100%" : 850, position: "relative", zIndex: shouldStackCommunity ? 30 : 10, transform: isMobile ? "none" : `scale(${loginScale})`, transformOrigin: "center top", padding: isMobile ? "0 4px" : 0, order: shouldStackCommunity ? 1 : "unset" }}>
 
         {/* Mobile Guide Panel */}
         {isMobile && (
