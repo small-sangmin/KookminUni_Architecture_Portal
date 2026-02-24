@@ -89,7 +89,7 @@ export const EDITABLE = {
     folderName: "26-1 안전교육이수증",
   },
   printArchive: {
-    gasUrl: "https://script.google.com/macros/s/AKfycbzI0-VCxT5FoArpOb3T6IKbjY5UYbbrWSsSHYSG1sIU1lD2WATgq1JESud0oFh-Q5ZBxA/exec", // Google Apps Script 웹앱 URL (출력 완료 파일 Drive 아카이브용) — 배포 후 입력
+    gasUrl: "https://script.google.com/macros/s/AKfycbwlbhqqOVL78FpI2AgnlIyXJGpbqzZaAkPXwa5hIl2aL7QJp-ckmbTXE4YsMyeE5UuG/exec",
     folderName: "Portal_완료된 출력물 모음",
   },
   adminAccount: { username: "admin", password: "admin1234", name: "관리자" },

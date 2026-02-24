@@ -1,9 +1,9 @@
 import { useState, useRef } from "react";
 import theme from "../constants/theme";
+import { EDITABLE } from "../constants/data";
 import { uid, ts } from "../utils/helpers";
 import Icons from "../components/Icons";
 import { Badge, Card, Button, Input, SectionTitle, Empty, AlertPopup } from "../components/ui";
-import supabaseStore, { printStorage } from "../supabase";
 
 // ─── Print Request (출력 신청) ───────────────────────────────────
 const PRINT_SIZE_OPTIONS = ["A2", "A1", "900x1200", "900x1800", "600x1500"];
@@ -93,16 +93,115 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
     try {
       const requestId = uid();
 
-      // Upload files to Supabase Storage
-      const [printUpload, paymentUpload] = await Promise.all([
-        printStorage.upload(requestId, printFile.rawFile, "print"),
-        printStorage.upload(requestId, paymentProof.rawFile, "payment"),
-      ]);
-
-      if (printUpload.error || paymentUpload.error) {
-        alert(`파일 업로드 실패: ${printUpload.error || paymentUpload.error}`);
+      // 파일 크기 제한 (25MB — GAS payload 제한 고려)
+      const MAX_FILE_SIZE = 25 * 1024 * 1024;
+      if (printFile.size > MAX_FILE_SIZE) {
+        alert(`출력 파일이 너무 큽니다. 25MB 이하만 업로드 가능합니다. (현재: ${(printFile.size / 1024 / 1024).toFixed(1)}MB)`);
         setSubmitting(false);
         return;
+      }
+
+      // FileReader로 base64 인코딩
+      const readAsBase64 = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          // data:mime;base64,XXXX → XXXX 부분만 추출
+          const base64 = reader.result.split(",")[1];
+          resolve(base64);
+        };
+        reader.onerror = () => reject(new Error("파일 읽기 실패"));
+        reader.readAsDataURL(file);
+      });
+
+      const [printBase64, paymentBase64] = await Promise.all([
+        readAsBase64(printFile.rawFile),
+        readAsBase64(paymentProof.rawFile),
+      ]);
+
+      // 날짜 폴더 (YY.MM.DD)
+      const now = new Date();
+      const dateFolder = `${String(now.getFullYear()).slice(-2)}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}`;
+      const studentLabel = `${user.id}+${user.name}`;
+      const printExt = (printFile.name || "file").split(".").pop() || "bin";
+      const paymentExt = (paymentProof.name || "img").split(".").pop() || "jpg";
+
+      const gasUrl = EDITABLE.printArchive?.gasUrl?.trim();
+      if (!gasUrl) {
+        alert("출력 업로드 설정(gasUrl)이 되어 있지 않습니다. 관리자에게 문의하세요.");
+        setSubmitting(false);
+        return;
+      }
+
+      const printFileName = `[출력파일]${studentLabel}.${printExt}`;
+      const paymentFileName = `[입금내역]${studentLabel}.${paymentExt}`;
+
+      // GAS upload_print 호출 (no-cors — CORS 문제 우회, 응답 읽기 불가)
+      const uploadToGAS = async (base64, fileName, mimeType) => {
+        const payload = {
+          action: "upload_print",
+          key: EDITABLE.apiKey,
+          base64,
+          fileName,
+          mimeType,
+          dateFolder,
+        };
+        // 먼저 일반 CORS 요청 시도
+        try {
+          const res = await fetch(gasUrl, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=UTF-8" },
+            body: JSON.stringify(payload),
+          });
+          const text = await res.text();
+          let data;
+          try { data = JSON.parse(text); } catch { data = null; }
+          if (data?.ok) return data;
+        } catch {
+          // CORS 실패 → no-cors fallback
+        }
+        // no-cors fallback: 업로드는 되지만 응답 읽기 불가
+        await fetch(gasUrl, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload),
+        });
+        return null; // 응답을 읽을 수 없음
+      };
+
+      // 파일 정보 조회 (GET — CORS 문제 없음)
+      const getFileInfo = async (fileName) => {
+        const params = new URLSearchParams({
+          action: "get_file_info",
+          key: EDITABLE.apiKey,
+          fileName,
+          dateFolder,
+        });
+        const res = await fetch(`${gasUrl}?${params.toString()}`, { method: "GET" });
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch { data = null; }
+        if (!data?.ok) throw new Error(data?.error || "파일 정보 조회 실패");
+        return data;
+      };
+
+      // 1) 업로드 실행 (순차 — GAS 동시 실행 제한 회피)
+      const printUploadResult = await uploadToGAS(printBase64, printFileName, printFile.type);
+      const paymentUploadResult = await uploadToGAS(paymentBase64, paymentFileName, paymentProof.type);
+
+      // 2) 업로드 응답에서 직접 결과를 얻었으면 사용, 아니면 GET으로 조회
+      // GAS 업로드 후 Drive에 파일이 생성되기까지 약간의 지연이 있을 수 있어 잠시 대기
+      let printResult = printUploadResult;
+      let paymentResult = paymentUploadResult;
+
+      if (!printResult?.fileId || !paymentResult?.fileId) {
+        await new Promise(r => setTimeout(r, 2000)); // 2초 대기
+      }
+      if (!printResult?.fileId) {
+        printResult = await getFileInfo(printFileName);
+      }
+      if (!paymentResult?.fileId) {
+        paymentResult = await getFileInfo(paymentFileName);
       }
 
       const newRequest = {
@@ -119,8 +218,8 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
         totalPrice,
         plus600UnitPrice,
         plus600Price: plus600UnitPrice * plus600Count * copies,
-        printFile: { name: printFile.name, size: printFile.size, type: printFile.type, storagePath: printUpload.path },
-        paymentProof: { name: paymentProof.name, size: paymentProof.size, type: paymentProof.type, storagePath: paymentUpload.path },
+        printFile: { name: printFile.name, size: printFile.size, type: printFile.type, driveFileId: printResult.fileId, driveUrl: printResult.downloadUrl },
+        paymentProof: { name: paymentProof.name, size: paymentProof.size, type: paymentProof.type, driveFileId: paymentResult.fileId, driveUrl: paymentResult.viewUrl },
         status: "pending",
         createdAt: ts(),
         completedAt: null,
@@ -146,7 +245,7 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
       setShowPopup(true);
     } catch (err) {
       console.error("Print request submit error:", err);
-      alert("출력 신청 중 오류가 발생했습니다. 다시 시도해주세요.");
+      alert(`출력 신청 중 오류가 발생했습니다.\n\n${err?.message || "알 수 없는 오류"}\n\n※ GAS 스크립트가 최신 버전으로 배포되었는지 확인해주세요.`);
     } finally {
       setSubmitting(false);
     }

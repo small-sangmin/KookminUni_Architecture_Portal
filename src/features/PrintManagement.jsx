@@ -3,7 +3,6 @@ import theme from "../constants/theme";
 import { ts } from "../utils/helpers";
 import Icons from "../components/Icons";
 import { Badge, Card, Button, SectionTitle, Empty } from "../components/ui";
-import { printStorage } from "../supabase";
 
 const PRINT_TYPE_LABELS = {
   COATED_DRAWING: "Coated(평면)",
@@ -17,9 +16,6 @@ const PRINT_TYPE_LABELS = {
 function PrintManagement({ printRequests, updatePrintRequests, refreshPrintRequests, addLog, workerName, sendEmailNotification, archivePrintsToDrive }) {
   const [filter, setFilter] = useState("pending");
   const [modalRequest, setModalRequest] = useState(null);
-  const [paymentImageUrl, setPaymentImageUrl] = useState(null);
-  const [paymentImageLoading, setPaymentImageLoading] = useState(false);
-  const [downloadingFile, setDownloadingFile] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [deleting, setDeleting] = useState(false);
   // 반려 관련 state
@@ -43,21 +39,6 @@ function PrintManagement({ printRequests, updatePrintRequests, refreshPrintReque
     return true;
   });
 
-  // Load payment image when modal opens
-  useEffect(() => {
-    if (!modalRequest) {
-      setPaymentImageUrl(null);
-      return;
-    }
-    const path = modalRequest.paymentProof?.storagePath;
-    if (!path) return;
-
-    setPaymentImageLoading(true);
-    printStorage.getSignedUrl(path).then(url => {
-      setPaymentImageUrl(url);
-      setPaymentImageLoading(false);
-    }).catch(() => setPaymentImageLoading(false));
-  }, [modalRequest?.id]);
 
   const handleStatusChange = (requestId, newStatus) => {
     const req = requests.find(p => p.id === requestId);
@@ -67,12 +48,20 @@ function PrintManagement({ printRequests, updatePrintRequests, refreshPrintReque
         : p
     ));
     addLog(`출력 상태 변경: ${newStatus}`, "print", { requestId });
-    if (newStatus === "completed" && req?.studentEmail) {
-      sendEmailNotification?.({
-        to: req.studentEmail,
-        subject: `[출력 완료] ${req.studentName}님 · ${req.paperSize} ${req.copies}장`,
-        body: `출력이 완료되었습니다.\n\n- 용지: ${req.paperSize}\n- 재질: ${PRINT_TYPE_LABELS[req.colorMode] || req.colorMode}\n- 매수: ${req.copies}장\n- +600 추가: ${req.plus600Count || 0}개\n- 금액: ${(req.totalPrice || 0).toLocaleString()}원\n\n건축대학 출력실(복지관 6층)에서 수령해주세요.`,
-      });
+    if (newStatus === "completed") {
+      // Drive 파일을 "Portal_출력 대기" → "Portal_완료된 출력물 모음"으로 이동
+      if (archivePrintsToDrive && req) {
+        archivePrintsToDrive([req], "move").catch(err => {
+          console.error("Drive 파일 이동 실패:", err);
+        });
+      }
+      if (req?.studentEmail) {
+        sendEmailNotification?.({
+          to: req.studentEmail,
+          subject: `[출력 완료] ${req.studentName}님 · ${req.paperSize} ${req.copies}장`,
+          body: `출력이 완료되었습니다.\n\n- 용지: ${req.paperSize}\n- 재질: ${PRINT_TYPE_LABELS[req.colorMode] || req.colorMode}\n- 매수: ${req.copies}장\n- +600 추가: ${req.plus600Count || 0}개\n- 금액: ${(req.totalPrice || 0).toLocaleString()}원\n\n건축대학 출력실(복지관 6층)에서 수령해주세요.`,
+        });
+      }
     }
     setModalRequest(null);
   };
@@ -100,6 +89,13 @@ function PrintManagement({ printRequests, updatePrintRequests, refreshPrintReque
         : p
     ));
     addLog(`출력 반려: ${req?.studentName} — ${reason}`, "print", { requestId: rejectTargetId });
+
+    // Drive 파일 삭제 (휴지통 이동)
+    if (archivePrintsToDrive && req) {
+      archivePrintsToDrive([req], "delete").catch(err => {
+        console.error("Drive 파일 삭제 실패:", err);
+      });
+    }
 
     // 반려 이메일 발송
     if (req?.studentEmail) {
@@ -131,27 +127,6 @@ function PrintManagement({ printRequests, updatePrintRequests, refreshPrintReque
     setModalRequest(null);
   };
 
-  const handleDownloadPrintFile = async (req) => {
-    const path = req.printFile?.storagePath;
-    if (!path) return;
-    setDownloadingFile(true);
-    try {
-      const blob = await printStorage.download(path);
-      if (!blob) { alert("파일 다운로드에 실패했습니다."); return; }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = req.printFile?.name || "print_file";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch {
-      alert("파일 다운로드에 실패했습니다.");
-    } finally {
-      setDownloadingFile(false);
-    }
-  };
 
   const toggleSelect = (id) => {
     setSelectedIds(prev => {
@@ -182,17 +157,7 @@ function PrintManagement({ printRequests, updatePrintRequests, refreshPrintReque
         }
       }
 
-      // Step 2: Delete files from Supabase Storage
-      const pathsToRemove = [];
-      for (const req of toDelete) {
-        if (req.printFile?.storagePath) pathsToRemove.push(req.printFile.storagePath);
-        if (req.paymentProof?.storagePath) pathsToRemove.push(req.paymentProof.storagePath);
-      }
-      if (pathsToRemove.length > 0) {
-        await printStorage.remove(pathsToRemove);
-      }
-
-      // Step 3: Remove from state
+      // Step 2: Remove from state (Drive 파일은 archive에서 이동 완료)
       updatePrintRequests(prev => prev.filter(p => !selectedIds.has(p.id)));
       addLog(`출력 요청 ${selectedIds.size}건 삭제 (Drive 아카이브 완료)`, "print");
       setSelectedIds(new Set());
@@ -213,14 +178,16 @@ function PrintManagement({ printRequests, updatePrintRequests, refreshPrintReque
     try {
       const toDelete = requests.filter(r => selectedIds.has(r.id));
 
-      // Supabase Storage 파일 삭제
-      const pathsToRemove = [];
-      for (const req of toDelete) {
-        if (req.printFile?.storagePath) pathsToRemove.push(req.printFile.storagePath);
-        if (req.paymentProof?.storagePath) pathsToRemove.push(req.paymentProof.storagePath);
-      }
-      if (pathsToRemove.length > 0) {
-        await printStorage.remove(pathsToRemove);
+      // Drive 파일 삭제 (GAS delete_print_files)
+      if (archivePrintsToDrive) {
+        const fileIds = [];
+        for (const req of toDelete) {
+          if (req.printFile?.driveFileId) fileIds.push(req.printFile.driveFileId);
+          if (req.paymentProof?.driveFileId) fileIds.push(req.paymentProof.driveFileId);
+        }
+        if (fileIds.length > 0) {
+          await archivePrintsToDrive(toDelete, "delete");
+        }
       }
 
       // Remove from state
@@ -415,37 +382,6 @@ function PrintManagement({ printRequests, updatePrintRequests, refreshPrintReque
                     <span style={{ fontSize: 13, color: theme.textMuted }}>총 금액</span>
                     <span style={{ fontSize: 18, fontWeight: 800, color: theme.accent }}>{(modalRequest.totalPrice || 0).toLocaleString()}원</span>
                   </div>
-                </div>
-              </div>
-
-              {/* 출력 파일 */}
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>출력 파일</div>
-                <div style={{ padding: 12, background: theme.surface, borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 13, color: theme.text }}>📎 {modalRequest.printFile?.name || "파일 정보 없음"}</span>
-                  {modalRequest.printFile?.storagePath && (
-                    <Button size="sm" onClick={() => handleDownloadPrintFile(modalRequest)} disabled={downloadingFile}>
-                      {downloadingFile ? "다운로드중..." : "다운로드 ↓"}
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* 송금 캡처 */}
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>송금 캡처</div>
-                <div style={{ padding: 12, background: theme.surface, borderRadius: 8, textAlign: "center" }}>
-                  {paymentImageLoading ? (
-                    <div style={{ padding: 20, color: theme.textMuted, fontSize: 13 }}>이미지 로딩중...</div>
-                  ) : paymentImageUrl ? (
-                    <img
-                      src={paymentImageUrl}
-                      alt="송금 캡처"
-                      style={{ maxWidth: "100%", maxHeight: 300, borderRadius: 8, border: `1px solid ${theme.border}` }}
-                    />
-                  ) : (
-                    <div style={{ padding: 20, color: theme.textDim, fontSize: 13 }}>이미지를 불러올 수 없습니다</div>
-                  )}
                 </div>
               </div>
 

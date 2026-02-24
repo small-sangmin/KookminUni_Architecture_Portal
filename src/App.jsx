@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import supabaseStore, { printStorage } from "./supabase";
+import supabaseStore from "./supabase";
 import { EDITABLE, ROOMS, DEFAULT_EQUIPMENT_DB, DEFAULT_WORKERS } from "./constants/data";
 import theme, { darkColors, lightColors } from "./constants/theme";
 import { uid, ts, dateStr, ACTIVE_PORTAL_SESSION_KEY, emailTemplate } from "./utils/helpers";
@@ -224,13 +224,37 @@ export default function App() {
         if (sheet) setSheetConfig(sheet);
         if (overdue) setOverdueFlags(overdue);
         if (inq) setInquiries(inq);
-        // 출력 신청: Supabase를 단일 진실 원천(SSOT)으로 사용
+        // 출력 신청: Supabase + 로컬 중 최신 데이터 사용
         const serverPrintsRaw = await supabaseStore.get("portal/printRequests_v2");
         const serverPrintsParsed = parseArrayData(serverPrintsRaw);
         const localPrintsParsed = Array.isArray(prints) ? prints : parseArrayData(prints);
-        const resolvedPrints = (serverPrintsParsed && serverPrintsParsed.length > 0)
-          ? serverPrintsParsed
-          : (localPrintsParsed && localPrintsParsed.length > 0) ? localPrintsParsed : null;
+
+        // 가장 최근 변경 시점을 비교하여 더 최신인 쪽을 선택
+        const getLatestTimestamp = (arr) => {
+          if (!arr || arr.length === 0) return 0;
+          return Math.max(...arr.map(r => {
+            const times = [r.createdAt, r.completedAt, r.rejectedAt].filter(Boolean).map(t => new Date(t).getTime());
+            return times.length > 0 ? Math.max(...times) : 0;
+          }));
+        };
+
+        let resolvedPrints = null;
+        if (serverPrintsParsed?.length > 0 && localPrintsParsed?.length > 0) {
+          const serverTs = getLatestTimestamp(serverPrintsParsed);
+          const localTs = getLatestTimestamp(localPrintsParsed);
+          resolvedPrints = localTs > serverTs ? localPrintsParsed : serverPrintsParsed;
+          // 로컬이 더 최신이면 Supabase에 동기화
+          if (localTs > serverTs) {
+            console.log("[PRINT LOAD] 로컬이 더 최신 → Supabase에 동기화");
+            supabaseStore.set("portal/printRequests_v2", localPrintsParsed).catch(() => {});
+          }
+        } else if (serverPrintsParsed?.length > 0) {
+          resolvedPrints = serverPrintsParsed;
+        } else if (localPrintsParsed?.length > 0) {
+          resolvedPrints = localPrintsParsed;
+          supabaseStore.set("portal/printRequests_v2", localPrintsParsed).catch(() => {});
+        }
+
         if (resolvedPrints) {
           setPrintRequests(resolvedPrints);
           store.set("printRequests_v2", resolvedPrints).catch(() => { });
@@ -357,8 +381,8 @@ export default function App() {
           setRoomStatus(prev => ({ ...defaultStatus, ...roomData }));
         }
 
-        // 출력 신청 (로컬 쓰기 직후 3초 이내는 건너뜀)
-        if (Date.now() - lastLocalPrintWrite.current > 3000) {
+        // 출력 신청 (로컬 쓰기 직후 10초 이내는 건너뜀 — Supabase 쓰기 완료 대기)
+        if (Date.now() - lastLocalPrintWrite.current > 10000) {
           const printItems = parseArrayData(serverPrints);
           console.log("[PRINT SYNC] 폴링 읽기 - raw:", typeof serverPrints, "parsed:", printItems?.length ?? "null");
           if (printItems) setPrintRequests(printItems);
@@ -503,14 +527,25 @@ export default function App() {
     setPrintRequests(prev => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       lastLocalPrintWrite.current = Date.now();
-      persist("printRequests_v2", next).then(() => {
-        console.log("[PRINT SYNC] persist 성공, items:", next?.length);
-      });
-      supabaseStore.set("portal/printRequests_v2", next).then(ok => {
-        console.log("[PRINT SYNC] supabase direct 쓰기:", ok ? "성공" : "실패");
-      }).catch(e => {
-        console.error("[PRINT SYNC] supabase direct 쓰기 에러:", e);
-      });
+
+      // 로컬 + Supabase 동시 쓰기 (실패 시 재시도)
+      const syncToServer = async () => {
+        try {
+          await persist("printRequests_v2", next);
+        } catch (e) {
+          console.error("[PRINT SYNC] persist 실패:", e);
+        }
+        let ok = await supabaseStore.set("portal/printRequests_v2", next);
+        if (!ok) {
+          console.warn("[PRINT SYNC] supabase 1차 쓰기 실패, 1초 후 재시도...");
+          await new Promise(r => setTimeout(r, 1000));
+          ok = await supabaseStore.set("portal/printRequests_v2", next);
+          if (!ok) console.error("[PRINT SYNC] supabase 재시도도 실패");
+        }
+        console.log("[PRINT SYNC] 완료, items:", next?.length, "supabase:", ok ? "성공" : "실패");
+      };
+      syncToServer();
+
       return next;
     });
   }, [persist]);
@@ -897,68 +932,36 @@ export default function App() {
     }
   }, [sheetConfig, addLog]);
 
-  // ─── Archive prints to Google Drive ──────────────────────────
-  const archivePrintsToDrive = useCallback(async (requestsToArchive) => {
+  // ─── Archive/Delete prints on Google Drive ──────────────────
+  // mode: "move" (완료 → 아카이브 폴더 이동) | "delete" (반려 → 휴지통)
+  const archivePrintsToDrive = useCallback(async (requestsToArchive, mode = "move") => {
     const cfg = EDITABLE?.printArchive;
     const gasUrl = cfg?.gasUrl?.trim();
     if (!gasUrl) return { ok: false, error: "printArchive.gasUrl이 설정되지 않았습니다." };
 
-    const results = [];
+    // driveFileId 수집
+    const fileIds = [];
     for (const req of requestsToArchive) {
-      // Build date folder from createdAt (YY.MM.DD)
-      const dateFolder = req.createdAt
-        ? new Date(req.createdAt).toLocaleDateString("ko-KR", { year: "2-digit", month: "2-digit", day: "2-digit" }).replace(/\. /g, ".").replace(/\.$/, "")
-        : new Date().toLocaleDateString("ko-KR", { year: "2-digit", month: "2-digit", day: "2-digit" }).replace(/\. /g, ".").replace(/\.$/, "");
-
-      const studentLabel = `${req.studentId || "unknown"}+${req.studentName || "unknown"}`;
-
-      // Archive print file
-      if (req.printFile?.storagePath) {
-        const ext = (req.printFile.name || "file").split(".").pop() || "bin";
-        const archiveName = `[출력파일]${studentLabel}.${ext}`;
-        try {
-          const signedUrl = await printStorage.getSignedUrl(req.printFile.storagePath, 600);
-          if (!signedUrl) { results.push({ id: req.id, file: "printFile", ok: false, error: "signed URL 생성 실패" }); continue; }
-          const res = await archiveFileToGAS(gasUrl, signedUrl, archiveName, dateFolder, cfg.folderName);
-          results.push({ id: req.id, file: "printFile", ...res });
-        } catch (err) {
-          results.push({ id: req.id, file: "printFile", ok: false, error: err?.message || "unknown" });
-        }
-      }
-
-      // Archive payment proof
-      if (req.paymentProof?.storagePath) {
-        const ext = (req.paymentProof.name || req.paymentProof.storagePath || "img").split(".").pop() || "jpg";
-        const archiveName = `[입금내역]${studentLabel}.${ext}`;
-        try {
-          const signedUrl = await printStorage.getSignedUrl(req.paymentProof.storagePath, 600);
-          if (!signedUrl) { results.push({ id: req.id, file: "paymentProof", ok: false, error: "signed URL 생성 실패" }); continue; }
-          const res = await archiveFileToGAS(gasUrl, signedUrl, archiveName, dateFolder, cfg.folderName);
-          results.push({ id: req.id, file: "paymentProof", ...res });
-        } catch (err) {
-          results.push({ id: req.id, file: "paymentProof", ok: false, error: err?.message || "unknown" });
-        }
-      }
+      if (req.printFile?.driveFileId) fileIds.push(req.printFile.driveFileId);
+      if (req.paymentProof?.driveFileId) fileIds.push(req.paymentProof.driveFileId);
     }
 
-    const failed = results.filter(r => !r.ok);
-    if (failed.length > 0) {
-      console.warn("Archive failures:", failed);
-      return { ok: false, error: `${failed.length}건 아카이브 실패`, details: failed };
-    }
-    return { ok: true, results };
-  }, []);
+    if (fileIds.length === 0) return { ok: true, moved: 0 };
 
-  // Helper: send one file to GAS for Drive archival (reuses existing no-cors fallback pattern)
-  async function archiveFileToGAS(gasUrl, signedUrl, fileName, dateFolder, folderName) {
+    const action = mode === "delete" ? "delete_print_files" : "move_print_files";
+    // 날짜 폴더 (첫 번째 요청의 createdAt 기준)
+    const firstReq = requestsToArchive[0];
+    const dateFolder = firstReq?.createdAt
+      ? (() => { const d = new Date(firstReq.createdAt); return `${String(d.getFullYear()).slice(-2)}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`; })()
+      : (() => { const d = new Date(); return `${String(d.getFullYear()).slice(-2)}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`; })();
+
     const payload = {
-      action: "archive_print",
+      action,
       key: EDITABLE.apiKey,
-      fileUrl: signedUrl,
-      fileName,
+      fileIds,
       dateFolder,
-      folderName,
     };
+
     try {
       const res = await fetch(gasUrl, {
         method: "POST",
@@ -969,8 +972,7 @@ export default function App() {
       let data = null;
       try { data = JSON.parse(text); } catch { data = null; }
       if (!res.ok) return { ok: false, error: data?.error || text || `HTTP ${res.status}` };
-      if (data?.ok || data?.success) return { ok: true };
-      return { ok: true, data };
+      return { ok: data?.ok ?? true, ...data };
     } catch {
       // CORS fallback: no-cors POST
       try {
@@ -985,7 +987,7 @@ export default function App() {
         return { ok: false, error: err2?.message || "archive_failed" };
       }
     }
-  }
+  }, []);
 
   // ─── Auth ──────────────────────────────────────────────────────
   const updateRememberSession = useCallback((val) => {
