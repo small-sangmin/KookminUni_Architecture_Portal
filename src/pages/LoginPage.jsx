@@ -262,8 +262,9 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
     <div style={{
       flex: 1,
       display: "flex",
+      flexDirection: (isMobile || isCompactLayout) ? "column" : "row",
       alignItems: "center",
-      justifyContent: "center",
+      justifyContent: (isMobile || isCompactLayout) ? "flex-start" : "center",
       paddingBottom: 60,
       position: "relative",
       overflow: "auto"
@@ -580,16 +581,20 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
 
       {/* Exhibition Poster - Right Side */}
       <div style={{
-        position: "fixed",
-        right: 60,
-        top: "50%",
-        transform: `translateY(-50%) scale(${loginScale})`,
-        display: isMobile || isCompactLayout ? "none" : "flex",
+        position: (isMobile || isCompactLayout) ? "relative" : "fixed",
+        right: (isMobile || isCompactLayout) ? "auto" : 60,
+        top: (isMobile || isCompactLayout) ? "auto" : "50%",
+        transform: (isMobile || isCompactLayout) ? "none" : `translateY(-50%) scale(${loginScale})`,
+        display: "flex",
         flexDirection: "column",
         gap: 10,
         zIndex: 10,
-        width: 420,
+        width: (isMobile || isCompactLayout) ? "100%" : 420,
+        maxWidth: (isMobile || isCompactLayout) ? 850 : "none",
+        margin: (isMobile || isCompactLayout) ? "20px auto 0" : 0,
+        padding: isMobile ? "0 4px" : 0,
         transformOrigin: "top right",
+        order: (isMobile || isCompactLayout) ? 999 : "unset",
       }}>
         {/* Tab Header */}
         <div style={{
@@ -641,7 +646,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
 
         {/* Exhibition Tab Content */}
         {rightPanelTab === "exhibition" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 0, maxHeight: 500, overflowY: "auto" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             {(!exhibitionPosts || exhibitionPosts.length === 0) ? (
               <div style={{
                 padding: 30, textAlign: "center", color: theme.textDim, fontSize: 13,
@@ -676,7 +681,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                       onMouseLeave={e => { if (expandedExhId !== exhPost.id) e.currentTarget.style.background = "transparent"; }}
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 20, fontWeight: 600, color: expandedExhId === exhPost.id ? theme.accent : theme.text, transition: "color 0.2s" }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: expandedExhId === exhPost.id ? theme.accent : theme.text, transition: "color 0.2s" }}>
                           {exhPost.title || "전시회"}
                         </div>
                         <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 3 }}>
@@ -723,10 +728,10 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                         )}
                         {/* 상세 정보 */}
                         <div style={{ padding: "12px 16px", background: theme.surface }}>
-                          <div style={{ fontSize: 18, color: theme.text, lineHeight: 1.6, marginBottom: 8 }}>
+                          <div style={{ fontSize: 12, color: theme.text, lineHeight: 1.6, marginBottom: 8 }}>
                             {exhPost.description || ""}
                           </div>
-                          <div style={{ fontSize: 17, color: theme.text, lineHeight: 1.5 }}>
+                          <div style={{ fontSize: 11, color: theme.text, lineHeight: 1.5 }}>
                             📅 {exhPost.dates || ""}<br />
                             📍 {exhPost.location || ""}
                           </div>
@@ -1283,7 +1288,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
       </div>
 
 
-      <div className="fade-in" style={{ width: "100%", maxWidth: isMobile ? "100%" : 850, position: "relative", zIndex: isCompactLayout ? 30 : 1, transform: isMobile ? "none" : `scale(${loginScale})`, transformOrigin: "center top", padding: isMobile ? "0 4px" : 0 }}>
+      <div className="fade-in" style={{ width: "100%", maxWidth: isMobile ? "100%" : 850, position: "relative", zIndex: isCompactLayout ? 30 : 1, transform: isMobile ? "none" : `scale(${loginScale})`, transformOrigin: "center top", padding: isMobile ? "0 4px" : 0, order: isCompactLayout ? 1 : "unset" }}>
 
         {/* Mobile Guide Panel */}
         {isMobile && (
@@ -1494,7 +1499,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                   {/* Overlay Left (Sign In Prompt) */}
                   <div style={{ position: 'absolute', top: 0, left: 0, width: '50%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 40px', transition: 'transform 0.6s ease-in-out', transform: isSignUp ? 'translateX(0)' : 'translateX(-20%)' }}>
                     <img src="/kmu-logo.png" alt="KMU Logo" style={{ width: 140, marginBottom: 20, filter: "brightness(0) invert(1)", opacity: 0.9 }} />
-                    <h2 style={{ fontSize: 32, fontWeight: 800, marginBottom: 16 }}>반갑습니다!</h2>
+                    <h2 style={{ fontSize: 32, fontWeight: 800, marginBottom: 16 }}>HELLO!</h2>
                     <p style={{ fontSize: 13, marginBottom: 30, lineHeight: 1.6, opacity: 0.9 }}>
                       안전교육이수증 업로드를 마치셨다면<br />기존 계정으로 로그인해주세요.
                     </p>
@@ -1504,7 +1509,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                   {/* Overlay Right (Sign Up Prompt) */}
                   <div style={{ position: 'absolute', top: 0, right: 0, width: '50%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 40px', transition: 'transform 0.6s ease-in-out', transform: isSignUp ? 'translateX(20%)' : 'translateX(0)' }}>
                     <img src="/kmu-logo.png" alt="KMU Logo" style={{ width: 140, marginBottom: 20, filter: "brightness(0) invert(1)", opacity: 0.9 }} />
-                    <h2 style={{ fontSize: 32, fontWeight: 800, marginBottom: 16 }}>환영합니다!</h2>
+                    <h2 style={{ fontSize: 32, fontWeight: 800, marginBottom: 16 }}>WELCOME!</h2>
                     <p style={{ fontSize: 13, marginBottom: 30, lineHeight: 1.6, opacity: 0.9 }}>
                       건축대학 포털을 처음 이용하시나요?<br />안전교육이수증을 먼저 업로드해주세요.
                     </p>
@@ -1668,7 +1673,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
 
               {!showInquiry ? (
                 <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.5 }}>
-                  비로그인 문의 (로그인 가능한 학생은 "문의 내역" 탭을 이용해주세요)
+                  비로그인 문의 (로그인 가능한 학생은 로그인 후 "문의 내역" 탭을 이용해주세요)
                 </div>
               ) : (
                 <>
