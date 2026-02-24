@@ -82,20 +82,7 @@ export default function App() {
   const [dataLoaded, setDataLoaded] = useState(false);
 
   // ─── Community & Exhibition (shared between LoginPage & AdminPortal) ──
-  const defaultPosts = useMemo(() => [
-    {
-      id: "c1", content: "레이저컷터 사용법 알려줄 분 계신가요?", createdAt: "2026-02-07T10:30:00", comments: [
-        { id: "cm1", content: "유튜브에 튜토리얼 많아요!", createdAt: "2026-02-07T11:00:00" },
-        { id: "cm2", content: "조교실에 문의하시면 교육받으실 수 있어요", createdAt: "2026-02-07T12:30:00" },
-      ]
-    },
-    {
-      id: "c2", content: "4학년 졸업전시 준비하시는 분들 화이팅!", createdAt: "2026-02-06T15:20:00", comments: [
-        { id: "cm3", content: "감사합니다 ㅠㅠ", createdAt: "2026-02-06T16:00:00" },
-      ]
-    },
-    { id: "c3", content: "실기실 예약 시스템 너무 편하네요 ㅎㅎ", createdAt: "2026-02-05T09:15:00", comments: [] },
-  ], []);
+  const defaultPosts = useMemo(() => [], []);
   const [communityPosts, setCommunityPostsRaw] = useState(defaultPosts);
   const setCommunityPosts = useCallback((updater) => {
     setCommunityPostsRaw(prev => {
@@ -105,12 +92,7 @@ export default function App() {
       return next;
     });
   }, []);
-  const defaultExhibitionPosts = useMemo(() => [{
-    id: "exh1", title: "archi.zip", description: "건축을 구성하는 작은 요소들에 대해",
-    dates: "2026.02.05 ~ 02.09", location: "레드로드예술실험센터",
-    instagramUrl: "https://www.instagram.com/archi.zip_kmu", posterUrl: "/archzip_poster.jpeg",
-    createdAt: "2026-02-01T00:00:00",
-  }], []);
+  const defaultExhibitionPosts = useMemo(() => [], []);
   const [exhibitionPosts, setExhibitionPostsRaw] = useState(defaultExhibitionPosts);
   const setExhibitionPosts = useCallback((updater) => {
     setExhibitionPostsRaw(prev => {
@@ -268,21 +250,16 @@ export default function App() {
         if (Array.isArray(serverCmPosts) && serverCmPosts.length > 0) {
           setCommunityPostsRaw(serverCmPosts);
           store.set("communityPosts", serverCmPosts).catch(() => { });
-        } else if (cmPosts) {
+        } else if (cmPosts && Array.isArray(cmPosts) && cmPosts.length > 0) {
           setCommunityPostsRaw(cmPosts);
           supabaseStore.set("portal/communityPosts", cmPosts).catch(() => { });
-        } else {
-          store.set("communityPosts", defaultPosts);
-          supabaseStore.set("portal/communityPosts", defaultPosts).catch(() => { });
         }
-        if (exhPosts) {
+        if (exhPosts && Array.isArray(exhPosts) && exhPosts.length > 0) {
           setExhibitionPostsRaw(exhPosts);
         } else if (exhDataOld) {
           const migrated = [{ ...exhDataOld, id: `exh${Date.now()}`, createdAt: new Date().toISOString() }];
           setExhibitionPostsRaw(migrated);
           store.set("exhibitionPosts", migrated);
-        } else {
-          store.set("exhibitionPosts", defaultExhibitionPosts);
         }
         // roomStatus: Supabase를 단일 진실 원천(SSOT)으로 사용
         const serverRoomStatus = await supabaseStore.get("portal/roomStatus");
