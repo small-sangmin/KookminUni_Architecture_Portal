@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { certificateStorage } from "../supabase";
 import { EDITABLE, ROOMS, ADMIN_ACCOUNT, STUDENTS_DB } from "../constants/data";
 import theme from "../constants/theme";
 import { uid, ts } from "../utils/helpers";
@@ -205,9 +204,37 @@ function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, re
     setError("");
     try {
       const sid = certSid.trim();
-      const { path, error: uploadError } = await certificateStorage.upload(sid, uploadFile);
-      if (uploadError || !path) {
-        throw new Error(uploadError || "Upload failed");
+      const driveUrl = EDITABLE.driveUpload?.url?.trim();
+      if (!driveUrl) throw new Error("구글 드라이브 업로드 설정이 없습니다.");
+      // 파일을 base64로 읽기
+      const base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(uploadFile);
+      });
+      const ext = uploadFile.name.split(".").pop() || "pdf";
+      const driveFileName = `${sid}_${certSname.trim()}.${ext}`;
+      const folderName = EDITABLE.driveUpload?.folderName || "26-1 안전교육이수증";
+      // 구글 드라이브에 즉시 업로드
+      let driveFileId = null;
+      try {
+        const res = await fetch(driveUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=UTF-8" },
+          body: JSON.stringify({
+            action: "upload_to_drive",
+            key: EDITABLE.apiKey,
+            fileName: driveFileName,
+            mimeType: uploadFile.type,
+            folderName,
+            fileData: base64Data,
+          }),
+        });
+        const text = await res.text();
+        try { const result = JSON.parse(text); driveFileId = result.fileId || result.id || null; } catch {}
+      } catch (driveErr) {
+        throw new Error("구글 드라이브 업로드 실패: " + (driveErr?.message || "알 수 없는 오류"));
       }
       const certMeta = {
         studentId: sid,
@@ -220,7 +247,7 @@ function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, re
         fileSize: uploadFile.size,
         fileType: uploadFile.type,
         uploadDate: new Date().toISOString(),
-        storagePath: path,
+        ...(driveFileId ? { driveFileId } : {}),
       };
       const updatedCerts = { ...(certificates || {}), [sid]: certMeta };
       await store.set("certificates", updatedCerts);
@@ -1459,9 +1486,6 @@ function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, re
               </button>
               {uploadSuccess && (
                 <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: theme.radiusSm, background: theme.greenBg, border: `1px solid ${theme.greenBorder}`, color: theme.green, fontSize: 12 }}><Icons.check size={14} /> {uploadSuccess}</div>
-              )}
-              {certificates?.[certSid.trim()] && certSid.trim() && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: theme.radiusSm, background: theme.accentBg, border: `1px solid ${theme.accentBorder}`, color: theme.accent, fontSize: 11 }}><Icons.file size={14} />기존 업로드: {certificates[certSid.trim()].fileName}</div>
               )}
 
             </div>

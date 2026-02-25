@@ -49,6 +49,8 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
     let fileData = null;
     if (cert.storagePath) {
       fileData = await certificateStorage.getSignedUrl(cert.storagePath);
+    } else if (cert.driveFileId) {
+      fileData = `https://drive.google.com/file/d/${cert.driveFileId}/view`;
     } else {
       fileData = cert.data || await store.get(`certFile_${cert.studentId}`);
     }
@@ -267,53 +269,55 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
           }
         }
       }
-      // 구글 드라이브에 파일 저장 (삭제 전)
-      const driveUrl = EDITABLE.driveUpload?.url?.trim();
-      if (driveUrl) {
-        try {
-          let base64Data = null;
-          let mimeType = cert.fileType || "application/pdf";
+      // driveFileId가 없는 레거시 데이터만 Drive에 업로드
+      if (!cert.driveFileId) {
+        const driveUrl = EDITABLE.driveUpload?.url?.trim();
+        if (driveUrl) {
+          try {
+            let base64Data = null;
+            let mimeType = cert.fileType || "application/pdf";
 
-          if (cert.storagePath) {
-            const blob = await certificateStorage.download(cert.storagePath);
-            if (blob) {
-              base64Data = await new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result.split(",")[1]);
-                reader.readAsDataURL(blob);
+            if (cert.storagePath) {
+              const blob = await certificateStorage.download(cert.storagePath);
+              if (blob) {
+                base64Data = await new Promise((resolve) => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => resolve(reader.result.split(",")[1]);
+                  reader.readAsDataURL(blob);
+                });
+                mimeType = blob.type || mimeType;
+              }
+            } else {
+              const localData = cert.data || await store.get(`certFile_${cert.studentId}`);
+              if (localData && typeof localData === "string" && localData.startsWith("data:")) {
+                const parts = localData.split(",");
+                base64Data = parts[1];
+                const mimeMatch = parts[0].match(/data:([^;]+)/);
+                if (mimeMatch) mimeType = mimeMatch[1];
+              }
+            }
+
+            if (base64Data) {
+              const ext = (cert.fileName || cert.storagePath || "file.pdf").split(".").pop() || "pdf";
+              const newFileName = `${cert.studentId}_${cert.studentName}.${ext}`;
+              const folderName = EDITABLE.driveUpload?.folderName || "26-1 안전교육이수증";
+
+              await fetch(driveUrl, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=UTF-8" },
+                body: JSON.stringify({
+                  action: "upload_to_drive",
+                  key: EDITABLE.apiKey,
+                  fileName: newFileName,
+                  mimeType,
+                  folderName,
+                  fileData: base64Data,
+                }),
               });
-              mimeType = blob.type || mimeType;
             }
-          } else {
-            const localData = cert.data || await store.get(`certFile_${cert.studentId}`);
-            if (localData && typeof localData === "string" && localData.startsWith("data:")) {
-              const parts = localData.split(",");
-              base64Data = parts[1];
-              const mimeMatch = parts[0].match(/data:([^;]+)/);
-              if (mimeMatch) mimeType = mimeMatch[1];
-            }
+          } catch (driveErr) {
+            console.error("Google Drive 업로드 실패:", driveErr);
           }
-
-          if (base64Data) {
-            const ext = (cert.fileName || cert.storagePath || "file.pdf").split(".").pop() || "pdf";
-            const newFileName = `${cert.studentId}_${cert.studentName}.${ext}`;
-            const folderName = EDITABLE.driveUpload?.folderName || "26-1 안전교육이수증";
-
-            await fetch(driveUrl, {
-              method: "POST",
-              headers: { "Content-Type": "text/plain;charset=UTF-8" },
-              body: JSON.stringify({
-                action: "upload_to_drive",
-                key: EDITABLE.apiKey,
-                fileName: newFileName,
-                mimeType,
-                folderName,
-                fileData: base64Data,
-              }),
-            });
-          }
-        } catch (driveErr) {
-          console.error("Google Drive 업로드 실패:", driveErr);
         }
       }
 
@@ -323,10 +327,10 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
         next[cert.studentId] = { pin: cert.pin, approved: true };
         return next;
       });
-      // 서버에서 파일 삭제
+      // 레거시 파일 정리 (driveFileId 방식은 Drive 파일 유지)
       if (cert.storagePath) {
         await certificateStorage.remove(cert.storagePath);
-      } else {
+      } else if (!cert.driveFileId) {
         store.set(`certFile_${cert.studentId}`, null);
       }
 
@@ -354,8 +358,26 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
       delete next[cert.studentId];
       return next;
     });
-    // 서버에서 파일 삭제
-    if (cert.storagePath) {
+    // 파일 삭제
+    if (cert.driveFileId) {
+      // 구글 드라이브에서 파일 삭제
+      const driveUrl = EDITABLE.driveUpload?.url?.trim();
+      if (driveUrl) {
+        try {
+          await fetch(driveUrl, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=UTF-8" },
+            body: JSON.stringify({
+              action: "delete_from_drive",
+              key: EDITABLE.apiKey,
+              fileId: cert.driveFileId,
+            }),
+          });
+        } catch (err) {
+          console.error("Drive 파일 삭제 실패:", err);
+        }
+      }
+    } else if (cert.storagePath) {
       await certificateStorage.remove(cert.storagePath);
     } else {
       store.set(`certFile_${cert.studentId}`, null);
@@ -1234,6 +1256,28 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                   <Icons.file size={48} style={{ opacity: 0.5, marginBottom: 12 }} />
                   <div style={{ fontSize: 14 }}>파일을 불러올 수 없습니다</div>
                 </div>
+              ) : certModal.driveFileId ? (
+                <div style={{ textAlign: "center", padding: 40 }}>
+                  <Icons.file size={48} color={theme.blue} style={{ marginBottom: 16, opacity: 0.8 }} />
+                  <div style={{ fontSize: 14, color: theme.text, fontWeight: 600, marginBottom: 8 }}>
+                    Google Drive에 저장된 파일입니다
+                  </div>
+                  <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 20 }}>
+                    아래 버튼을 클릭하면 새 탭에서 파일을 확인할 수 있습니다
+                  </div>
+                  <button
+                    onClick={() => window.open(certFileData, "_blank")}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 8,
+                      padding: "10px 20px", borderRadius: theme.radius,
+                      background: theme.blue, color: "#fff",
+                      border: "none", cursor: "pointer",
+                      fontSize: 14, fontWeight: 600, fontFamily: theme.font,
+                    }}
+                  >
+                    <Icons.external size={16} /> Google Drive에서 열기
+                  </button>
+                </div>
               ) : certModal.fileType?.startsWith("image/") ? (
                 <img
                   src={certFileData}
@@ -1268,7 +1312,9 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                 variant="ghost"
                 onClick={() => {
                   if (!certFileData) return;
-                  if (certModal.storagePath) {
+                  if (certModal.driveFileId) {
+                    window.open(`https://drive.google.com/uc?id=${certModal.driveFileId}&export=download`, "_blank");
+                  } else if (certModal.storagePath) {
                     fetch(certFileData)
                       .then(res => res.blob())
                       .then(blob => {
