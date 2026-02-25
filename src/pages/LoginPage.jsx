@@ -8,7 +8,7 @@ import Icons from "../components/Icons";
 import { Badge, Card, Button, Input, SectionTitle, Empty, Divider, Tabs } from "../components/ui";
 import PortalLoadingScreen from "../components/PortalLoadingScreen";
 
-function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSession, onRememberSessionChange, blacklist, warnings, certificates, updateCertificates, inquiries, updateInquiries, savedCredentials, communityPosts, setCommunityPosts, exhibitionPosts, isMobile, isDark, toggleDark }) {
+function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, rememberSession, onRememberSessionChange, blacklist, warnings, certificates, updateCertificates, inquiries, updateInquiries, savedCredentials, communityPosts, setCommunityPosts, exhibitionPosts, isMobile, isDark, toggleDark }) {
   const [mode, setMode] = useState("student");
   const [isSignUp, setIsSignUp] = useState(false);
   const [sid, setSid] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.id || "") : "");
@@ -1348,6 +1348,16 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
           </div>
         )}
 
+        {/* Welcome Banner */}
+        <div style={{ textAlign: "center", marginBottom: 28, marginTop: 8 }}>
+          <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 600, letterSpacing: "-1px", lineHeight: 1.2, background: "linear-gradient(135deg, #158a3d 0%, #4ab870 60%, #a8e6bf 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+            신입생분들 입학을 진심으로 환영합니다!
+          </div>
+          <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 8, letterSpacing: "0.3px" }}>
+            쟁쟁한 경쟁률을 뚫고 국민대학교 건축대학에 오신 것을 환영해요 🎉
+          </div>
+        </div>
+
         {/* Main Login Section */}
         {(() => {
           const signInForm = (
@@ -1402,6 +1412,14 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                   <Button size="lg" onClick={handleSubmit} disabled={authLoading || !wUser.trim() || !wPass} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>{authLoading ? "로그인 중..." : (mode === "admin" ? "관리자 로그인" : "관리 화면 접속")}</Button>
                 </div>
               )}
+              <button
+                onClick={onHelp}
+                style={{ marginTop: 14, width: "100%", padding: "11px 16px", background: theme.blueBg, border: `1px solid ${theme.blueBorder}`, borderRadius: theme.radiusSm, cursor: "pointer", color: theme.blue, fontSize: 13, fontWeight: 600, fontFamily: theme.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, transition: "opacity 0.15s" }}
+                onMouseEnter={e => e.currentTarget.style.opacity = "0.75"}
+                onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+              >
+                <Icons.info size={15} sw={2.8} /> 포털 이용 안내 보기
+              </button>
             </div>
           );
 
@@ -1701,7 +1719,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                     ⚠️ 로그인 가능한 학생은 로그인 후 "문의 내역" 탭에서 문의해주세요. 답변 확인이 가능합니다.
                   </div>
                   <div style={{ fontSize: 11, color: theme.accent, marginBottom: 12, padding: "8px 12px", background: theme.accentBg, borderRadius: theme.radiusSm, border: `1px solid ${theme.accentBorder}` }}>
-                    📞 비로그인 문의는 근로학생이 연락처로 직접 답변드립니다.
+                    📞 비로그인 문의는 근로학생이 연락처 또는 이메일로 직접 답변드립니다.
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>

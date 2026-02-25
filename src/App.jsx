@@ -6,6 +6,7 @@ import { uid, ts, dateStr, ACTIVE_PORTAL_SESSION_KEY, emailTemplate } from "./ut
 import store from "./utils/storage";
 import PortalLoadingScreen from "./components/PortalLoadingScreen";
 import LoginPage from "./pages/LoginPage";
+import HelpPage from "./pages/HelpPage";
 import StudentPortal from "./pages/StudentPortal";
 import WorkerPortal from "./pages/WorkerPortal";
 import AdminPortal from "./pages/AdminPortal";
@@ -1078,6 +1079,7 @@ export default function App() {
           <LoginPage
             onLogin={handleLogin}
             onReset={resetAllData}
+            onHelp={() => setPage("help")}
             workers={workers}
             verifyStudentInSheet={verifyStudentInSheet}
             rememberSession={rememberSession}
@@ -1092,6 +1094,13 @@ export default function App() {
             communityPosts={communityPosts}
             setCommunityPosts={setCommunityPosts}
             exhibitionPosts={exhibitionPosts}
+            isMobile={isMobile}
+            isDark={isDark} toggleDark={toggleDark}
+          />
+        )}
+        {page === "help" && (
+          <HelpPage
+            onBack={() => setPage("login")}
             isMobile={isMobile}
             isDark={isDark} toggleDark={toggleDark}
           />
