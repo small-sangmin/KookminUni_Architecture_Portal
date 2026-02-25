@@ -237,8 +237,9 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
   };
 
   const handleWorkerLogin = async () => {
-    const found = workers.find(w => w.username === wUser.trim() && w.password === wPass) || workers[0];
-    if (!found) { setError("근로학생 계정이 없습니다."); return; }
+    if (!wUser.trim() || !wPass) { setError("아이디와 비밀번호를 입력해주세요."); return; }
+    const found = workers.find(w => w.username === wUser.trim() && w.password === wPass);
+    if (!found) { setError("아이디 또는 비밀번호가 올바르지 않습니다."); return; }
     setError("");
     setAuthLoading(true);
     try {
@@ -250,6 +251,11 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
   };
 
   const handleAdminLogin = async () => {
+    if (!wUser.trim() || !wPass) { setError("아이디와 비밀번호를 입력해주세요."); return; }
+    if (wUser.trim() !== ADMIN_ACCOUNT.username || wPass !== ADMIN_ACCOUNT.password) {
+      setError("아이디 또는 비밀번호가 올바르지 않습니다.");
+      return;
+    }
     setError("");
     setAuthLoading(true);
     try {
@@ -1393,7 +1399,7 @@ function LoginPage({ onLogin, onReset, workers, verifyStudentInSheet, rememberSe
                   {error && (
                     <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: theme.radiusSm, background: theme.redBg, border: `1px solid ${theme.redBorder}`, color: theme.red, fontSize: 13 }}><Icons.alert size={16} /> {error}</div>
                   )}
-                  <Button size="lg" onClick={handleSubmit} disabled={authLoading} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>{authLoading ? "로그인 중..." : (mode === "admin" ? "관리자 로그인" : "관리 화면 접속")}</Button>
+                  <Button size="lg" onClick={handleSubmit} disabled={authLoading || !wUser.trim() || !wPass} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>{authLoading ? "로그인 중..." : (mode === "admin" ? "관리자 로그인" : "관리 화면 접속")}</Button>
                 </div>
               )}
             </div>
