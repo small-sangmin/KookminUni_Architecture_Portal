@@ -5,15 +5,37 @@ import { uid, ts, dateStr, tomorrow, addDays, formatDate, emailTemplate } from "
 import Icons from "../components/Icons";
 import { Badge, Card, Button, Input, SectionTitle, Empty, AlertPopup } from "../components/ui";
 
+const isWeekend = (dateStr) => {
+  const d = new Date(dateStr + "T00:00:00");
+  const day = d.getDay();
+  return day === 0 || day === 6;
+};
+
+const isPast = (dateStr) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr + "T00:00:00");
+  return d < today;
+};
+
+const nextWeekday = (dateStr) => {
+  const d = new Date(dateStr + "T00:00:00");
+  while (d.getDay() === 0 || d.getDay() === 6) {
+    d.setDate(d.getDate() + 1);
+  }
+  return d.toISOString().split("T")[0];
+};
+
 function RoomReservation({ user, reservations, updateReservations, addLog, addNotification, syncReservationToSheet, sendEmailNotification, roomStatus, isMobile }) {
   const [selectedRoom, setSelectedRoom] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(tomorrow());
+  const [selectedDate, setSelectedDate] = useState(nextWeekday(tomorrow()));
   const [selectedSlots, setSelectedSlots] = useState([]);
   const [purpose, setPurpose] = useState("");
   const [members, setMembers] = useState("1");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
+  const [showWeekendPopup, setShowWeekendPopup] = useState(false);
   const [error, setError] = useState("");
 
   const toggleSlot = (id) => setSelectedSlots(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
@@ -221,7 +243,22 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
               <SectionTitle icon={<Icons.calendar size={16} color={theme.accent} />}>날짜 및 시간 선택</SectionTitle>
               <Card style={{ marginBottom: 24 }}>
                 <div style={{ display: "flex", gap: 16, marginBottom: 18, flexWrap: "wrap" }}>
-                  <Input label="예약 날짜" type="date" value={selectedDate} onChange={e => { setSelectedDate(e.target.value); setSelectedSlots([]); }} style={{ maxWidth: 180 }} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <Input label="예약 날짜" type="date" value={selectedDate} onChange={e => {
+                      const val = e.target.value;
+                      if (!val) return;
+                      if (isWeekend(val)) {
+                        setShowWeekendPopup(true);
+                      } else {
+                        setError("");
+                      }
+                      setSelectedDate(val);
+                      setSelectedSlots([]);
+                    }} style={{ maxWidth: 180, borderColor: isWeekend(selectedDate) ? theme.red : undefined }} />
+                    <div style={{ fontSize: 11, color: (isWeekend(selectedDate) || isPast(selectedDate)) ? theme.red : theme.textDim, fontWeight: (isWeekend(selectedDate) || isPast(selectedDate)) ? 600 : 400 }}>
+                      {isPast(selectedDate) ? "⚠️ 과거 날짜는 예약 불가" : isWeekend(selectedDate) ? "⚠️ 주말은 예약 불가" : "주말(토·일) 예약 불가"}
+                    </div>
+                  </div>
                   <Input label="사용 인원" type="number" min="1" max="30" value={members} onChange={e => setMembers(e.target.value)} style={{ maxWidth: 100 }} />
                 </div>
 
@@ -273,14 +310,25 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
                 </Card>
               )}
 
-              <Button size="lg" onClick={handleSubmit} disabled={selectedSlots.length === 0 || !purpose.trim() || submitting}
+              <Button size="lg" onClick={handleSubmit} disabled={selectedSlots.length === 0 || !purpose.trim() || submitting || isWeekend(selectedDate) || isPast(selectedDate)}
                 style={{ width: "100%", justifyContent: "center", marginBottom: 40 }}>
-                {submitting ? "처리 중..." : `예약 신청 (${selectedSlots.length}시간)`}
+                {submitting ? "처리 중..." : isPast(selectedDate) ? "과거 날짜는 예약할 수 없습니다" : isWeekend(selectedDate) ? "주말은 예약할 수 없습니다" : `예약 신청 (${selectedSlots.length}시간)`}
               </Button>
             </div>
           )}
         </div>
       </div>
+
+      {/* ═══ 주말 예약 불가 팝업 ═══ */}
+      <AlertPopup
+        isVisible={showWeekendPopup}
+        icon="🚫"
+        title="주말은 예약할 수 없습니다"
+        description="실기실은 평일(월~금)에만 예약 가능합니다. 평일 날짜를 선택해주세요."
+        buttonText="확인"
+        onClose={() => setShowWeekendPopup(false)}
+        color={theme.red}
+      />
 
       {/* ═══ 예약 완료 강조 팝업 ═══ */}
       <AlertPopup

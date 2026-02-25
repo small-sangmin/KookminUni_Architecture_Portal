@@ -5,13 +5,35 @@ import { uid, ts, dateStr, tomorrow, addDays } from "../utils/helpers";
 import Icons from "../components/Icons";
 import { Badge, Card, Button, Input, SectionTitle, Empty, AlertPopup } from "../components/ui";
 
+const isWeekend = (dateStr) => {
+  const d = new Date(dateStr + "T00:00:00");
+  const day = d.getDay();
+  return day === 0 || day === 6;
+};
+
+const isPast = (dateStr) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr + "T00:00:00");
+  return d < today;
+};
+
+const nextWeekday = (dateStr) => {
+  const d = new Date(dateStr + "T00:00:00");
+  while (d.getDay() === 0 || d.getDay() === 6) {
+    d.setDate(d.getDate() + 1);
+  }
+  return d.toISOString().split("T")[0];
+};
+
 function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, isMobile }) {
   const [selected, setSelected] = useState(null);
-  const [returnDate, setReturnDate] = useState(addDays(3));
+  const [returnDate, setReturnDate] = useState(nextWeekday(addDays(3)));
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
+  const [showWeekendPopup, setShowWeekendPopup] = useState(false);
   const [filterCat, setFilterCat] = useState("전체");
 
   const categories = ["전체", ...new Set(equipmentDB.map(e => e.category))];
@@ -157,7 +179,17 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
                 <SectionTitle icon={<Icons.calendar size={16} color={theme.accent} />}>반납 정보</SectionTitle>
                 <Card style={{ marginBottom: 24 }}>
                   <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                    <Input label="반납 예정일" type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} style={{ maxWidth: 180 }} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <Input label="반납 예정일" type="date" value={returnDate} onChange={e => {
+                        const val = e.target.value;
+                        if (!val) return;
+                        if (isWeekend(val)) setShowWeekendPopup(true);
+                        setReturnDate(val);
+                      }} style={{ maxWidth: 180, borderColor: (isWeekend(returnDate) || isPast(returnDate)) ? theme.red : undefined }} />
+                      <div style={{ fontSize: 11, color: (isWeekend(returnDate) || isPast(returnDate)) ? theme.red : theme.textDim, fontWeight: (isWeekend(returnDate) || isPast(returnDate)) ? 600 : 400 }}>
+                        {isPast(returnDate) ? "⚠️ 과거 날짜는 불가" : isWeekend(returnDate) ? "⚠️ 주말은 반납 불가" : "주말(토·일) 반납 불가"}
+                      </div>
+                    </div>
                     <div style={{ flex: 1, minWidth: 200 }}>
                       <Input label="비고 (선택)" placeholder="예: 수업용, 팀프로젝트 등" value={note} onChange={e => setNote(e.target.value)} />
                     </div>
@@ -173,8 +205,8 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
                   </div>
                 </Card>
 
-                <Button size="lg" onClick={handleSubmit} disabled={submitting} style={{ width: "100%", justifyContent: "center", marginBottom: 40 }}>
-                  {submitting ? "신청 중..." : `${eq.name} 대여 신청`}
+                <Button size="lg" onClick={handleSubmit} disabled={submitting || isWeekend(returnDate) || isPast(returnDate)} style={{ width: "100%", justifyContent: "center", marginBottom: 40 }}>
+                  {submitting ? "신청 중..." : isPast(returnDate) ? "과거 날짜는 반납일로 설정 불가" : isWeekend(returnDate) ? "주말은 반납일로 설정 불가" : `${eq.name} 대여 신청`}
                 </Button>
               </div>
             );
@@ -209,7 +241,15 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
                 </div>
               </div>
               <div style={{ marginBottom: 16 }}>
-                <Input label="반납 예정일" type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} />
+                <Input label="반납 예정일" type="date" value={returnDate} onChange={e => {
+                  const val = e.target.value;
+                  if (!val) return;
+                  if (isWeekend(val)) setShowWeekendPopup(true);
+                  setReturnDate(val);
+                }} style={{ borderColor: (isWeekend(returnDate) || isPast(returnDate)) ? theme.red : undefined }} />
+                <div style={{ fontSize: 11, marginTop: 4, color: (isWeekend(returnDate) || isPast(returnDate)) ? theme.red : theme.textDim, fontWeight: (isWeekend(returnDate) || isPast(returnDate)) ? 600 : 400 }}>
+                  {isPast(returnDate) ? "⚠️ 과거 날짜는 불가" : isWeekend(returnDate) ? "⚠️ 주말은 반납 불가" : "주말(토·일) 반납 불가"}
+                </div>
               </div>
               <div style={{ marginBottom: 20 }}>
                 <Input label="비고 (선택)" placeholder="예: 수업용, 팀프로젝트 등" value={note} onChange={e => setNote(e.target.value)} />
@@ -221,13 +261,24 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
                   <Badge color="blue">반납: {returnDate}</Badge>
                 </div>
               </Card>
-              <Button size="lg" onClick={handleSubmit} disabled={submitting} style={{ width: "100%", justifyContent: "center" }}>
-                {submitting ? "신청 중..." : `${eq.name} 대여 신청`}
+              <Button size="lg" onClick={handleSubmit} disabled={submitting || isWeekend(returnDate) || isPast(returnDate)} style={{ width: "100%", justifyContent: "center" }}>
+                {submitting ? "신청 중..." : isPast(returnDate) ? "과거 날짜는 반납일로 설정 불가" : isWeekend(returnDate) ? "주말은 반납일로 설정 불가" : `${eq.name} 대여 신청`}
               </Button>
             </div>
           </div>
         );
       })()}
+
+      {/* ═══ 주말 반납 불가 팝업 ═══ */}
+      <AlertPopup
+        isVisible={showWeekendPopup}
+        icon="🚫"
+        title="주말은 반납일로 설정할 수 없습니다"
+        description="물품 반납은 평일(월~금)에만 가능합니다. 평일 날짜를 선택해주세요."
+        buttonText="확인"
+        onClose={() => setShowWeekendPopup(false)}
+        color={theme.red}
+      />
 
       {/* ═══ 대여 신청 완료 강조 팝업 ═══ */}
       <AlertPopup
