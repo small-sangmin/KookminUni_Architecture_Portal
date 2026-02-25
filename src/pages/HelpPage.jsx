@@ -161,7 +161,7 @@ export default function HelpPage({ onBack, isMobile, isDark, toggleDark }) {
               />
               <StepCard num={3} color={theme.green}
                 title="안전교육 미이수 안내"
-                desc="안전교육 이수증을 아직 제출하지 않은 경우, 실기실 예약과 물품 대여가 제한됩니다. 로그인은 가능하나 일부 기능을 사용할 수 없습니다."
+                desc="안전교육 이수증을 아직 제출하지 않은 경우, 실기실 예약과 물품 대여가 제한됩니다."
               />
               <div style={{
                 marginTop: 4, padding: "12px 16px",
