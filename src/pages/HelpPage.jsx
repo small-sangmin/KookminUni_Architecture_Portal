@@ -37,9 +37,9 @@ const StepCard = ({ num, title, desc, color }) => (
 
 const FeatureRow = ({ icon, label, desc }) => (
   <div style={{
-    display: "flex", gap: 12, padding: "12px 16px",
-    background: theme.surface, borderRadius: theme.radiusSm,
-    alignItems: "flex-start", marginBottom: 8,
+    display: "flex", gap: 14, padding: "14px 16px",
+    background: theme.card, border: `1px solid ${theme.border}`,
+    borderRadius: theme.radius, alignItems: "flex-start", marginBottom: 8,
   }}>
     <div style={{ fontSize: 18, flexShrink: 0, marginTop: 1 }}>{icon}</div>
     <div>
@@ -114,171 +114,176 @@ export default function HelpPage({ onBack, isMobile, isDark, toggleDark }) {
 
         {/* Intro Banner */}
         <div style={{
-          marginTop: 24, marginBottom: 32, padding: "20px 22px",
+          marginTop: 24, marginBottom: 24, padding: "20px 22px",
           background: theme.accentBg, border: `1px solid ${theme.accentBorder}`,
           borderRadius: theme.radius,
         }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: theme.accent, marginBottom: 6 }}>국민대학교 건축대학 포털사이트</div>
           <div style={{ fontSize: 13, color: theme.textMuted, lineHeight: 1.8 }}>
             실기실 예약, 물품 대여, 출력 신청, 안전교육 이수증 관리 등 건축대학 생활에 필요한 기능을 한 곳에서 이용할 수 있습니다.
-            학생 / 근로학생 / 관리자 세 가지 역할로 나뉘어 운영됩니다.
+            아래에서 역할을 선택하면 해당 이용 안내를 확인할 수 있습니다.
           </div>
         </div>
 
-        {/* 로그인 안내 */}
-        <Section title="로그인 방법">
-          {/* Role Tabs */}
-          <div style={{
-            display: "flex", gap: 6, padding: 4,
-            background: theme.surface, borderRadius: theme.radius,
-            marginBottom: 20,
-          }}>
-            {tabs.map(t => (
-              <button
-                key={t.id}
-                onClick={() => setUserTab(t.id)}
-                style={{
-                  flex: 1, padding: "9px 0", borderRadius: 7, border: "none",
-                  cursor: "pointer", fontSize: 13, fontWeight: 600,
-                  fontFamily: theme.font, transition: "all 0.2s",
-                  background: userTab === t.id ? theme.card : "transparent",
-                  color: userTab === t.id ? t.color : theme.textMuted,
-                  boxShadow: userTab === t.id ? "0 1px 4px rgba(0,0,0,0.2)" : "none",
-                }}
-              >{t.label}</button>
-            ))}
-          </div>
+        {/* 역할 선택 탭 */}
+        <div style={{
+          display: "flex", gap: 6, padding: 4,
+          background: theme.surface, borderRadius: theme.radius,
+          marginBottom: 28,
+        }}>
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setUserTab(t.id)}
+              style={{
+                flex: 1, padding: "10px 0", borderRadius: 7, border: "none",
+                cursor: "pointer", fontSize: 13, fontWeight: 700,
+                fontFamily: theme.font, transition: "all 0.2s",
+                background: userTab === t.id ? theme.card : "transparent",
+                color: userTab === t.id ? t.color : theme.textMuted,
+                boxShadow: userTab === t.id ? "0 1px 4px rgba(0,0,0,0.2)" : "none",
+              }}
+            >{t.label}</button>
+          ))}
+        </div>
 
-          {userTab === TAB_STUDENT && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <StepCard num={1} color={theme.green}
-                title="안전교육 이수증 업로드 (최초 1회)"
-                desc="로그인 화면에서 '이수증 업로드' 버튼을 눌러 학번, 이름, 학년, 전공, 이메일, 4자리 비밀번호 설정 후 안전교육 이수증 파일을 제출합니다. 관리자 승인 후 로그인이 가능합니다."
-              />
-              <StepCard num={2} color={theme.green}
-                title="로그인"
-                desc="학번과 이름을 입력하고, 이수증 업로드 시 설정한 4자리 숫자 비밀번호를 입력한 뒤 로그인 버튼을 누릅니다."
-              />
-              <StepCard num={3} color={theme.green}
-                title="안전교육 미이수 안내"
-                desc="안전교육 이수증을 아직 제출하지 않은 경우, 실기실 예약과 물품 대여가 제한됩니다."
-              />
-              <div style={{
-                marginTop: 4, padding: "12px 16px",
-                background: theme.greenBg, border: `1px solid ${theme.greenBorder}`,
-                borderRadius: theme.radiusSm, fontSize: 12, color: theme.green,
-              }}>
-                💡 로그인 화면 하단의 '로그인 기억' 체크박스를 선택하면 다음 접속 시 자동으로 로그인됩니다.
+        {/* 학생 안내 */}
+        {userTab === TAB_STUDENT && (
+          <>
+            <Section title="로그인 방법">
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <StepCard num={1} color={theme.green}
+                  title="안전교육 이수증 업로드 (최초 1회)"
+                  desc="로그인 화면에서 '이수증 업로드' 버튼을 눌러 학번, 이름, 학년, 전공, 이메일, 4자리 비밀번호 설정 후 안전교육 이수증 파일을 제출합니다. 관리자 승인 후 로그인이 가능합니다."
+                />
+                <StepCard num={2} color={theme.green}
+                  title="로그인"
+                  desc="학번과 이름을 입력하고, 이수증 업로드 시 설정한 4자리 숫자 비밀번호를 입력한 뒤 로그인 버튼을 누릅니다."
+                />
+                <div style={{
+                  marginTop: 4, padding: "12px 16px",
+                  background: theme.greenBg, border: `1px solid ${theme.greenBorder}`,
+                  borderRadius: theme.radiusSm, fontSize: 12, color: theme.green,
+                }}>
+                  💡 로그인 화면 하단의 '로그인 기억' 체크박스를 선택하면 다음 접속 시 자동으로 로그인됩니다.
+                </div>
               </div>
-            </div>
-          )}
+            </Section>
 
-          {userTab === TAB_WORKER && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <StepCard num={1} color={theme.blue}
-                title="근로학생 탭 선택"
-                desc="로그인 화면 상단의 탭에서 '근로학생'을 선택합니다."
+            <Section title="학생 포털 기능" accent={theme.green}>
+              <FeatureRow icon="🏠" label="대시보드"
+                desc="다가오는 실기실 예약, 현재 대여 중인 물품, 처리 대기 중인 출력 신청, 최근 이용내역, 미답변 문의를 한 화면에서 확인할 수 있습니다."
               />
-              <StepCard num={2} color={theme.blue}
-                title="아이디 / 비밀번호 입력"
-                desc="관리자로부터 부여받은 근로학생 아이디와 비밀번호를 입력합니다. 계정 정보는 관리자에게 문의하세요."
+              <FeatureRow icon="🚪" label="실기실 예약"
+                desc="모형제작실, 3D프린팅, 캐드실, 레이저커팅실, 사진실 중 원하는 실기실과 날짜·시간대를 선택해 예약을 신청합니다. 예약 승인 여부는 대시보드에서 확인할 수 있습니다. 안전교육 이수자만 예약 가능합니다."
               />
-              <div style={{
-                marginTop: 4, padding: "12px 16px",
-                background: theme.blueBg, border: `1px solid ${theme.blueBorder}`,
-                borderRadius: theme.radiusSm, fontSize: 12, color: theme.blue,
-              }}>
-                💡 근로학생 계정 관리(계정 추가·수정·삭제)는 관리자 포털에서 이루어집니다.
+              <FeatureRow icon="🔧" label="물품 대여"
+                desc="전동 공구, 수공구, 계측 장비 등 다양한 물품을 대여 신청합니다. 물품별 재고 수량을 확인한 뒤 신청하며, 반납 시 반납 처리가 필요합니다. 안전교육 이수자만 대여 가능합니다."
+              />
+              <FeatureRow icon="🖨️" label="출력 신청"
+                desc="Coated(평면/이미지), Matt, Gloss, 흑백, 컬러 등 출력 종류를 선택하고 파일 정보를 입력해 출력을 신청합니다. 근로학생이 처리 후 상태가 업데이트됩니다."
+              />
+              <FeatureRow icon="📋" label="내 이용내역"
+                desc="실기실 예약 내역과 물품 대여 내역을 한눈에 볼 수 있습니다. 진행 중인 예약이나 대여는 취소할 수도 있습니다."
+              />
+              <FeatureRow icon="💬" label="문의 내역"
+                desc="포털 내에서 문의를 작성하고, 근로학생이 답변한 내역을 확인할 수 있습니다. 미답변·답변완료 상태가 구분 표시됩니다."
+              />
+            </Section>
+          </>
+        )}
+
+        {/* 근로학생 안내 */}
+        {userTab === TAB_WORKER && (
+          <>
+            <Section title="로그인 방법">
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <StepCard num={1} color={theme.blue}
+                  title="근로학생 탭 선택"
+                  desc="로그인 화면 상단의 탭에서 '근로학생'을 선택합니다."
+                />
+                <StepCard num={2} color={theme.blue}
+                  title="아이디 / 비밀번호 입력"
+                  desc="관리자로부터 부여받은 근로학생 아이디와 비밀번호를 입력합니다. 계정 정보는 관리자에게 문의하세요."
+                />
+                <div style={{
+                  marginTop: 4, padding: "12px 16px",
+                  background: theme.blueBg, border: `1px solid ${theme.blueBorder}`,
+                  borderRadius: theme.radiusSm, fontSize: 12, color: theme.blue,
+                }}>
+                  💡 근로학생 계정 관리(계정 추가·수정·삭제)는 관리자 포털에서 이루어집니다.
+                </div>
               </div>
-            </div>
-          )}
+            </Section>
 
-          {userTab === TAB_ADMIN && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <StepCard num={1} color={theme.accent}
-                title="관리자 탭 선택"
-                desc="로그인 화면 상단의 탭에서 '관리자'를 선택합니다."
+            <Section title="근로학생 포털 기능" accent={theme.blue}>
+              <FeatureRow icon="📊" label="대시보드"
+                desc="실기실 예약 현황, 물품 대여 현황, 알림 목록을 한눈에 확인합니다. 예약 승인·거절, 대여 상태 변경(수령 확인·반납 처리)을 이 화면에서 처리합니다."
               />
-              <StepCard num={2} color={theme.accent}
-                title="아이디 / 비밀번호 입력"
-                desc="관리자 아이디와 비밀번호를 입력합니다. 초기 계정 정보는 시스템 담당자에게 확인하세요."
+              <FeatureRow icon="🖨️" label="출력 관리"
+                desc="학생들이 신청한 출력 요청 목록을 확인하고, 처리 중·완료 등 상태를 업데이트합니다. 완료된 출력물은 Google Drive에 아카이브할 수 있습니다."
               />
-              <div style={{
-                marginTop: 4, padding: "12px 16px",
-                background: theme.accentBg, border: `1px solid ${theme.accentBorder}`,
-                borderRadius: theme.radiusSm, fontSize: 12, color: theme.accent,
-              }}>
-                💡 관리자 계정 비밀번호는 코드 내 <code style={{ fontFamily: theme.fontMono, fontSize: 11 }}>data.js</code>의 <code style={{ fontFamily: theme.fontMono, fontSize: 11 }}>adminAccount</code> 항목에서 변경할 수 있습니다.
+              <FeatureRow icon="💬" label="문의"
+                desc="학생이 제출한 문의와 로그인 없이 접수된 문의를 모두 확인하고 답변합니다."
+              />
+              <FeatureRow icon="📓" label="일지"
+                desc="근무 중 발생한 사항을 일지로 기록합니다. 날짜별 로그가 자동 기록되며, 직접 메모를 추가할 수도 있습니다."
+              />
+            </Section>
+          </>
+        )}
+
+        {/* 관리자 안내 */}
+        {userTab === TAB_ADMIN && (
+          <>
+            <Section title="로그인 방법">
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <StepCard num={1} color={theme.accent}
+                  title="관리자 탭 선택"
+                  desc="로그인 화면 상단의 탭에서 '관리자'를 선택합니다."
+                />
+                <StepCard num={2} color={theme.accent}
+                  title="아이디 / 비밀번호 입력"
+                  desc="관리자 아이디와 비밀번호를 입력합니다. 초기 계정 정보는 시스템 담당자에게 확인하세요."
+                />
+                <div style={{
+                  marginTop: 4, padding: "12px 16px",
+                  background: theme.accentBg, border: `1px solid ${theme.accentBorder}`,
+                  borderRadius: theme.radiusSm, fontSize: 12, color: theme.accent,
+                }}>
+                  💡 관리자 계정 비밀번호는 코드 내 <code style={{ fontFamily: theme.fontMono, fontSize: 11 }}>data.js</code>의 <code style={{ fontFamily: theme.fontMono, fontSize: 11 }}>adminAccount</code> 항목에서 변경할 수 있습니다.
+                </div>
               </div>
-            </div>
-          )}
-        </Section>
+            </Section>
 
-        {/* 학생 포털 기능 */}
-        <Section title="학생 포털 기능" accent={theme.green}>
-          <FeatureRow icon="🏠" label="대시보드"
-            desc="다가오는 실기실 예약, 현재 대여 중인 물품, 처리 대기 중인 출력 신청, 최근 이용내역, 미답변 문의를 한 화면에서 확인할 수 있습니다."
-          />
-          <FeatureRow icon="🚪" label="실기실 예약"
-            desc="모형제작실, 3D프린팅, 캐드실, 레이저커팅실, 사진실 중 원하는 실기실과 날짜·시간대를 선택해 예약을 신청합니다. 예약 승인 여부는 대시보드에서 확인할 수 있습니다. 안전교육 이수자만 예약 가능합니다."
-          />
-          <FeatureRow icon="🔧" label="물품 대여"
-            desc="전동 공구, 수공구, 계측 장비 등 다양한 물품을 대여 신청합니다. 물품별 재고 수량을 확인한 뒤 신청하며, 반납 시 반납 처리가 필요합니다. 안전교육 이수자만 대여 가능합니다."
-          />
-          <FeatureRow icon="🖨️" label="출력 신청"
-            desc="Coated(평면/이미지), Matt, Gloss, 흑백, 컬러 등 출력 종류를 선택하고 파일 정보를 입력해 출력을 신청합니다. 근로학생이 처리 후 상태가 업데이트됩니다."
-          />
-          <FeatureRow icon="📋" label="내 이용내역"
-            desc="실기실 예약 내역과 물품 대여 내역을 한눈에 볼 수 있습니다. 진행 중인 예약이나 대여는 취소할 수도 있습니다."
-          />
-          <FeatureRow icon="💬" label="문의 내역"
-            desc="포털 내에서 문의를 작성하고, 근로학생이 답변한 내역을 확인할 수 있습니다. 미답변·답변완료 상태가 구분 표시됩니다."
-          />
-        </Section>
-
-        {/* 근로학생 포털 기능 */}
-        <Section title="근로학생 포털 기능" accent={theme.blue}>
-          <FeatureRow icon="📊" label="대시보드"
-            desc="실기실 예약 현황, 물품 대여 현황, 알림 목록을 한눈에 확인합니다. 예약 승인·거절, 대여 상태 변경(수령 확인·반납 처리)을 이 화면에서 처리합니다."
-          />
-          <FeatureRow icon="🖨️" label="출력 관리"
-            desc="학생들이 신청한 출력 요청 목록을 확인하고, 처리 중·완료 등 상태를 업데이트합니다. 완료된 출력물은 Google Drive에 아카이브할 수 있습니다."
-          />
-          <FeatureRow icon="💬" label="문의"
-            desc="학생이 제출한 문의와 로그인 없이 접수된 문의를 모두 확인하고 답변합니다."
-          />
-          <FeatureRow icon="📓" label="일지"
-            desc="근무 중 발생한 사항을 일지로 기록합니다. 날짜별 로그가 자동 기록되며, 직접 메모를 추가할 수도 있습니다."
-          />
-        </Section>
-
-        {/* 관리자 포털 기능 */}
-        <Section title="관리자 포털 기능" accent={theme.accent}>
-          <FeatureRow icon="👥" label="근로학생 계정 관리"
-            desc="근로학생 계정을 추가, 수정, 삭제합니다. 각 계정의 이름, 아이디, 비밀번호, 근무 시간대를 설정할 수 있습니다."
-          />
-          <FeatureRow icon="🔌" label="실기실 ON/OFF"
-            desc="각 실기실을 일시적으로 닫을 수 있습니다. 공사, 청소 등으로 사용 불가한 경우 OFF로 설정하면 학생 예약이 차단됩니다."
-          />
-          <FeatureRow icon="⚠️" label="경고 / 블랙리스트"
-            desc="규정 위반 학생에게 경고를 부여하거나 블랙리스트에 등록합니다. 블랙리스트 학생은 포털 사용이 제한됩니다."
-          />
-          <FeatureRow icon="📄" label="이수증 관리"
-            desc="학생이 업로드한 안전교육 이수증을 검토하고 승인 또는 반려합니다. 승인된 학생만 실기실 예약과 물품 대여를 이용할 수 있습니다."
-          />
-          <FeatureRow icon="🛠️" label="물품 관리"
-            desc="대여 가능한 물품 목록을 관리합니다. 물품 추가, 수량 수정, 비활성화 등을 처리할 수 있습니다."
-          />
-          <FeatureRow icon="📢" label="커뮤니티 / 전시 관리"
-            desc="로그인 화면에 표시되는 커뮤니티 게시판과 전시회 정보를 등록·편집·삭제합니다."
-          />
-          <FeatureRow icon="📜" label="관리 이력"
-            desc="예약 승인/거절, 대여 처리, 경고 부여 등 주요 관리 행위가 자동으로 기록됩니다."
-          />
-          <FeatureRow icon="⚙️" label="연동 설정"
-            desc="Google Sheets 연동을 위한 웹훅 URL을 설정합니다. 예약 정보와 출력 요청이 구글 시트에 자동으로 동기화됩니다."
-          />
-        </Section>
+            <Section title="관리자 포털 기능" accent={theme.accent}>
+              <FeatureRow icon="👥" label="근로학생 계정 관리"
+                desc="근로학생 계정을 추가, 수정, 삭제합니다. 각 계정의 이름, 아이디, 비밀번호, 근무 시간대를 설정할 수 있습니다."
+              />
+              <FeatureRow icon="🔌" label="실기실 ON/OFF"
+                desc="각 실기실을 일시적으로 닫을 수 있습니다. 공사, 청소 등으로 사용 불가한 경우 OFF로 설정하면 학생 예약이 차단됩니다."
+              />
+              <FeatureRow icon="⚠️" label="경고 / 블랙리스트"
+                desc="규정 위반 학생에게 경고를 부여하거나 블랙리스트에 등록합니다. 블랙리스트 학생은 포털 사용이 제한됩니다."
+              />
+              <FeatureRow icon="📄" label="이수증 관리"
+                desc="학생이 업로드한 안전교육 이수증을 검토하고 승인 또는 반려합니다. 승인된 학생만 실기실 예약과 물품 대여를 이용할 수 있습니다."
+              />
+              <FeatureRow icon="🛠️" label="물품 관리"
+                desc="대여 가능한 물품 목록을 관리합니다. 물품 추가, 수량 수정, 비활성화 등을 처리할 수 있습니다."
+              />
+              <FeatureRow icon="📢" label="커뮤니티 / 전시 관리"
+                desc="로그인 화면에 표시되는 커뮤니티 게시판과 전시회 정보를 등록·편집·삭제합니다."
+              />
+              <FeatureRow icon="📜" label="관리 이력"
+                desc="예약 승인/거절, 대여 처리, 경고 부여 등 주요 관리 행위가 자동으로 기록됩니다."
+              />
+              <FeatureRow icon="⚙️" label="연동 설정"
+                desc="Google Sheets 연동을 위한 웹훅 URL을 설정합니다. 예약 정보와 출력 요청이 구글 시트에 자동으로 동기화됩니다."
+              />
+            </Section>
+          </>
+        )}
 
         {/* FAQ */}
         <Section title="자주 묻는 질문 (FAQ)">
