@@ -284,5 +284,61 @@ export const certificateStorage = {
   },
 }
 
+// ─── Form File Storage ────────────────────────────────────────────
+const FORMS_BUCKET = 'forms'
+
+export const formStorage = {
+  async upload(file, customName) {
+    try {
+      const timestamp = Date.now()
+      const displayName = customName || file.name
+      const safeName = displayName.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const filePath = `${timestamp}_${safeName}`
+
+      const { data, error } = await supabaseAdmin.storage
+        .from(FORMS_BUCKET)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type || 'application/pdf',
+        })
+
+      if (error) throw error
+      return { path: data.path, error: null }
+    } catch (err) {
+      console.error('Form upload error:', err)
+      return { path: null, error: err.message }
+    }
+  },
+
+  async getSignedUrl(filePath, expiresIn = 3600) {
+    try {
+      const { data, error } = await supabaseAdmin.storage
+        .from(FORMS_BUCKET)
+        .createSignedUrl(filePath, expiresIn)
+
+      if (error) throw error
+      return data.signedUrl
+    } catch (err) {
+      console.error('Form signed URL error:', err)
+      return null
+    }
+  },
+
+  async remove(filePath) {
+    try {
+      const { error } = await supabaseAdmin.storage
+        .from(FORMS_BUCKET)
+        .remove([filePath])
+
+      if (error) throw error
+      return true
+    } catch (err) {
+      console.error('Form file delete error:', err)
+      return false
+    }
+  },
+}
+
 // Export as default
 export default supabaseStore

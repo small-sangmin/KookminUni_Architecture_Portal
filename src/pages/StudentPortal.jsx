@@ -17,7 +17,7 @@ const PRINT_TYPE_LABELS = {
   COLOR: "컬러",
 };
 
-function StudentPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, syncReservationToSheet, syncPrintToSheet, sendEmailNotification, warnings, inquiries, updateInquiries, printRequests, updatePrintRequests, roomStatus, isMobile, isDark, toggleDark }) {
+function StudentPortal({ user, onLogout, reservations, updateReservations, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, categoryOrder, addLog, addNotification, syncReservationToSheet, syncPrintToSheet, sendEmailNotification, warnings, inquiries, updateInquiries, printRequests, updatePrintRequests, roomStatus, isMobile, isDark, toggleDark }) {
   const [tab, setTabRaw] = useState("dashboard");
   const [dashboardDetail, setDashboardDetail] = useState(null);
   const [detailSubmitting, setDetailSubmitting] = useState(false);
@@ -418,7 +418,7 @@ function StudentPortal({ user, onLogout, reservations, updateReservations, equip
             />
           )}
           {tab === "equipment" && (
-            <EquipmentRental user={user} equipRentals={equipRentals} updateEquipRentals={updateEquipRentals} equipmentDB={equipmentDB} setEquipmentDB={setEquipmentDB} addLog={addLog} addNotification={addNotification} sendEmailNotification={sendEmailNotification} isMobile={isMobile} />
+            <EquipmentRental user={user} equipRentals={equipRentals} updateEquipRentals={updateEquipRentals} equipmentDB={equipmentDB} setEquipmentDB={setEquipmentDB} categoryOrder={categoryOrder} addLog={addLog} addNotification={addNotification} sendEmailNotification={sendEmailNotification} isMobile={isMobile} />
           )}
           {tab === "print" && (
             <PrintRequest user={user} printRequests={myPrintRequests} updatePrintRequests={updatePrintRequests} addLog={addLog} addNotification={addNotification} syncPrintToSheet={syncPrintToSheet} sendEmailNotification={sendEmailNotification} isMobile={isMobile} />

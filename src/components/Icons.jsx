@@ -44,6 +44,7 @@ const Icons = {
   moon: (p) => <I {...p} d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />,
   power: (p) => <I {...p} d={<><path d="M18.36 6.64a9 9 0 11-12.73 0" /><path d="M12 2v10" /></>} />,
   external: (p) => <I {...p} d={<><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><path d="M15 3h6v6" /><path d="M10 14L21 3" /></>} />,
+  clipboard: (p) => <I {...p} d={<><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" /><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M9 12h6M9 16h4" /></>} />,
 };
 
 export default Icons;

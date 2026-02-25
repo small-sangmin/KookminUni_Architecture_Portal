@@ -6,6 +6,7 @@ import store from "../utils/storage";
 import Icons from "../components/Icons";
 import { Badge, Card, Button, Input, SectionTitle, Empty, Divider, Tabs } from "../components/ui";
 import PortalLoadingScreen from "../components/PortalLoadingScreen";
+import AnimatedBorderButton from "../components/AnimatedBorderButton";
 
 function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, rememberSession, onRememberSessionChange, blacklist, warnings, certificates, updateCertificates, inquiries, updateInquiries, savedCredentials, communityPosts, setCommunityPosts, exhibitionPosts, isMobile, isDark, toggleDark }) {
   const [mode, setMode] = useState("student");
@@ -317,18 +318,19 @@ function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, re
     }}>
       {authLoading && <PortalLoadingScreen isDark={isDark} overlay />}
       {/* Theme Toggle */}
-      <button onClick={toggleDark} style={{
-        position: "fixed", top: 16, right: 16, zIndex: 100,
-        width: 36, height: 36, borderRadius: "50%",
-        background: theme.surface, border: `1px solid ${theme.border}`,
-        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-        color: theme.textMuted, transition: "all 0.2s",
-      }}
-        onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent; e.currentTarget.style.color = theme.accent; }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textMuted; }}
-      >
-        {isDark ? <Icons.sun size={16} /> : <Icons.moon size={16} />}
-      </button>
+      <AnimatedBorderButton isCircle style={{ position: "fixed", top: 16, right: 16, zIndex: 100 }}>
+        <button onClick={toggleDark} style={{
+          width: 36, height: 36, borderRadius: "50%",
+          background: theme.surface, border: `1px solid ${theme.border}`,
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          color: theme.textMuted, transition: "all 0.2s",
+        }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent; e.currentTarget.style.color = theme.accent; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textMuted; }}
+        >
+          {isDark ? <Icons.sun size={16} /> : <Icons.moon size={16} />}
+        </button>
+      </AnimatedBorderButton>
 
       {/* Top Left - User Guide & Notices (Above Quick Links) */}
       <div style={{
@@ -1377,11 +1379,11 @@ function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, re
 
         {/* Welcome Banner */}
         <div style={{ textAlign: "center", marginBottom: 28, marginTop: 8 }}>
-          <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 600, letterSpacing: "-1px", lineHeight: 1.2, background: "linear-gradient(135deg, #158a3d 0%, #4ab870 60%, #a8e6bf 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+          <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 800, letterSpacing: "-1px", lineHeight: 1.2, background: "linear-gradient(135deg, #FF6B00 0%, #FF9A3C 60%, #FFD580 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
             신입생분들 입학을 진심으로 환영합니다!
           </div>
           <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 8, letterSpacing: "0.3px" }}>
-            쟁쟁한 경쟁률을 뚫고 국민대학교 건축대학에 오신 것을 환영해요 🎉
+            세상에서 가장 긴 여행은 개강한 날부터 마감하는 날까지입니다 — 함께 떠나봅시다! 🎉
           </div>
         </div>
 

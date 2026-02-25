@@ -3,13 +3,14 @@ import { EDITABLE, ROOMS, DEFAULT_EQUIPMENT_DB } from "../constants/data";
 import theme from "../constants/theme";
 import { uid, ts, emailTemplate } from "../utils/helpers";
 import store from "../utils/storage";
-import { certificateStorage } from "../supabase";
+import { certificateStorage, formStorage } from "../supabase";
 import Icons from "../components/Icons";
 import { Badge, Card, Button, Input, SectionTitle, Empty, Divider, Tabs } from "../components/ui";
+import AnimatedBorderButton from "../components/AnimatedBorderButton";
 
 const ADMIN_ACCOUNT = EDITABLE.adminAccount;
 
-function AdminPortal({ onLogout, reservations, updateReservations, workers, updateWorkers, logs, addLog, updateLogs, sheetConfig, updateSheetConfig, warnings, updateWarnings, blacklist, updateBlacklist, certificates, updateCertificates, sendEmailNotification, communityPosts, setCommunityPosts, exhibitionPosts, setExhibitionPosts, equipmentDB, setEquipmentDB, roomStatus, updateRoomStatus, isMobile, isDark, toggleDark }) {
+function AdminPortal({ onLogout, reservations, updateReservations, workers, updateWorkers, logs, addLog, updateLogs, sheetConfig, updateSheetConfig, warnings, updateWarnings, blacklist, updateBlacklist, certificates, updateCertificates, sendEmailNotification, communityPosts, setCommunityPosts, exhibitionPosts, setExhibitionPosts, equipmentDB, setEquipmentDB, categoryOrder, setCategoryOrder, roomStatus, updateRoomStatus, formFiles, updateFormFiles, isMobile, isDark, toggleDark }) {
   const [tab, setTabRaw] = useState("accounts");
   const setTab = useCallback((newTab) => {
     setTabRaw(prev => {
@@ -41,6 +42,13 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
   const [logSelectMode, setLogSelectMode] = useState(false);
   const [selectedLogIds, setSelectedLogIds] = useState(new Set());
   const [logDeleteConfirm, setLogDeleteConfirm] = useState(false);
+  // 양식함 관리
+  const [showFormUpload, setShowFormUpload] = useState(false);
+  const [formUploadFile, setFormUploadFile] = useState(null);
+  const [formUploadName, setFormUploadName] = useState("");
+  const [formUploadDesc, setFormUploadDesc] = useState("");
+  const [formUploading, setFormUploading] = useState(false);
+  const [formUploadError, setFormUploadError] = useState("");
 
   const openCertModal = async (cert) => {
     setCertModal(cert);
@@ -69,12 +77,21 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
   const [cmExpandedPostId, setCmExpandedPostId] = useState(null);
   const [cmCommentDeleteConfirm, setCmCommentDeleteConfirm] = useState(null);
   // 물품 관리 상태
-  const [eqForm, setEqForm] = useState({ name: "", category: "수공구", available: 0, total: 0, deposit: false, maxDays: 1, icon: "" });
+  const [eqForm, setEqForm] = useState({ name: "", category: "", available: 0, total: 0, deposit: false, maxDays: 1, icon: "" });
   const [eqEditingId, setEqEditingId] = useState(null);
   const [eqDeleteConfirm, setEqDeleteConfirm] = useState(null);
+  const dragCatIdx = useRef(null);
+  const dragOverCatIdx = useRef(null);
   const [eqShowForm, setEqShowForm] = useState(false);
   const [eqOpenCats, setEqOpenCats] = useState({});
-  const resetEqForm = () => { setEqForm({ name: "", category: "수공구", available: 0, total: 0, deposit: false, maxDays: 1, icon: "" }); setEqEditingId(null); setEqShowForm(false); };
+  const [eqNewCat, setEqNewCat] = useState(null);
+  const resetEqForm = () => {
+    const firstCat = [...new Set(equipmentDB.map(e => e.category))][0] || "";
+    setEqForm({ name: "", category: firstCat, available: 0, total: 0, deposit: false, maxDays: 1, icon: "" });
+    setEqNewCat(null);
+    setEqEditingId(null);
+    setEqShowForm(false);
+  };
 
   const handlePosterUpload = (e) => {
     const file = e.target.files?.[0];
@@ -444,6 +461,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             { id: "certificates", label: "이수증 관리", icon: <Icons.file size={15} />, badge: certificateCount, badgeCircle: true },
             { id: "equipment", label: "물품 관리", icon: <Icons.tool size={15} /> },
             { id: "community", label: "커뮤니티/전시", icon: <Icons.edit size={15} /> },
+            { id: "forms", label: "양식함 관리", icon: <Icons.clipboard size={15} /> },
             { id: "adminLog", label: "관리 이력", icon: <Icons.log size={15} /> },
             { id: "integration", label: "연동 설정", icon: <Icons.refresh size={15} /> },
           ]}
@@ -664,10 +682,36 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                 <Input label="물품명" placeholder="예: 3D 프린터" value={eqForm.name} onChange={e => setEqForm(p => ({ ...p, name: e.target.value }))} />
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <label style={{ fontSize: 11, fontWeight: 600, color: theme.text, letterSpacing: "0.5px", textTransform: "uppercase" }}>카테고리</label>
-                  <select value={eqForm.category} onChange={e => setEqForm(p => ({ ...p, category: e.target.value }))}
-                    style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.surface, color: theme.text, fontSize: 13, fontFamily: theme.font }}>
-                    {["가공장비", "수공구", "전자제품", "기타"].map(c => <option key={c} value={c}>{c}</option>)}
+                  <select
+                    value={eqNewCat !== null ? "__new__" : eqForm.category}
+                    onChange={e => {
+                      if (e.target.value === "__new__") {
+                        setEqNewCat("");
+                        setEqForm(p => ({ ...p, category: "" }));
+                      } else {
+                        setEqNewCat(null);
+                        setEqForm(p => ({ ...p, category: e.target.value }));
+                      }
+                    }}
+                    style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.surface, color: theme.text, fontSize: 13, fontFamily: theme.font }}
+                  >
+                    {[...new Set(equipmentDB.map(e => e.category))].map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                    <option value="__new__">+ 새 카테고리 추가</option>
                   </select>
+                  {eqNewCat !== null && (
+                    <input
+                      autoFocus
+                      placeholder="새 카테고리 이름 입력"
+                      value={eqNewCat}
+                      onChange={e => {
+                        setEqNewCat(e.target.value);
+                        setEqForm(p => ({ ...p, category: e.target.value }));
+                      }}
+                      style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${theme.accent}`, background: theme.surface, color: theme.text, fontSize: 13, fontFamily: theme.font, outline: "none" }}
+                    />
+                  )}
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
@@ -683,7 +727,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                 </label>
               </div>
               <div style={{ display: "flex", gap: 10 }}>
-                <Button size="sm" disabled={!eqForm.name.trim() || !eqForm.icon.trim() || eqForm.total <= 0} onClick={() => {
+                <Button size="sm" disabled={!eqForm.name.trim() || !eqForm.icon.trim() || eqForm.total <= 0 || !eqForm.category.trim()} onClick={() => {
                   if (eqEditingId) {
                     setEquipmentDB(prev => prev.map(e => e.id === eqEditingId ? { ...e, ...eqForm } : e));
                     addLog(`[관리자] 물품 수정: "${eqForm.name}"`, "admin");
@@ -702,17 +746,36 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
           )}
 
           {(() => {
-            const cats = [...new Set(equipmentDB.map(e => e.category))];
+            const allCats = [...new Set(equipmentDB.map(e => e.category))];
+            const cats = categoryOrder.length > 0
+              ? [...categoryOrder.filter(c => allCats.includes(c)), ...allCats.filter(c => !categoryOrder.includes(c))]
+              : allCats;
             const toggleCat = (cat) => setEqOpenCats(prev => ({ ...prev, [cat]: !prev[cat] }));
+            const handleDragStart = (idx) => { dragCatIdx.current = idx; };
+            const handleDragOver = (e, idx) => { e.preventDefault(); dragOverCatIdx.current = idx; };
+            const handleDrop = () => {
+              if (dragCatIdx.current === null || dragOverCatIdx.current === null || dragCatIdx.current === dragOverCatIdx.current) return;
+              const newCats = [...cats];
+              const [moved] = newCats.splice(dragCatIdx.current, 1);
+              newCats.splice(dragOverCatIdx.current, 0, moved);
+              setCategoryOrder(newCats);
+              dragCatIdx.current = null;
+              dragOverCatIdx.current = null;
+            };
             return cats.length === 0 ? (
               <Empty icon={<Icons.tool size={32} />} text="등록된 물품이 없습니다" />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {cats.map(cat => {
+                {cats.map((cat, idx) => {
                   const items = equipmentDB.filter(e => e.category === cat);
                   const isOpen = !!eqOpenCats[cat];
                   return (
-                    <div key={cat}>
+                    <div key={cat}
+                      draggable
+                      onDragStart={() => handleDragStart(idx)}
+                      onDragOver={(e) => handleDragOver(e, idx)}
+                      onDrop={handleDrop}
+                    >
                       <div
                         onClick={() => toggleCat(cat)}
                         style={{
@@ -723,6 +786,11 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span
+                            title="드래그하여 순서 변경"
+                            onClick={e => e.stopPropagation()}
+                            style={{ cursor: "grab", color: theme.textDim, fontSize: 14, lineHeight: 1, userSelect: "none", padding: "0 2px" }}
+                          >⠿</span>
                           <div style={{ fontSize: 14, fontWeight: 700, color: isOpen ? theme.accent : theme.text }}>{cat}</div>
                           <Badge color={isOpen ? "accent" : "dim"} style={{ fontSize: 10 }}>{items.length}개</Badge>
                         </div>
@@ -745,6 +813,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
                                 <div style={{ display: "flex", gap: 6 }}>
                                   <Button variant="ghost" size="sm" onClick={() => {
                                     setEqForm({ name: eq.name, category: eq.category, available: eq.available, total: eq.total, deposit: eq.deposit, maxDays: eq.maxDays, icon: eq.icon });
+                                    setEqNewCat(null);
                                     setEqEditingId(eq.id);
                                     setEqShowForm(true);
                                   }}><Icons.edit size={14} /></Button>
@@ -1179,6 +1248,113 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
               CORS 허용과 POST 수신이 가능한 웹앱으로 배포되어야 합니다.
             </div>
           </Card>
+        </div>
+      )}
+
+      {/* 양식함 관리 탭 */}
+      {tab === "forms" && (
+        <div>
+          <SectionTitle icon={
+            <AnimatedBorderButton radius={5} duration={3}>
+              <div style={{ padding: "5px 6px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                <Icons.clipboard size={14} color={theme.accent} />
+              </div>
+            </AnimatedBorderButton>
+          }>
+            양식함 관리
+          </SectionTitle>
+          <div style={{ fontSize: 13, color: theme.textMuted, marginBottom: 16 }}>
+            학생들이 다운로드할 수 있는 PDF 양식 파일을 관리합니다.
+          </div>
+
+          <Button variant="primary" onClick={() => { setShowFormUpload(true); setFormUploadFile(null); setFormUploadName(""); setFormUploadDesc(""); setFormUploadError(""); }}>
+            <Icons.upload size={15} /> 파일 업로드
+          </Button>
+
+          <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+            {(!formFiles || formFiles.length === 0) ? (
+              <Empty icon={<Icons.file size={36} />} text="등록된 양식 파일이 없습니다." />
+            ) : formFiles.map(file => (
+              <Card key={file.id} style={{ padding: "12px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <Icons.file size={20} color={theme.accent} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div title={file.name} style={{ fontWeight: 600, fontSize: 13, color: theme.text }}>{file.name}</div>
+                    {file.description && <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>{file.description}</div>}
+                    <div style={{ fontSize: 10, color: theme.textDim, marginTop: 3 }}>{file.uploadedAt?.slice(0, 10)}</div>
+                  </div>
+                  <Button variant="danger" size="sm" onClick={async () => {
+                    if (!window.confirm(`"${file.name}" 파일을 삭제하시겠습니까?`)) return;
+                    await formStorage.remove(file.path);
+                    updateFormFiles(prev => prev.filter(f => f.id !== file.id));
+                  }}>
+                    <Icons.trash size={14} />
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* 업로드 모달 */}
+          {showFormUpload && (
+            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+              onClick={e => { if (e.target === e.currentTarget) setShowFormUpload(false); }}>
+              <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: theme.radius, padding: 24, width: "100%", maxWidth: 440 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
+                  <Icons.upload size={16} color={theme.accent} /> 양식 파일 업로드
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: theme.text, letterSpacing: "0.5px", textTransform: "uppercase", display: "block", marginBottom: 6 }}>PDF 파일 선택</label>
+                  <input type="file" accept=".pdf,application/pdf"
+                    style={{ width: "100%", padding: "10px 14px", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: theme.radiusSm, color: theme.text, fontSize: 13, fontFamily: theme.font, boxSizing: "border-box" }}
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (f) { setFormUploadFile(f); if (!formUploadName) setFormUploadName(f.name.replace(/\.pdf$/i, "")); }
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <Input label="표시 이름" value={formUploadName} onChange={e => setFormUploadName(e.target.value)} placeholder="예: 실기실 예약 신청서" />
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <Input label="설명 (선택)" value={formUploadDesc} onChange={e => setFormUploadDesc(e.target.value)} placeholder="파일에 대한 간단한 설명" />
+                </div>
+
+                {formUploadError && (
+                  <div style={{ fontSize: 12, color: theme.red, marginBottom: 12, padding: "8px 12px", background: theme.redBg, borderRadius: theme.radiusSm, border: `1px solid ${theme.redBorder}` }}>
+                    {formUploadError}
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <Button variant="ghost" onClick={() => setShowFormUpload(false)} disabled={formUploading}>취소</Button>
+                  <Button variant="primary" disabled={formUploading || !formUploadFile || !formUploadName.trim()} onClick={async () => {
+                    if (!formUploadFile || !formUploadName.trim()) return;
+                    setFormUploading(true);
+                    setFormUploadError("");
+                    try {
+                      const fileName = formUploadName.trim().endsWith(".pdf") ? formUploadName.trim() : `${formUploadName.trim()}.pdf`;
+                      const { path, error } = await formStorage.upload(formUploadFile, fileName);
+                      if (error) { setFormUploadError(`업로드 실패: ${error}`); return; }
+                      const newFile = { id: uid(), name: formUploadName.trim(), description: formUploadDesc.trim(), path, uploadedAt: new Date().toISOString() };
+                      updateFormFiles(prev => [...(prev || []), newFile]);
+                      setShowFormUpload(false);
+                      addLog(`[양식함] "${formUploadName.trim()}" 파일 업로드`, "admin");
+                    } catch (e) {
+                      setFormUploadError(e?.message || "업로드 중 오류가 발생했습니다.");
+                    } finally {
+                      setFormUploading(false);
+                    }
+                  }}>
+                    {formUploading ? "업로드 중..." : <><Icons.upload size={14} /> 업로드</>}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

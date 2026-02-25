@@ -2,6 +2,7 @@ import { useState } from "react";
 import theme from "../constants/theme";
 import Icons from "../components/Icons";
 import { Button } from "../components/ui";
+import AnimatedBorderButton from "../components/AnimatedBorderButton";
 
 const Section = ({ title, children, accent }) => (
   <div style={{ marginBottom: 36 }}>
@@ -107,7 +108,9 @@ export default function HelpPage({ onBack, isMobile, isDark, toggleDark }) {
             <div style={{ fontSize: 20, fontWeight: 800, marginTop: 4 }}>포털 이용 안내</div>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
-            <Button variant="ghost" size="sm" onClick={toggleDark}>{isDark ? <Icons.sun size={15} /> : <Icons.moon size={15} />}</Button>
+            <AnimatedBorderButton radius={6}>
+              <Button variant="ghost" size="sm" onClick={toggleDark}>{isDark ? <Icons.sun size={15} /> : <Icons.moon size={15} />}</Button>
+            </AnimatedBorderButton>
             <Button variant="ghost" size="sm" onClick={onBack}><Icons.logout size={15} /> 돌아가기</Button>
           </div>
         </div>

@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import supabaseStore from "./supabase";
+import supabaseStore, { formStorage } from "./supabase";
+import Icons from "./components/Icons";
 import { EDITABLE, ROOMS, DEFAULT_EQUIPMENT_DB, DEFAULT_WORKERS } from "./constants/data";
 import theme, { darkColors, lightColors } from "./constants/theme";
 import { uid, ts, dateStr, ACTIVE_PORTAL_SESSION_KEY, emailTemplate } from "./utils/helpers";
 import store from "./utils/storage";
 import PortalLoadingScreen from "./components/PortalLoadingScreen";
+import AnimatedBorderButton from "./components/AnimatedBorderButton";
 import LoginPage from "./pages/LoginPage";
 import HelpPage from "./pages/HelpPage";
 import StudentPortal from "./pages/StudentPortal";
@@ -112,6 +114,27 @@ export default function App() {
       return next;
     });
   }, []);
+  const [categoryOrder, setCategoryOrderRaw] = useState([]);
+  const setCategoryOrder = useCallback((updater) => {
+    setCategoryOrderRaw(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      store.set("categoryOrder", next);
+      supabaseStore.set("portal/categoryOrder", next).catch(() => { });
+      return next;
+    });
+  }, []);
+
+  // ─── Form Files (양식함) ────────────────────────────────────────
+  const [formFiles, setFormFilesRaw] = useState([]);
+  const [showFormDrawer, setShowFormDrawer] = useState(false);
+  const updateFormFiles = useCallback((updater) => {
+    setFormFilesRaw(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      store.set("formFiles", next);
+      supabaseStore.set("portal/formFiles", next).catch(() => { });
+      return next;
+    });
+  }, []);
 
   // ─── Load persisted data ───────────────────────────────────────
   useEffect(() => {
@@ -144,7 +167,7 @@ export default function App() {
         setDataLoaded(true);
 
         // 2단계: 나머지 데이터 백그라운드 로드 (화면 표시 후)
-        const [wk, warn, blk, certs, res, eq, lg, notif, sheet, overdue, inq, prints, visits, visitors, analytics, cmPosts, exhPosts, exhDataOld, eqDB, dVisits, savedRoomStatus] = await Promise.all([
+        const [wk, warn, blk, certs, res, eq, lg, notif, sheet, overdue, inq, prints, visits, visitors, analytics, cmPosts, exhPosts, exhDataOld, eqDB, dVisits, savedRoomStatus, savedCategoryOrder] = await Promise.all([
           store.get("workers"),
           store.get("warnings"),
           store.get("blacklist"),
@@ -166,6 +189,7 @@ export default function App() {
           store.get("equipmentDB"),
           store.get("dailyVisits"),
           store.get("roomStatus"),
+          store.get("categoryOrder"),
         ]);
         // 근로학생: Supabase를 단일 진실 원천(SSOT)으로 사용
         const serverWorkers = await supabaseStore.get("portal/workers");
@@ -300,6 +324,25 @@ export default function App() {
           store.set("equipmentDB", DEFAULT_EQUIPMENT_DB);
           supabaseStore.set("portal/equipmentDB", DEFAULT_EQUIPMENT_DB).catch(() => { });
         }
+        // 카테고리 순서: Supabase SSOT
+        const serverCategoryOrder = await supabaseStore.get("portal/categoryOrder");
+        if (Array.isArray(serverCategoryOrder) && serverCategoryOrder.length > 0) {
+          setCategoryOrderRaw(serverCategoryOrder);
+        } else if (Array.isArray(savedCategoryOrder) && savedCategoryOrder.length > 0) {
+          setCategoryOrderRaw(savedCategoryOrder);
+          supabaseStore.set("portal/categoryOrder", savedCategoryOrder).catch(() => { });
+        }
+        // 양식함: Supabase SSOT
+        const serverFormFiles = await supabaseStore.get("portal/formFiles");
+        if (Array.isArray(serverFormFiles)) {
+          setFormFilesRaw(serverFormFiles);
+        } else {
+          const localFormFiles = await store.get("formFiles");
+          if (Array.isArray(localFormFiles) && localFormFiles.length > 0) {
+            setFormFilesRaw(localFormFiles);
+            supabaseStore.set("portal/formFiles", localFormFiles).catch(() => { });
+          }
+        }
       } catch (error) {
         console.error("Initial data load failed:", error);
         setDataLoaded(true);
@@ -327,12 +370,13 @@ export default function App() {
     const pollServerData = async () => {
       if (!active) return;
       try {
-        const [serverWorkers, serverCmPosts, serverEqDB, serverRoomStatus, serverPrints] = await Promise.all([
+        const [serverWorkers, serverCmPosts, serverEqDB, serverRoomStatus, serverPrints, serverFormFiles] = await Promise.all([
           supabaseStore.get("portal/workers"),
           supabaseStore.get("portal/communityPosts"),
           supabaseStore.get("portal/equipmentDB"),
           supabaseStore.get("portal/roomStatus"),
           supabaseStore.get("portal/printRequests_v2"),
+          supabaseStore.get("portal/formFiles"),
         ]);
 
         // 근로학생 계정
@@ -366,6 +410,9 @@ export default function App() {
           console.log("[PRINT SYNC] 폴링 읽기 - raw:", typeof serverPrints, "parsed:", printItems?.length ?? "null");
           if (printItems) setPrintRequests(printItems);
         }
+
+        // 양식함
+        if (Array.isArray(serverFormFiles)) setFormFilesRaw(serverFormFiles);
       } catch (e) {
         console.warn("[Poll] server sync failed:", e);
       }
@@ -1068,6 +1115,7 @@ export default function App() {
         *, *::before, *::after { box-sizing: border-box; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .fade-in { animation: fadeIn 0.3s ease forwards; }
@@ -1111,6 +1159,7 @@ export default function App() {
             reservations={reservations} updateReservations={updateReservations}
             equipRentals={equipRentals} updateEquipRentals={updateEquipRentals}
             equipmentDB={equipmentDB} setEquipmentDB={setEquipmentDB}
+            categoryOrder={categoryOrder}
             addLog={addLog} addNotification={addNotification}
             syncReservationToSheet={syncReservationToSheet}
             syncPrintToSheet={syncPrintToSheet}
@@ -1160,12 +1209,54 @@ export default function App() {
             communityPosts={communityPosts} setCommunityPosts={setCommunityPosts}
             exhibitionPosts={exhibitionPosts} setExhibitionPosts={setExhibitionPosts}
             equipmentDB={equipmentDB} setEquipmentDB={setEquipmentDB}
+            categoryOrder={categoryOrder} setCategoryOrder={setCategoryOrder}
             roomStatus={roomStatus} updateRoomStatus={updateRoomStatus}
+            formFiles={formFiles} updateFormFiles={updateFormFiles}
             isMobile={isMobile}
             isDark={isDark} toggleDark={toggleDark}
           />
         )}
       </div>
+
+      {/* 양식함 플로팅 버튼 */}
+      <AnimatedBorderButton radius={22} style={{ position: "fixed", bottom: 65, right: 20, zIndex: 1001 }}>
+        <button
+          onClick={() => setShowFormDrawer(true)}
+          title="양식함"
+          style={{
+            height: 44,
+            borderRadius: "22px",
+            background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)",
+            border: `1px solid ${theme.border}`,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            padding: "0 14px",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
+            color: theme.text,
+            transition: "all 0.15s",
+            fontSize: 13,
+            fontWeight: 500,
+            whiteSpace: "nowrap",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = theme.accent; e.currentTarget.style.color = "#0a0a0a"; e.currentTarget.style.borderColor = theme.accent; }}
+          onMouseLeave={e => { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"; e.currentTarget.style.color = theme.text; e.currentTarget.style.borderColor = theme.border; }}
+        >
+          <Icons.clipboard size={18} />
+          <span>양식함</span>
+        </button>
+      </AnimatedBorderButton>
+
+      {showFormDrawer && (
+        <FormDrawer
+          formFiles={formFiles}
+          isDark={isDark}
+          isMobile={isMobile}
+          onClose={() => setShowFormDrawer(false)}
+        />
+      )}
 
       {/* Global KMU Logo - Fixed at bottom (center for login, right for portals) */}
       <img
@@ -1192,5 +1283,157 @@ export default function App() {
         }}
       />
     </div>
+  );
+}
+
+// ─── 양식함 드로어 컴포넌트 ─────────────────────────────────────────
+function FormFileCard({ file }) {
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const url = await formStorage.getSignedUrl(file.path);
+      if (!url) { alert("파일을 불러올 수 없습니다."); return; }
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name.endsWith(".pdf") ? file.name : `${file.name}.pdf`;
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {
+      alert("다운로드 중 오류가 발생했습니다.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div style={{
+      background: theme.card,
+      border: `1px solid ${theme.border}`,
+      borderRadius: theme.radiusSm,
+      padding: "14px 16px",
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+    }}>
+      <div style={{ color: theme.accent, flexShrink: 0 }}>
+        <Icons.file size={22} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div title={file.name} style={{ fontSize: 13, fontWeight: 600, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {file.name}
+        </div>
+        {file.description && (
+          <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {file.description}
+          </div>
+        )}
+      </div>
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        style={{
+          background: theme.accentBg,
+          border: `1px solid ${theme.accentBorder}`,
+          borderRadius: theme.radiusSm,
+          color: theme.accent,
+          cursor: downloading ? "wait" : "pointer",
+          padding: "6px 12px",
+          fontSize: 12,
+          fontWeight: 600,
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          flexShrink: 0,
+          opacity: downloading ? 0.6 : 1,
+          fontFamily: theme.font,
+          transition: "opacity 0.15s",
+        }}
+      >
+        <Icons.download size={13} />
+        {downloading ? "..." : "다운로드"}
+      </button>
+    </div>
+  );
+}
+
+function FormDrawer({ formFiles, isMobile, onClose }) {
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.4)",
+          zIndex: 1100,
+          animation: "fadeIn 0.2s ease",
+        }}
+      />
+      <div style={{
+        position: "fixed",
+        right: 0,
+        top: 0,
+        bottom: 0,
+        width: isMobile ? "92vw" : 640,
+        background: theme.bg,
+        borderLeft: `1px solid ${theme.border}`,
+        zIndex: 1101,
+        display: "flex",
+        flexDirection: "column",
+        boxShadow: "-6px 0 28px rgba(0,0,0,0.22)",
+        animation: "slideInRight 0.25s ease",
+      }}>
+        {/* 헤더 */}
+        <div style={{
+          padding: "18px 20px",
+          borderBottom: `1px solid ${theme.border}`,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 15, color: theme.text }}>
+            <Icons.clipboard size={18} color={theme.accent} />
+            양식함
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: "none", border: "none", cursor: "pointer", color: theme.textMuted, padding: 4, display: "flex", alignItems: "center" }}
+          >
+            <Icons.x size={18} />
+          </button>
+        </div>
+
+        {/* 파일 목록 */}
+        <div style={{ flex: 1, overflow: "auto", padding: "14px 14px 0" }}>
+          {!formFiles || formFiles.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "48px 20px", color: theme.textDim }}>
+              <Icons.file size={40} color={theme.textDim} />
+              <div style={{ fontSize: 13, marginTop: 12 }}>등록된 양식이 없습니다.</div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {formFiles.map(file => (
+                <FormFileCard key={file.id} file={file} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 하단 안내 */}
+        <div style={{
+          padding: "14px 16px",
+          borderTop: `1px solid ${theme.border}`,
+          fontSize: 11,
+          color: theme.textDim,
+          textAlign: "center",
+        }}>
+          필요한 양식 파일을 선택해 다운로드하세요
+        </div>
+      </div>
+    </>
   );
 }

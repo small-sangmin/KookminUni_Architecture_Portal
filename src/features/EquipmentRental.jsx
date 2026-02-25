@@ -26,7 +26,7 @@ const nextWeekday = (dateStr) => {
   return d.toISOString().split("T")[0];
 };
 
-function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, addLog, addNotification, isMobile }) {
+function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, categoryOrder, addLog, addNotification, isMobile }) {
   const [selected, setSelected] = useState(null);
   const [returnDate, setReturnDate] = useState(nextWeekday(addDays(3)));
   const [note, setNote] = useState("");
@@ -36,7 +36,11 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
   const [showWeekendPopup, setShowWeekendPopup] = useState(false);
   const [filterCat, setFilterCat] = useState("전체");
 
-  const categories = ["전체", ...new Set(equipmentDB.map(e => e.category))];
+  const allCats = [...new Set(equipmentDB.map(e => e.category))];
+  const orderedCats = categoryOrder && categoryOrder.length > 0
+    ? [...categoryOrder.filter(c => allCats.includes(c)), ...allCats.filter(c => !categoryOrder.includes(c))]
+    : allCats;
+  const categories = ["전체", ...orderedCats];
   const filtered = filterCat === "전체" ? equipmentDB : equipmentDB.filter(e => e.category === filterCat);
 
   const toggleEquip = (id) => setSelected(prev => prev === id ? null : id);
