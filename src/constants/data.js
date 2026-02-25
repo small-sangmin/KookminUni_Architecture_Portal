@@ -86,7 +86,7 @@ export const EDITABLE = {
   },
   driveUpload: {
     url: "https://script.google.com/macros/s/AKfycbzdJtq82TW6d6-Qtb9-eAS_IsqpguqmDK48WB9UR8oHI3Qr4IyMAadyGTKQKmM_wUOOeA/exec", // Google Apps Script 웹앱 URL (구글 드라이브 업로드용)
-    folderName: "26-1 안전교육이수증",
+    folderName: "Portal_안전교육이수증",
   },
   printArchive: {
     gasUrl: "https://script.google.com/macros/s/AKfycbwlbhqqOVL78FpI2AgnlIyXJGpbqzZaAkPXwa5hIl2aL7QJp-ckmbTXE4YsMyeE5UuG/exec",

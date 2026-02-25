@@ -215,7 +215,7 @@ function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, re
       });
       const ext = uploadFile.name.split(".").pop() || "pdf";
       const driveFileName = `${sid}_${certSname.trim()}.${ext}`;
-      const folderName = EDITABLE.driveUpload?.folderName || "26-1 안전교육이수증";
+      const folderName = EDITABLE.driveUpload?.folderName || "Portal_안전교육이수증";
       // 구글 드라이브에 즉시 업로드
       let driveFileId = null;
       try {

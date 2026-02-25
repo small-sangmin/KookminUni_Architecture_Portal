@@ -300,7 +300,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             if (base64Data) {
               const ext = (cert.fileName || cert.storagePath || "file.pdf").split(".").pop() || "pdf";
               const newFileName = `${cert.studentId}_${cert.studentName}.${ext}`;
-              const folderName = EDITABLE.driveUpload?.folderName || "26-1 안전교육이수증";
+              const folderName = EDITABLE.driveUpload?.folderName || "Portal_안전교육이수증";
 
               await fetch(driveUrl, {
                 method: "POST",
