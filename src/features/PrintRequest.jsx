@@ -106,7 +106,8 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
         const reader = new FileReader();
         reader.onload = () => {
           // data:mime;base64,XXXX → XXXX 부분만 추출
-          const base64 = reader.result.split(",")[1];
+          const base64 = reader.result?.split(",")[1];
+          if (!base64) { reject(new Error("파일 인코딩 실패")); return; }
           resolve(base64);
         };
         reader.onerror = () => reject(new Error("파일 읽기 실패"));
@@ -189,19 +190,27 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
       const printUploadResult = await uploadToGAS(printBase64, printFileName, printFile.type);
       const paymentUploadResult = await uploadToGAS(paymentBase64, paymentFileName, paymentProof.type);
 
-      // 2) 업로드 응답에서 직접 결과를 얻었으면 사용, 아니면 GET으로 조회
-      // GAS 업로드 후 Drive에 파일이 생성되기까지 약간의 지연이 있을 수 있어 잠시 대기
+      // 2) 업로드 응답에서 직접 결과를 얻었으면 사용, 아니면 GET으로 재시도 조회
+      // GAS 업로드 후 Drive에 파일이 생성되기까지 지연이 있을 수 있어 점진적 재시도
+      const waitForFile = async (fileName, maxAttempts = 5) => {
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          await new Promise(r => setTimeout(r, attempt * 1000)); // 1s, 2s, 3s, 4s, 5s
+          try {
+            return await getFileInfo(fileName);
+          } catch {
+            if (attempt === maxAttempts) throw new Error("파일 생성 대기 시간 초과. 다시 시도해주세요.");
+          }
+        }
+      };
+
       let printResult = printUploadResult;
       let paymentResult = paymentUploadResult;
 
-      if (!printResult?.fileId || !paymentResult?.fileId) {
-        await new Promise(r => setTimeout(r, 2000)); // 2초 대기
-      }
       if (!printResult?.fileId) {
-        printResult = await getFileInfo(printFileName);
+        printResult = await waitForFile(printFileName);
       }
       if (!paymentResult?.fileId) {
-        paymentResult = await getFileInfo(paymentFileName);
+        paymentResult = await waitForFile(paymentFileName);
       }
 
       const newRequest = {

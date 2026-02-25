@@ -52,6 +52,14 @@ function RoomReservation({ user, reservations, updateReservations, addLog, addNo
 
   const handleSubmit = () => {
     if (!selectedRoom || selectedSlots.length === 0) return;
+    if (isWeekend(selectedDate)) {
+      setError("주말은 예약할 수 없습니다.");
+      return;
+    }
+    if (isPast(selectedDate)) {
+      setError("과거 날짜는 예약할 수 없습니다.");
+      return;
+    }
     if (selectedSlots.some(id => bookedSlots.has(id))) {
       setError("선택한 시간에 이미 예약이 있습니다. 다른 시간대를 선택하세요.");
       return;

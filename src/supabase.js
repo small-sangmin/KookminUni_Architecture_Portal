@@ -4,16 +4,14 @@ import { createClient } from '@supabase/supabase-js'
 // Get credentials from environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+// ⚠️ 보안 주의: VITE_ 접두사가 붙은 환경변수는 브라우저 번들에 포함되어 누구나 볼 수 있습니다.
+// Service Role Key는 모든 RLS 정책을 우회하므로 클라이언트에서 사용하면 안 됩니다.
+// 근본적 해결책: 파일 업로드를 백엔드(서버 함수)에서 처리하거나,
+//               Supabase Storage 정책을 Anon Key로도 동작하도록 수정하세요.
 const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || ''
 
 // Create Supabase client (anon — for DB operations)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  realtime: {
-    params: {
-      eventsPerSecond: 10
-    }
-  }
-})
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Admin client for Storage operations (bypasses RLS)
 const supabaseAdmin = supabaseServiceKey

@@ -359,31 +359,39 @@ export default function App() {
     return Array.isArray(parsed) ? parsed : null;
   };
 
-  // ─── 폴링 기반 크로스브라우저 동기화 (Realtime 할당량 절약) ──────
-  // 30초마다 서버에서 최신 데이터를 가져옴
-  const POLL_INTERVAL = 30_000;
+  // ─── 폴링 기반 크로스브라우저 동기화 (역할별 간격 차등 적용) ──────
+  const POLL_INTERVALS = {
+    student: 120_000,  // 2분 (사용자 수 가장 많음)
+    worker:  60_000,   // 1분
+    admin:   300_000,  // 5분
+  };
   const lastLocalPrintWrite = useRef(0);
 
   useEffect(() => {
+    if (!userRole) return; // 로그인 전엔 폴링 안 함
     let active = true;
+
+    const isAdmin  = userRole === "admin";
+    const isWorker = userRole === "worker";
+    const isStudent = userRole === "student";
 
     const pollServerData = async () => {
       if (!active) return;
       try {
         const [serverWorkers, serverCmPosts, serverEqDB, serverRoomStatus, serverPrints, serverFormFiles] = await Promise.all([
-          supabaseStore.get("portal/workers"),
-          supabaseStore.get("portal/communityPosts"),
+          isAdmin  ? supabaseStore.get("portal/workers")          : Promise.resolve(null),
+          !isWorker ? supabaseStore.get("portal/communityPosts")  : Promise.resolve(null),
           supabaseStore.get("portal/equipmentDB"),
           supabaseStore.get("portal/roomStatus"),
-          supabaseStore.get("portal/printRequests_v2"),
+          !isStudent ? supabaseStore.get("portal/printRequests_v2") : Promise.resolve(null),
           supabaseStore.get("portal/formFiles"),
         ]);
 
-        // 근로학생 계정
+        // 근로학생 계정 (관리자만)
         const wkItems = parseArrayData(serverWorkers);
         if (wkItems && wkItems.length > 0) setWorkers(wkItems);
 
-        // 커뮤니티 게시글
+        // 커뮤니티 게시글 (근로자 제외)
         const cmItems = parseArrayData(serverCmPosts);
         if (cmItems && cmItems.length > 0) {
           setCommunityPostsRaw(cmItems);
@@ -404,8 +412,8 @@ export default function App() {
           setRoomStatus(prev => ({ ...defaultStatus, ...roomData }));
         }
 
-        // 출력 신청 (로컬 쓰기 직후 10초 이내는 건너뜀 — Supabase 쓰기 완료 대기)
-        if (Date.now() - lastLocalPrintWrite.current > 10000) {
+        // 출력 신청 (근로자·관리자만, 로컬 쓰기 직후 10초 이내는 건너뜀)
+        if (!isStudent && Date.now() - lastLocalPrintWrite.current > 10000) {
           const printItems = parseArrayData(serverPrints);
           console.log("[PRINT SYNC] 폴링 읽기 - raw:", typeof serverPrints, "parsed:", printItems?.length ?? "null");
           if (printItems) setPrintRequests(printItems);
@@ -418,9 +426,9 @@ export default function App() {
       }
     };
 
-    const timerId = setInterval(pollServerData, POLL_INTERVAL);
+    const timerId = setInterval(pollServerData, POLL_INTERVALS[userRole]);
     return () => { active = false; clearInterval(timerId); };
-  }, []);
+  }, [userRole]);
 
   // ─── Persist helpers ───────────────────────────────────────────
   const persist = useCallback(async (key, data) => { await store.set(key, data); }, []);
@@ -1066,6 +1074,11 @@ export default function App() {
       sessionStorage.removeItem(ACTIVE_PORTAL_SESSION_KEY);
     } catch { }
     if (!rememberSession) store.localSet("session", null);
+    // 커뮤니티 게시물/댓글 소유권 정보 초기화 (공용 기기 프라이버시 보호)
+    try {
+      localStorage.removeItem("myPostIds");
+      localStorage.removeItem("myCommentIds");
+    } catch { }
   };
 
   // ─── Reset data ────────────────────────────────────────────────

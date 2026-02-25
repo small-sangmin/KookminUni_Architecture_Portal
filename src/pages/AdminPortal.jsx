@@ -1,20 +1,20 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { EDITABLE, ROOMS, DEFAULT_EQUIPMENT_DB } from "../constants/data";
+import { EDITABLE, ROOMS } from "../constants/data";
 import theme from "../constants/theme";
 import { uid, ts, emailTemplate } from "../utils/helpers";
 import store from "../utils/storage";
 import { certificateStorage, formStorage } from "../supabase";
 import Icons from "../components/Icons";
-import { Badge, Card, Button, Input, SectionTitle, Empty, Divider, Tabs } from "../components/ui";
+import { Badge, Card, Button, Input, SectionTitle, Empty, Tabs } from "../components/ui";
 import AnimatedBorderButton from "../components/AnimatedBorderButton";
 
 const ADMIN_ACCOUNT = EDITABLE.adminAccount;
 
-function AdminPortal({ onLogout, reservations, updateReservations, workers, updateWorkers, logs, addLog, updateLogs, sheetConfig, updateSheetConfig, warnings, updateWarnings, blacklist, updateBlacklist, certificates, updateCertificates, sendEmailNotification, communityPosts, setCommunityPosts, exhibitionPosts, setExhibitionPosts, equipmentDB, setEquipmentDB, categoryOrder, setCategoryOrder, roomStatus, updateRoomStatus, formFiles, updateFormFiles, isMobile, isDark, toggleDark }) {
+function AdminPortal({ onLogout, workers, updateWorkers, logs, addLog, updateLogs, sheetConfig, updateSheetConfig, warnings, updateWarnings, blacklist, updateBlacklist, certificates, updateCertificates, sendEmailNotification, communityPosts, setCommunityPosts, exhibitionPosts, setExhibitionPosts, equipmentDB, setEquipmentDB, categoryOrder, setCategoryOrder, roomStatus, updateRoomStatus, formFiles, updateFormFiles, isMobile, isDark, toggleDark }) {
   const [tab, setTabRaw] = useState("accounts");
   const setTab = useCallback((newTab) => {
     setTabRaw(prev => {
-      if (prev !== newTab) history.pushState({ page: "admin", tab: newTab }, "");
+      if (prev !== newTab) history.replaceState({ page: "admin", tab: newTab }, "");
       return newTab;
     });
   }, []);
@@ -135,8 +135,8 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
     if (!formData.name.trim()) return "이름을 입력해주세요.";
     if (!formData.username.trim()) return "아이디를 입력해주세요.";
     if (formData.username.trim().length < 3) return "아이디는 3자 이상이어야 합니다.";
-    if (!formData.password) return "비밀번호를 입력해주세요.";
-    if (formData.password.length < 4) return "비밀번호는 4자 이상이어야 합니다.";
+    if (!formData.password.trim()) return "비밀번호를 입력해주세요.";
+    if (formData.password.trim().length < 4) return "비밀번호는 4자 이상이어야 합니다.";
     if (!formData.shift.trim()) return "근무시간을 입력해주세요.";
     const dup = workers.find(w => w.username === formData.username.trim() && w.id !== editingId);
     if (dup) return "이미 사용중인 아이디입니다.";
@@ -148,10 +148,10 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
     const err = validateForm();
     if (err) { setFormError(err); return; }
     if (editingId) {
-      updateWorkers(prev => prev.map(w => w.id === editingId ? { ...w, name: formData.name.trim(), username: formData.username.trim(), password: formData.password, shift: formData.shift.trim() } : w));
+      updateWorkers(prev => prev.map(w => w.id === editingId ? { ...w, name: formData.name.trim(), username: formData.username.trim(), password: formData.password.trim(), shift: formData.shift.trim() } : w));
       addLog(`[관리자] 근로학생 계정 수정: ${formData.name} (${formData.username})`, "admin");
     } else {
-      const newWorker = { id: `W${Date.now()}`, name: formData.name.trim(), username: formData.username.trim(), password: formData.password, shift: formData.shift.trim() };
+      const newWorker = { id: `W${Date.now()}`, name: formData.name.trim(), username: formData.username.trim(), password: formData.password.trim(), shift: formData.shift.trim() };
       updateWorkers(prev => [...prev, newWorker]);
       addLog(`[관리자] 근로학생 계정 생성: ${formData.name} (${formData.username})`, "admin");
     }
@@ -180,8 +180,6 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
   };
 
   const adminLogs = logs.filter(l => l.type === "admin");
-  const pendingRes = (reservations || []).filter(r => r.status === "pending");
-
   const addWarning = () => {
     if (!warnForm.studentId.trim()) return;
     updateWarnings(prev => {
@@ -417,23 +415,6 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
     setCertModal(null);
   };
 
-  const approveReservation = (reservationId) => {
-    updateReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status: "approved", approvedAt: ts(), approvedBy: "관리자" } : r));
-    const res = reservations.find(r => r.id === reservationId);
-    if (res) {
-      addLog(`[관리자] 예약 승인: ${res.studentName}(${res.studentId}) → ${res.roomName} | ${res.date} ${res.slotLabels?.join(", ")}`, "admin");
-    }
-  };
-
-  const rejectReservation = (reservationId) => {
-    const reason = window.prompt("반려 사유 (선택)") || "";
-    updateReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status: "rejected", rejectedAt: ts(), rejectedBy: "관리자", rejectedReason: reason } : r));
-    const res = reservations.find(r => r.id === reservationId);
-    if (res) {
-      addLog(`[관리자] 예약 반려: ${res.studentName}(${res.studentId}) → ${res.roomName} | ${res.date} ${res.slotLabels?.join(", ")}${reason ? ` | 사유: ${reason}` : ""}`, "admin");
-    }
-  };
-
   return (
     <>
     <div className="aurora-bg" />
@@ -621,7 +602,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             {Object.keys(warnings || {}).length === 0 ? (
               <Empty icon={<Icons.alert size={28} />} text="경고 대상이 없습니다" />
             ) : (
-              Object.values(warnings).map((w, i) => (
+              Object.values(warnings).map((w) => (
                 <div key={w.studentId} style={{ padding: "12px 18px", borderBottom: `1px solid ${theme.border}` }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
@@ -650,7 +631,7 @@ function AdminPortal({ onLogout, reservations, updateReservations, workers, upda
             {Object.keys(blacklist || {}).length === 0 ? (
               <Empty icon={<Icons.shield size={28} />} text="블랙리스트가 없습니다" />
             ) : (
-              Object.values(blacklist).map((b, i) => (
+              Object.values(blacklist).map((b) => (
                 <div key={b.studentId} style={{ padding: "12px 18px", borderBottom: `1px solid ${theme.border}` }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>

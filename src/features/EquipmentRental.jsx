@@ -47,6 +47,8 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
 
   const handleSubmit = () => {
     if (!selected) return;
+    if (isWeekend(returnDate)) { setShowWeekendPopup(true); return; }
+    if (isPast(returnDate)) return;
     setSubmitting(true);
     setTimeout(() => {
       const item = equipmentDB.find(e => e.id === selected);

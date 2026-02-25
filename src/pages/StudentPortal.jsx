@@ -23,7 +23,7 @@ function StudentPortal({ user, onLogout, reservations, updateReservations, equip
   const [detailSubmitting, setDetailSubmitting] = useState(false);
   const setTab = useCallback((newTab) => {
     setTabRaw(prev => {
-      if (prev !== newTab) history.pushState({ page: "student", tab: newTab }, "");
+      if (prev !== newTab) history.replaceState({ page: "student", tab: newTab }, "");
       return newTab;
     });
   }, []);

@@ -62,9 +62,9 @@ export const EDITABLE = {
     { id: "07", label: "15:00–16:00", start: 15 }, { id: "08", label: "16:00–17:00", start: 16 },
   ],
   workers: [
-    { id: "001", name: "근로학생A", shift: "오전 (09–13시)", username: "worker1", password: "1234" },
-    { id: "002", name: "근로학생B", shift: "오후 (13–18시)", username: "worker2", password: "1234" },
-    { id: "003", name: "근로학생C", shift: "야간 (18–21시)", username: "worker3", password: "1234" },
+    { id: "001", name: "근로학생A", shift: "오전 (09–13시)", username: "worker1", password: import.meta.env.VITE_WORKER1_PASSWORD },
+    { id: "002", name: "근로학생B", shift: "오후 (13–18시)", username: "worker2", password: import.meta.env.VITE_WORKER2_PASSWORD },
+    { id: "003", name: "근로학생C", shift: "야간 (18–21시)", username: "worker3", password: import.meta.env.VITE_WORKER3_PASSWORD },
   ],
   safetySheet: {
     url: "https://script.google.com/macros/s/AKfycbw5gNesXsFsYEHaTOsG50Al_S3y-PLeEEm_3apr2DKO1fQDsHN4Cwh-7wCslKsUvKVR_A/exec",
@@ -92,8 +92,8 @@ export const EDITABLE = {
     gasUrl: "https://script.google.com/macros/s/AKfycbwlbhqqOVL78FpI2AgnlIyXJGpbqzZaAkPXwa5hIl2aL7QJp-ckmbTXE4YsMyeE5UuG/exec",
     folderName: "Portal_완료된 출력물 모음",
   },
-  adminAccount: { username: "admin", password: "admin1234", name: "관리자" },
-  apiKey: "kmu-arch-2026-secret",
+  adminAccount: { username: "admin", password: import.meta.env.VITE_ADMIN_PASSWORD, name: "관리자" },
+  apiKey: import.meta.env.VITE_GAS_API_KEY,
 };
 
 // ─── Data Constants (do not edit below) ─────────────────────────

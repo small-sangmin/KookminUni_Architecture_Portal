@@ -12,7 +12,7 @@ function WorkerPortal({ user, onLogout, reservations, updateReservations, equipR
   const safePrintRequests = Array.isArray(printRequests) ? printRequests : [];
   const setTab = useCallback((newTab) => {
     setTabRaw(prev => {
-      if (prev !== newTab) history.pushState({ page: "worker", tab: newTab }, "");
+      if (prev !== newTab) history.replaceState({ page: "worker", tab: newTab }, "");
       return newTab;
     });
   }, []);

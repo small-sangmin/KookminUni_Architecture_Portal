@@ -265,8 +265,8 @@ function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, re
   };
 
   const handleWorkerLogin = async () => {
-    if (!wUser.trim() || !wPass) { setError("아이디와 비밀번호를 입력해주세요."); return; }
-    const found = workers.find(w => w.username === wUser.trim() && w.password === wPass);
+    if (!wUser.trim() || !wPass.trim()) { setError("아이디와 비밀번호를 입력해주세요."); return; }
+    const found = workers.find(w => w.username === wUser.trim() && w.password === wPass.trim());
     if (!found) { setError("아이디 또는 비밀번호가 올바르지 않습니다."); return; }
     setError("");
     setAuthLoading(true);
@@ -279,8 +279,8 @@ function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, re
   };
 
   const handleAdminLogin = async () => {
-    if (!wUser.trim() || !wPass) { setError("아이디와 비밀번호를 입력해주세요."); return; }
-    if (wUser.trim() !== ADMIN_ACCOUNT.username || wPass !== ADMIN_ACCOUNT.password) {
+    if (!wUser.trim() || !wPass.trim()) { setError("아이디와 비밀번호를 입력해주세요."); return; }
+    if (wUser.trim() !== ADMIN_ACCOUNT.username || wPass.trim() !== ADMIN_ACCOUNT.password) {
       setError("아이디 또는 비밀번호가 올바르지 않습니다.");
       return;
     }
