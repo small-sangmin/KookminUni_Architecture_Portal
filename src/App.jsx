@@ -839,6 +839,7 @@ export default function App() {
     try {
       const payload = {
         event: "room_reservation",
+        sheetName: "Portal_실기실 예약",
         key: EDITABLE.apiKey,
         data: {
           id: reservation.id,
@@ -871,6 +872,7 @@ export default function App() {
           headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify({
             event: "room_reservation",
+            sheetName: "Portal_실기실 예약",
             key: EDITABLE.apiKey,
             data: {
               id: reservation.id,
@@ -904,6 +906,7 @@ export default function App() {
     try {
       const payload = {
         event: "print_request",
+        sheetName: "Portal_출력실 관리 대장",
         key: EDITABLE.apiKey,
         data: {
           id: printRequest.id,
@@ -938,6 +941,7 @@ export default function App() {
           headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify({
             event: "print_request",
+            sheetName: "Portal_출력실 관리 대장",
             key: EDITABLE.apiKey,
             data: {
               id: printRequest.id,

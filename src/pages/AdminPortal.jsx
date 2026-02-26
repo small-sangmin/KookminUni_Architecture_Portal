@@ -33,6 +33,7 @@ function AdminPortal({ onLogout, workers, updateWorkers, logs, addLog, updateLog
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showPassFor, setShowPassFor] = useState({});
   const [sheetUrl, setSheetUrl] = useState(sheetConfig?.reservationWebhookUrl || "");
+  const [printSheetUrl, setPrintSheetUrl] = useState(sheetConfig?.printWebhookUrl || "");
   const [warnForm, setWarnForm] = useState({ studentId: "", name: "", reason: "" });
   const [blkForm, setBlkForm] = useState({ studentId: "", name: "", reason: "" });
   const [certModal, setCertModal] = useState(null);
@@ -122,6 +123,7 @@ function AdminPortal({ onLogout, workers, updateWorkers, logs, addLog, updateLog
 
   useEffect(() => {
     setSheetUrl(sheetConfig?.reservationWebhookUrl || "");
+    setPrintSheetUrl(sheetConfig?.printWebhookUrl || "");
   }, [sheetConfig]);
 
   const resetForm = () => {
@@ -175,7 +177,7 @@ function AdminPortal({ onLogout, workers, updateWorkers, logs, addLog, updateLog
   const togglePassVisibility = (id) => setShowPassFor(prev => ({ ...prev, [id]: !prev[id] }));
 
   const saveSheetConfig = () => {
-    updateSheetConfig(prev => ({ ...prev, reservationWebhookUrl: sheetUrl.trim() }));
+    updateSheetConfig(prev => ({ ...prev, reservationWebhookUrl: sheetUrl.trim(), printWebhookUrl: printSheetUrl.trim() }));
     addLog("[관리자] 구글시트 연동 URL 저장", "admin");
   };
 
@@ -1213,14 +1215,22 @@ function AdminPortal({ onLogout, workers, updateWorkers, logs, addLog, updateLog
               예약 발생 시 구글 시트로 실시간 전송됩니다. Google Apps Script 웹앱 URL을 입력하세요.
             </div>
             <Input
-              label="Google Apps Script Web App URL"
+              label="실기실 예약 GAS URL"
               placeholder="https://script.google.com/macros/s/XXX/exec"
               value={sheetUrl}
               onChange={e => setSheetUrl(e.target.value)}
             />
+            <div style={{ marginTop: 12 }}>
+              <Input
+                label="출력 관리 GAS URL"
+                placeholder="https://script.google.com/macros/s/XXX/exec"
+                value={printSheetUrl}
+                onChange={e => setPrintSheetUrl(e.target.value)}
+              />
+            </div>
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <Button size="sm" onClick={saveSheetConfig} disabled={!sheetUrl.trim()}>저장</Button>
-              <Button size="sm" variant="ghost" onClick={() => setSheetUrl("")}>초기화</Button>
+              <Button size="sm" onClick={saveSheetConfig}>저장</Button>
+              <Button size="sm" variant="ghost" onClick={() => { setSheetUrl(""); setPrintSheetUrl(""); }}>초기화</Button>
             </div>
           </Card>
           <Card style={{ background: theme.blueBg, borderColor: theme.blueBorder, padding: 14 }}>
