@@ -8,7 +8,7 @@ import { Badge, Card, Button, Input, SectionTitle, Empty, Divider, Tabs } from "
 import PortalLoadingScreen from "../components/PortalLoadingScreen";
 import AnimatedBorderButton from "../components/AnimatedBorderButton";
 
-function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, rememberSession, onRememberSessionChange, blacklist, warnings, certificates, updateCertificates, inquiries, updateInquiries, savedCredentials, communityPosts, setCommunityPosts, exhibitionPosts, isMobile, isDark, toggleDark }) {
+function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, rememberSession, onRememberSessionChange, blacklist, warnings, certificates, updateCertificates, inquiries, updateInquiries, savedCredentials, isMobile, isDark, toggleDark }) {
   const [mode, setMode] = useState("student");
   const [isSignUp, setIsSignUp] = useState(false);
   const [sid, setSid] = useState(() => savedCredentials?.role === "student" ? (savedCredentials.user?.id || "") : "");
@@ -39,28 +39,17 @@ function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, re
   const [inquiryContact, setInquiryContact] = useState("");
   const [inquirySubmitting, setInquirySubmitting] = useState(false);
   const [inquirySuccess, setInquirySuccess] = useState("");
+  const [idPhotoFile, setIdPhotoFile] = useState(null);
+  const [idPhotoSuccess, setIdPhotoSuccess] = useState("");
+  const [showIdPhotoForm, setShowIdPhotoForm] = useState(false);
+  const [idPhotoStudentId, setIdPhotoStudentId] = useState("");
+  const [idPhotoEmail, setIdPhotoEmail] = useState("");
+  const [idPhotoName, setIdPhotoName] = useState("");
+  const [idPhotoSubmitting, setIdPhotoSubmitting] = useState(false);
+  const [idPhotoFormSuccess, setIdPhotoFormSuccess] = useState("");
   const fileInputRef = useRef(null);
+  const idPhotoInputRef = useRef(null);
 
-  // 전시회/커뮤니티 탭 상태
-  const [rightPanelTab, setRightPanelTab] = useState("community"); // exhibition | community
-  const [expandedExhId, setExpandedExhId] = useState(null); // 펼친 전시회 ID
-  const [newPostContent, setNewPostContent] = useState("");
-  const [expandedPostId, setExpandedPostId] = useState(null); // 슬라이드 확장된 게시글 ID
-  const [newCommentContent, setNewCommentContent] = useState(""); // 새 댓글 내용
-  const [myPostIds, setMyPostIds] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("myPostIds") || "[]");
-    } catch { return []; }
-  }); // 내가 작성한 글 ID들
-  const [editingPostId, setEditingPostId] = useState(null); // 수정 중인 글 ID
-  const [editingContent, setEditingContent] = useState(""); // 수정 중인 내용
-  const [myCommentIds, setMyCommentIds] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("myCommentIds") || "[]");
-    } catch { return []; }
-  }); // 내가 작성한 댓글 ID들
-  const [editingCommentId, setEditingCommentId] = useState(null); // 수정 중인 댓글 ID
-  const [editingCommentContent, setEditingCommentContent] = useState(""); // 수정 중인 댓글 내용
 
   const [haedongHover, setHaedongHover] = useState(false);
   const [certHover, setCertHover] = useState(false);
@@ -80,13 +69,6 @@ function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, re
     return Math.max(0.72, Math.min(1, widthRatio, heightRatio));
   }, [viewportSize]);
 
-  // 로그인 카드와 커뮤니티 패널이 겹치는지 동적 계산
-  const shouldStackCommunity = useMemo(() => {
-    if (isMobile) return true;
-    const loginRight = viewportSize.width / 2 + (850 * loginScale) / 2;
-    const communityLeft = viewportSize.width - 60 - 420;
-    return loginRight + 20 > communityLeft;
-  }, [viewportSize.width, loginScale, isMobile]);
 
   useEffect(() => {
     const onResize = () => {
@@ -122,6 +104,62 @@ function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, re
     setInquirySubmitting(false);
     setInquirySuccess("문의가 등록되었습니다!");
     setTimeout(() => setInquirySuccess(""), 3000);
+  };
+
+  const handleIdPhotoSubmit = async () => {
+    if (!idPhotoStudentId.trim() || !idPhotoEmail.trim() || !idPhotoName.trim() || !idPhotoFile) return;
+    setIdPhotoSubmitting(true);
+    let idPhotoDriveFileId = null;
+    try {
+      const driveUrl = EDITABLE.driveUpload?.url?.trim();
+      if (driveUrl) {
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result.split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(idPhotoFile);
+        });
+        const ext = idPhotoFile.name.split(".").pop() || "jpg";
+        const photoFileName = `${idPhotoName.trim()}_${idPhotoStudentId.trim()}_${idPhotoEmail.trim()}.${ext}`;
+        const res = await fetch(driveUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=UTF-8" },
+          body: JSON.stringify({
+            action: "upload_to_drive",
+            key: EDITABLE.apiKey,
+            fileName: photoFileName,
+            mimeType: idPhotoFile.type,
+            folderName: "Portal_학생증 사진 변경",
+            fileData: base64Data,
+          }),
+        });
+        try { const r = JSON.parse(await res.text()); idPhotoDriveFileId = r.fileId || r.id || null; } catch {}
+      }
+    } catch (err) {
+      console.error("학생증 사진 업로드 실패:", err);
+    }
+    const newInquiry = {
+      id: uid(),
+      title: "학생증 사진 변경 신청",
+      content: `학번: ${idPhotoStudentId.trim()}\n이메일: ${idPhotoEmail.trim()}`,
+      name: idPhotoName.trim(),
+      contact: idPhotoEmail.trim(),
+      createdAt: ts(),
+      status: "pending",
+      answer: null,
+      isLoggedIn: false,
+      hasIdPhoto: true,
+      ...(idPhotoDriveFileId ? { idPhotoDriveFileId } : {}),
+    };
+    updateInquiries(prev => [newInquiry, ...prev]);
+    setIdPhotoStudentId("");
+    setIdPhotoEmail("");
+    setIdPhotoName("");
+    setIdPhotoFile(null);
+    setIdPhotoSuccess("");
+    setIdPhotoSubmitting(false);
+    setIdPhotoFormSuccess("신청이 완료되었습니다! 검토 후 처리해 드리겠습니다.");
+    setTimeout(() => { setIdPhotoFormSuccess(""); setShowIdPhotoForm(false); }, 3000);
   };
 
   const handleStudentLogin = async () => {
@@ -307,9 +345,9 @@ function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, re
     <div style={{
       flex: 1,
       display: "flex",
-      flexDirection: shouldStackCommunity ? "column" : "row",
+      flexDirection: "column",
       alignItems: "center",
-      justifyContent: shouldStackCommunity ? "flex-start" : "center",
+      justifyContent: "flex-start",
       paddingTop: isMobile ? 0 : 140,
       paddingBottom: 60,
       position: "relative",
@@ -625,718 +663,7 @@ function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, re
           )}
         </div>
       </div>
-
-
-      {/* Exhibition Poster - Right Side */}
-      <div style={{
-        position: shouldStackCommunity ? "relative" : "fixed",
-        right: shouldStackCommunity ? "auto" : 60,
-        top: shouldStackCommunity ? "auto" : "50%",
-        transform: shouldStackCommunity ? "none" : `translateY(-50%) scale(${loginScale})`,
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        zIndex: 10,
-        width: shouldStackCommunity ? "100%" : 420,
-        maxWidth: shouldStackCommunity ? 850 : "none",
-        margin: shouldStackCommunity ? "20px auto 0" : 0,
-        padding: isMobile ? "0 4px" : 0,
-        transformOrigin: "top right",
-        order: shouldStackCommunity ? 999 : "unset",
-      }}>
-        {/* Tab Header */}
-        <div style={{
-          display: "flex",
-          gap: 0,
-          background: theme.card,
-          borderRadius: 8,
-          padding: 4,
-          border: `1px solid ${theme.border}`,
-          boxShadow: isDark ? "0 4px 16px rgba(0,0,0,0.2)" : "0 4px 16px rgba(0,0,0,0.05)",
-        }}>
-          <button
-            onClick={() => setRightPanelTab("community")}
-            style={{
-              flex: 1,
-              padding: "10px 16px",
-              border: "none",
-              borderRadius: 6,
-              background: rightPanelTab === "community" ? theme.accent : "transparent",
-              color: rightPanelTab === "community" ? "#000" : theme.textMuted,
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.2s",
-              fontFamily: theme.font,
-            }}
-          >
-            💬 커뮤니티
-          </button>
-          <button
-            onClick={() => setRightPanelTab("exhibition")}
-            style={{
-              flex: 1,
-              padding: "10px 16px",
-              border: "none",
-              borderRadius: 6,
-              background: rightPanelTab === "exhibition" ? theme.accent : "transparent",
-              color: rightPanelTab === "exhibition" ? "#000" : theme.textMuted,
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.2s",
-              fontFamily: theme.font,
-            }}
-          >
-            🎨 전시회 홍보
-          </button>
-        </div>
-
-        {/* Exhibition Tab Content */}
-        {rightPanelTab === "exhibition" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-            {(!exhibitionPosts || exhibitionPosts.length === 0) ? (
-              <div style={{
-                padding: 30, textAlign: "center", color: theme.textDim, fontSize: 13,
-                background: theme.card, borderRadius: 10,
-                border: `1px solid ${theme.border}`,
-              }}>
-                등록된 전시회가 없습니다.
-              </div>
-            ) : (
-              <div style={{
-                background: theme.card,
-                backdropFilter: "blur(12px)",
-                border: `1px solid ${theme.border}`,
-                borderRadius: 10,
-                overflow: "hidden",
-                boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.3)" : "0 8px 32px rgba(0,0,0,0.06)",
-              }}>
-                {exhibitionPosts.map((exhPost, idx) => (
-                  <div key={exhPost.id}>
-                    {/* 제목 행 (클릭하여 펼침) */}
-                    <div
-                      onClick={() => setExpandedExhId(expandedExhId === exhPost.id ? null : exhPost.id)}
-                      style={{
-                        padding: "12px 16px",
-                        display: "flex", justifyContent: "space-between", alignItems: "center",
-                        cursor: "pointer",
-                        borderBottom: (expandedExhId === exhPost.id || idx < exhibitionPosts.length - 1) ? `1px solid ${theme.border}` : "none",
-                        background: expandedExhId === exhPost.id ? "rgba(212, 160, 83, 0.08)" : "transparent",
-                        transition: "background 0.2s",
-                      }}
-                      onMouseEnter={e => { if (expandedExhId !== exhPost.id) e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
-                      onMouseLeave={e => { if (expandedExhId !== exhPost.id) e.currentTarget.style.background = "transparent"; }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: expandedExhId === exhPost.id ? theme.accent : theme.text, transition: "color 0.2s" }}>
-                          {exhPost.title || "전시회"}
-                        </div>
-                        <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 3 }}>
-                          📅 {exhPost.dates || "미정"} · 📍 {exhPost.location || "미정"}
-                        </div>
-                      </div>
-                      <span style={{ fontSize: 11, color: theme.textDim, flexShrink: 0, marginLeft: 8, transition: "transform 0.2s", transform: expandedExhId === exhPost.id ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
-                    </div>
-                    {/* 펼침 내용: 포스터 + 상세정보 */}
-                    {expandedExhId === exhPost.id && (
-                      <div style={{ borderBottom: idx < exhibitionPosts.length - 1 ? `1px solid ${theme.border}` : "none" }}>
-                        {/* Poster Image */}
-                        {exhPost.posterUrl && (
-                          <div style={{ overflow: "hidden" }}>
-                            <a
-                              href={exhPost.instagramUrl || "#"}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ display: "block" }}
-                            >
-                              <img
-                                src={exhPost.posterUrl}
-                                alt={`${exhPost.title || ""} 전시회 포스터`}
-                                style={{
-                                  width: "100%",
-                                  height: "auto",
-                                  display: "block",
-                                  transition: "transform 0.3s, opacity 0.3s",
-                                }}
-                                onMouseOver={e => { e.currentTarget.style.transform = "scale(1.02)"; e.currentTarget.style.opacity = "0.9"; }}
-                                onMouseOut={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}
-                                onError={e => {
-                                  e.currentTarget.style.display = "none";
-                                  e.currentTarget.parentElement.innerHTML = `
-                                    <div style="padding: 30px 20px; text-align: center; color: #888;">
-                                      <div style="font-size: 36px; margin-bottom: 8px;">🎨</div>
-                                      <div style="font-size: 11px;">포스터를 불러올 수 없습니다</div>
-                                    </div>
-                                  `;
-                                }}
-                              />
-                            </a>
-                          </div>
-                        )}
-                        {/* 상세 정보 */}
-                        <div style={{ padding: "12px 16px", background: theme.surface }}>
-                          <div style={{ fontSize: 12, color: theme.text, lineHeight: 1.6, marginBottom: 8 }}>
-                            {exhPost.description || ""}
-                          </div>
-                          <div style={{ fontSize: 11, color: theme.text, lineHeight: 1.5 }}>
-                            📅 {exhPost.dates || ""}<br />
-                            📍 {exhPost.location || ""}
-                          </div>
-                          {exhPost.instagramUrl && (
-                            <a href={exhPost.instagramUrl} target="_blank" rel="noopener noreferrer"
-                              style={{ display: "inline-block", marginTop: 8, fontSize: 11, color: theme.accent, textDecoration: "none" }}
-                              onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
-                              onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}
-                            >
-                              Instagram →
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Community Tab Content */}
-        {rightPanelTab === "community" && (
-          <>
-            {/* New Post Input */}
-            <div style={{
-              background: theme.card,
-              backdropFilter: "blur(12px)",
-              border: `1px solid ${theme.border}`,
-              borderRadius: 10,
-              padding: 14,
-              boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.3)" : "0 8px 32px rgba(0,0,0,0.06)",
-            }}>
-              <textarea
-                value={newPostContent}
-                onChange={e => setNewPostContent(e.target.value)}
-                placeholder="익명으로 자유롭게 글을 작성해보세요..."
-                style={{
-                  width: "100%",
-                  height: 70,
-                  padding: 12,
-                  border: `1px solid ${theme.border}`,
-                  borderRadius: 8,
-                  background: theme.surface,
-                  color: theme.text,
-                  fontSize: 13,
-                  resize: "none",
-                  fontFamily: theme.font,
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-                onFocus={e => e.target.style.borderColor = theme.accent}
-                onBlur={e => e.target.style.borderColor = theme.border}
-              />
-              <button
-                onClick={() => {
-                  if (!newPostContent.trim()) return;
-                  const newPostId = `c${Date.now()}`;
-                  const newPost = {
-                    id: newPostId,
-                    content: newPostContent.trim(),
-                    createdAt: new Date().toISOString(),
-                    comments: [],
-                  };
-                  setCommunityPosts(prev => [newPost, ...prev]);
-                  setNewPostContent("");
-                  // 내가 작성한 글 ID 저장
-                  const updatedIds = [...myPostIds, newPostId];
-                  setMyPostIds(updatedIds);
-                  localStorage.setItem("myPostIds", JSON.stringify(updatedIds));
-                }}
-                disabled={!newPostContent.trim()}
-                style={{
-                  marginTop: 10,
-                  width: "100%",
-                  padding: "10px 16px",
-                  border: "none",
-                  borderRadius: 8,
-                  background: newPostContent.trim() ? theme.accent : theme.surface,
-                  color: newPostContent.trim() ? "#000" : theme.textDim,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: newPostContent.trim() ? "pointer" : "not-allowed",
-                  transition: "all 0.2s",
-                  fontFamily: theme.font,
-                }}
-              >
-                익명으로 게시하기
-              </button>
-            </div>
-
-            {/* Posts List */}
-            <div style={{
-              background: theme.card,
-              backdropFilter: "blur(12px)",
-              border: `1px solid ${theme.border}`,
-              borderRadius: 10,
-              maxHeight: 350,
-              overflowY: "auto",
-              boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.3)" : "0 8px 32px rgba(0,0,0,0.06)",
-            }}>
-              {communityPosts.length === 0 ? (
-                <div style={{ padding: 30, textAlign: "center", color: theme.textDim, fontSize: 13 }}>
-                  아직 게시글이 없습니다.<br />첫 번째 글을 작성해보세요!
-                </div>
-              ) : (
-                communityPosts.map((post, idx) => (
-                  <div key={post.id}>
-                    {/* 게시글 헤더 */}
-                    <div
-                      onClick={() => {
-                        setExpandedPostId(expandedPostId === post.id ? null : post.id);
-                        setNewCommentContent("");
-                      }}
-                      style={{
-                        padding: "14px 16px",
-                        borderBottom: expandedPostId !== post.id && idx < communityPosts.length - 1 ? `1px solid ${theme.border}` : "none",
-                        cursor: "pointer",
-                        transition: "background 0.2s",
-                        background: expandedPostId === post.id ? "rgba(212, 160, 83, 0.1)" : "transparent",
-                      }}
-                      onMouseEnter={e => { if (expandedPostId !== post.id) e.currentTarget.style.background = "rgba(212, 160, 83, 0.05)"; }}
-                      onMouseLeave={e => { if (expandedPostId !== post.id) e.currentTarget.style.background = "transparent"; }}
-                    >
-                      {/* 수정 모드 */}
-                      {editingPostId === post.id ? (
-                        <div onClick={e => e.stopPropagation()}>
-                          <textarea
-                            value={editingContent}
-                            onChange={e => setEditingContent(e.target.value)}
-                            style={{
-                              width: "100%",
-                              minHeight: 60,
-                              padding: 10,
-                              border: `1px solid ${theme.accent}`,
-                              borderRadius: 6,
-                              background: theme.surface,
-                              color: theme.text,
-                              fontSize: 13,
-                              resize: "none",
-                              fontFamily: theme.font,
-                              outline: "none",
-                              boxSizing: "border-box",
-                              marginBottom: 8,
-                            }}
-                          />
-                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            <button
-                              onClick={() => {
-                                setEditingPostId(null);
-                                setEditingContent("");
-                              }}
-                              style={{
-                                padding: "6px 12px",
-                                border: `1px solid ${theme.border}`,
-                                borderRadius: 4,
-                                background: "transparent",
-                                color: theme.textDim,
-                                fontSize: 11,
-                                cursor: "pointer",
-                                fontFamily: theme.font,
-                              }}
-                            >
-                              취소
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (!editingContent.trim()) return;
-                                setCommunityPosts(prev => prev.map(p =>
-                                  p.id === post.id ? { ...p, content: editingContent.trim() } : p
-                                ));
-                                setEditingPostId(null);
-                                setEditingContent("");
-                              }}
-                              disabled={!editingContent.trim()}
-                              style={{
-                                padding: "6px 12px",
-                                border: "none",
-                                borderRadius: 4,
-                                background: editingContent.trim() ? theme.accent : theme.surface,
-                                color: editingContent.trim() ? "#000" : theme.textDim,
-                                fontSize: 11,
-                                fontWeight: 600,
-                                cursor: editingContent.trim() ? "pointer" : "not-allowed",
-                                fontFamily: theme.font,
-                              }}
-                            >
-                              저장
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        /* 일반 모드 */
-                        <>
-                          <div style={{ fontSize: 13, color: theme.text, lineHeight: 1.5, marginBottom: 8 }}>
-                            {post.content}
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{ fontSize: 10, color: theme.textDim }}>
-                                익명 · {new Date(post.createdAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                              </span>
-                              {myPostIds.includes(post.id) && (
-                                <span style={{ fontSize: 9, color: theme.accent, background: "rgba(212, 160, 83, 0.2)", padding: "2px 6px", borderRadius: 4 }}>
-                                  내 글
-                                </span>
-                              )}
-                            </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                              {myPostIds.includes(post.id) && (
-                                <>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingPostId(post.id);
-                                      setEditingContent(post.content);
-                                    }}
-                                    style={{
-                                      padding: "4px 8px",
-                                      border: "none",
-                                      borderRadius: 4,
-                                      background: "transparent",
-                                      color: theme.textDim,
-                                      fontSize: 10,
-                                      cursor: "pointer",
-                                      fontFamily: theme.font,
-                                    }}
-                                    onMouseEnter={e => e.currentTarget.style.color = theme.accent}
-                                    onMouseLeave={e => e.currentTarget.style.color = theme.textDim}
-                                  >
-                                    수정
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (window.confirm("정말 이 글을 삭제하시겠습니까?")) {
-                                        setCommunityPosts(prev => prev.filter(p => p.id !== post.id));
-                                        const updatedIds = myPostIds.filter(id => id !== post.id);
-                                        setMyPostIds(updatedIds);
-                                        localStorage.setItem("myPostIds", JSON.stringify(updatedIds));
-                                      }
-                                    }}
-                                    style={{
-                                      padding: "4px 8px",
-                                      border: "none",
-                                      borderRadius: 4,
-                                      background: "transparent",
-                                      color: theme.textDim,
-                                      fontSize: 10,
-                                      cursor: "pointer",
-                                      fontFamily: theme.font,
-                                    }}
-                                    onMouseEnter={e => e.currentTarget.style.color = theme.red}
-                                    onMouseLeave={e => e.currentTarget.style.color = theme.textDim}
-                                  >
-                                    삭제
-                                  </button>
-                                </>
-                              )}
-                              <span
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 4,
-                                  padding: "4px 8px",
-                                  color: post.comments.length > 0 ? theme.accent : theme.textDim,
-                                  fontSize: 11,
-                                  fontFamily: theme.font,
-                                }}
-                              >
-                                💬 {post.comments.length} {expandedPostId === post.id ? "▲" : "▼"}
-                              </span>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    {/* 슬라이드 댓글 영역 */}
-                    <div
-                      style={{
-                        maxHeight: expandedPostId === post.id ? 300 : 0,
-                        overflow: "hidden",
-                        transition: "max-height 0.3s ease-in-out",
-                        background: isDark ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.9)",
-                        borderBottom: expandedPostId === post.id && idx < communityPosts.length - 1 ? `1px solid ${theme.border}` : "none",
-                      }}
-                    >
-                      <div style={{ padding: "12px 16px" }}>
-                        {/* 댓글 목록 */}
-                        {post.comments.length === 0 ? (
-                          <div style={{ textAlign: "center", color: theme.textDim, fontSize: 11, padding: "10px 0" }}>
-                            아직 댓글이 없습니다. 첫 댓글을 달아보세요!
-                          </div>
-                        ) : (
-                          post.comments.map((comment) => (
-                            <div
-                              key={comment.id}
-                              style={{
-                                padding: "8px 0",
-                                borderBottom: `1px solid rgba(255,255,255,0.05)`,
-                              }}
-                            >
-                              {editingCommentId === comment.id ? (
-                                /* 댓글 수정 모드 */
-                                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                                  <input
-                                    type="text"
-                                    value={editingCommentContent}
-                                    onChange={e => setEditingCommentContent(e.target.value)}
-                                    onClick={e => e.stopPropagation()}
-                                    style={{
-                                      flex: 1,
-                                      padding: "6px 10px",
-                                      border: `1px solid ${theme.accent}`,
-                                      borderRadius: 4,
-                                      background: theme.surface,
-                                      color: theme.text,
-                                      fontSize: 11,
-                                      outline: "none",
-                                      fontFamily: theme.font,
-                                    }}
-                                    onKeyPress={e => {
-                                      if (e.key === "Enter" && editingCommentContent.trim()) {
-                                        setCommunityPosts(prev => prev.map(p =>
-                                          p.id === post.id
-                                            ? {
-                                              ...p, comments: p.comments.map(c =>
-                                                c.id === comment.id ? { ...c, content: editingCommentContent.trim() } : c
-                                              )
-                                            }
-                                            : p
-                                        ));
-                                        setEditingCommentId(null);
-                                        setEditingCommentContent("");
-                                      }
-                                    }}
-                                  />
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingCommentId(null);
-                                      setEditingCommentContent("");
-                                    }}
-                                    style={{
-                                      padding: "5px 8px",
-                                      border: `1px solid ${theme.border}`,
-                                      borderRadius: 4,
-                                      background: "transparent",
-                                      color: theme.textDim,
-                                      fontSize: 10,
-                                      cursor: "pointer",
-                                      fontFamily: theme.font,
-                                    }}
-                                  >
-                                    취소
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (!editingCommentContent.trim()) return;
-                                      setCommunityPosts(prev => prev.map(p =>
-                                        p.id === post.id
-                                          ? {
-                                            ...p, comments: p.comments.map(c =>
-                                              c.id === comment.id ? { ...c, content: editingCommentContent.trim() } : c
-                                            )
-                                          }
-                                          : p
-                                      ));
-                                      setEditingCommentId(null);
-                                      setEditingCommentContent("");
-                                    }}
-                                    disabled={!editingCommentContent.trim()}
-                                    style={{
-                                      padding: "5px 8px",
-                                      border: "none",
-                                      borderRadius: 4,
-                                      background: editingCommentContent.trim() ? theme.accent : theme.surface,
-                                      color: editingCommentContent.trim() ? "#000" : theme.textDim,
-                                      fontSize: 10,
-                                      fontWeight: 600,
-                                      cursor: editingCommentContent.trim() ? "pointer" : "not-allowed",
-                                      fontFamily: theme.font,
-                                    }}
-                                  >
-                                    저장
-                                  </button>
-                                </div>
-                              ) : (
-                                /* 댓글 일반 모드 */
-                                <>
-                                  <div style={{ fontSize: 12, color: theme.text, lineHeight: 1.4, marginBottom: 4 }}>
-                                    ↳ {comment.content}
-                                  </div>
-                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                      <span style={{ fontSize: 9, color: theme.textDim }}>
-                                        익명 · {new Date(comment.createdAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                                      </span>
-                                      {myCommentIds.includes(comment.id) && (
-                                        <span style={{ fontSize: 8, color: theme.accent, background: "rgba(212, 160, 83, 0.2)", padding: "1px 4px", borderRadius: 3 }}>
-                                          내 댓글
-                                        </span>
-                                      )}
-                                    </div>
-                                    {myCommentIds.includes(comment.id) && (
-                                      <div style={{ display: "flex", gap: 4 }}>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setEditingCommentId(comment.id);
-                                            setEditingCommentContent(comment.content);
-                                          }}
-                                          style={{
-                                            padding: "2px 6px",
-                                            border: "none",
-                                            borderRadius: 3,
-                                            background: "transparent",
-                                            color: theme.textDim,
-                                            fontSize: 9,
-                                            cursor: "pointer",
-                                            fontFamily: theme.font,
-                                          }}
-                                          onMouseEnter={e => e.currentTarget.style.color = theme.accent}
-                                          onMouseLeave={e => e.currentTarget.style.color = theme.textDim}
-                                        >
-                                          수정
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (window.confirm("이 댓글을 삭제하시겠습니까?")) {
-                                              setCommunityPosts(prev => prev.map(p =>
-                                                p.id === post.id
-                                                  ? { ...p, comments: p.comments.filter(c => c.id !== comment.id) }
-                                                  : p
-                                              ));
-                                              const updatedIds = myCommentIds.filter(id => id !== comment.id);
-                                              setMyCommentIds(updatedIds);
-                                              localStorage.setItem("myCommentIds", JSON.stringify(updatedIds));
-                                            }
-                                          }}
-                                          style={{
-                                            padding: "2px 6px",
-                                            border: "none",
-                                            borderRadius: 3,
-                                            background: "transparent",
-                                            color: theme.textDim,
-                                            fontSize: 9,
-                                            cursor: "pointer",
-                                            fontFamily: theme.font,
-                                          }}
-                                          onMouseEnter={e => e.currentTarget.style.color = theme.red}
-                                          onMouseLeave={e => e.currentTarget.style.color = theme.textDim}
-                                        >
-                                          삭제
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          ))
-                        )}
-
-                        {/* 댓글 입력 */}
-                        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                          <input
-                            type="text"
-                            value={expandedPostId === post.id ? newCommentContent : ""}
-                            onChange={e => setNewCommentContent(e.target.value)}
-                            placeholder="댓글을 입력하세요..."
-                            onClick={e => e.stopPropagation()}
-                            onKeyPress={e => {
-                              if (e.key === "Enter" && newCommentContent.trim()) {
-                                const newCommentId = `cm${Date.now()}`;
-                                const newComment = {
-                                  id: newCommentId,
-                                  content: newCommentContent.trim(),
-                                  createdAt: new Date().toISOString(),
-                                };
-                                setCommunityPosts(prev => prev.map(p =>
-                                  p.id === post.id
-                                    ? { ...p, comments: [...p.comments, newComment] }
-                                    : p
-                                ));
-                                setNewCommentContent("");
-                                // 내가 작성한 댓글 ID 저장
-                                const updatedIds = [...myCommentIds, newCommentId];
-                                setMyCommentIds(updatedIds);
-                                localStorage.setItem("myCommentIds", JSON.stringify(updatedIds));
-                              }
-                            }}
-                            style={{
-                              flex: 1,
-                              padding: "8px 12px",
-                              border: `1px solid ${theme.border}`,
-                              borderRadius: 6,
-                              background: "#ffffff",
-                              color: "#1a1a1a",
-                              fontSize: 12,
-                              outline: "none",
-                              fontFamily: theme.font,
-                            }}
-                          />
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!newCommentContent.trim()) return;
-                              const newCommentId = `cm${Date.now()}`;
-                              const newComment = {
-                                id: newCommentId,
-                                content: newCommentContent.trim(),
-                                createdAt: new Date().toISOString(),
-                              };
-                              setCommunityPosts(prev => prev.map(p =>
-                                p.id === post.id
-                                  ? { ...p, comments: [...p.comments, newComment] }
-                                  : p
-                              ));
-                              setNewCommentContent("");
-                              // 내가 작성한 댓글 ID 저장
-                              const updatedIds = [...myCommentIds, newCommentId];
-                              setMyCommentIds(updatedIds);
-                              localStorage.setItem("myCommentIds", JSON.stringify(updatedIds));
-                            }}
-                            disabled={!newCommentContent.trim()}
-                            style={{
-                              padding: "8px 14px",
-                              border: "none",
-                              borderRadius: 6,
-                              background: newCommentContent.trim() ? theme.accent : theme.surface,
-                              color: newCommentContent.trim() ? "#000" : theme.textDim,
-                              fontSize: 12,
-                              fontWeight: 600,
-                              cursor: newCommentContent.trim() ? "pointer" : "not-allowed",
-                              fontFamily: theme.font,
-                            }}
-                          >
-                            등록
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </>
-        )}
-      </div>
-
-
-      <div className="fade-in" style={{ width: "100%", maxWidth: isMobile ? "100%" : 850, position: "relative", zIndex: shouldStackCommunity ? 30 : 10, transform: isMobile ? "none" : `scale(${loginScale})`, transformOrigin: "center top", padding: isMobile ? "0 4px" : 0, order: shouldStackCommunity ? 1 : "unset" }}>
+      <div className="fade-in" style={{ width: "100%", maxWidth: isMobile ? "100%" : 850, position: "relative", zIndex: 10, transform: isMobile ? "none" : `scale(${loginScale})`, transformOrigin: "center top", padding: isMobile ? "0 4px" : 0 }}>
 
         {/* Mobile Guide Panel */}
         {isMobile && (
@@ -1747,6 +1074,7 @@ function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, re
                   <div style={{ fontSize: 11, color: theme.accent, marginBottom: 12, padding: "8px 12px", background: theme.accentBg, borderRadius: theme.radiusSm, border: `1px solid ${theme.accentBorder}` }}>
                     📞 비로그인 문의는 근로학생이 연락처 또는 이메일로 직접 답변드립니다.
                   </div>
+
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
                       <Input
@@ -1803,6 +1131,146 @@ function LoginPage({ onLogin, onReset, onHelp, workers, verifyStudentInSheet, re
                     {inquirySuccess && (
                       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: theme.radiusSm, background: theme.greenBg, border: `1px solid ${theme.greenBorder}`, color: theme.green, fontSize: 12 }}>
                         <Icons.check size={14} /> {inquirySuccess}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        {/* 학생증 사진 변경 신청 Banner */}
+        <div style={{ marginTop: 8 }}>
+          <Card
+            key={showIdPhotoForm ? "idphoto-expanded" : "idphoto-collapsed"}
+            onClick={showIdPhotoForm ? undefined : () => setShowIdPhotoForm(true)}
+            hover={false}
+            style={{
+              background: theme.card,
+              borderColor: showIdPhotoForm ? theme.accentBorder : theme.border,
+              cursor: showIdPhotoForm ? "default" : "pointer",
+              transition: "all 0.3s ease",
+            }}
+          >
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: theme.accent }}>
+                  <Icons.upload size={18} color={theme.accent} />
+                  학생증 사진 변경 신청
+                </div>
+                {showIdPhotoForm && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowIdPhotoForm(false); }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 2 }}
+                  >
+                    <Icons.x size={16} />
+                  </button>
+                )}
+              </div>
+
+              {!showIdPhotoForm ? (
+                <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.5 }}>
+                  학생증 사진 변경을 원하시면 클릭하여 신청해주세요
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 11, color: theme.accent, marginBottom: 14, padding: "8px 12px", background: theme.accentBg, borderRadius: theme.radiusSm, border: `1px solid ${theme.accentBorder}` }}>
+                    📸 학번, 이름, 이메일을 입력하고 변경할 사진을 첨부해 주세요. 검토 후 처리해 드립니다.
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {/* 학번 + 이름 */}
+                    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
+                      <Input
+                        label="학번 *"
+                        placeholder="학번을 입력하세요"
+                        value={idPhotoStudentId}
+                        onChange={e => setIdPhotoStudentId(e.target.value)}
+                      />
+                      <Input
+                        label="이름 *"
+                        placeholder="이름을 입력하세요"
+                        value={idPhotoName}
+                        onChange={e => setIdPhotoName(e.target.value)}
+                      />
+                    </div>
+
+                    {/* 이메일 */}
+                    <Input
+                      label="이메일 *"
+                      placeholder="이메일 주소를 입력하세요"
+                      value={idPhotoEmail}
+                      onChange={e => setIdPhotoEmail(e.target.value)}
+                    />
+
+                    {/* 사진 파일 첨부 */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "0.5px", textTransform: "uppercase" }}>
+                        학생증 사진 *
+                      </label>
+                      <input
+                        ref={idPhotoInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setIdPhotoFile(file);
+                          setIdPhotoSuccess("");
+                        }}
+                        style={{ display: "none" }}
+                      />
+                      <button
+                        onClick={() => idPhotoInputRef.current?.click()}
+                        disabled={idPhotoSubmitting}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 8,
+                          padding: "10px 14px",
+                          background: theme.surface,
+                          border: `1px solid ${idPhotoFile ? theme.accent : theme.border}`,
+                          borderRadius: theme.radiusSm,
+                          fontSize: 13, color: theme.text,
+                          cursor: idPhotoSubmitting ? "not-allowed" : "pointer",
+                          fontFamily: theme.font,
+                          width: "100%",
+                          textAlign: "left",
+                          opacity: idPhotoSubmitting ? 0.5 : 1,
+                          transition: "border-color 0.2s",
+                        }}
+                      >
+                        <Icons.upload size={15} color={idPhotoFile ? theme.accent : theme.textMuted} />
+                        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {idPhotoFile ? idPhotoFile.name : "사진 파일 선택 (JPG, PNG 등)"}
+                        </span>
+                        {idPhotoFile && (
+                          <span
+                            onClick={e => { e.stopPropagation(); setIdPhotoFile(null); setIdPhotoSuccess(""); }}
+                            style={{ fontSize: 11, color: theme.textDim, padding: "0 2px", cursor: "pointer" }}
+                          >
+                            ✕
+                          </span>
+                        )}
+                      </button>
+                      {idPhotoFile && (
+                        <div style={{ fontSize: 10, color: theme.textMuted }}>
+                          {idPhotoFile.name} · {(idPhotoFile.size / 1024).toFixed(0)} KB
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 제출 버튼 */}
+                    <Button
+                      variant="primary"
+                      onClick={handleIdPhotoSubmit}
+                      disabled={!idPhotoStudentId.trim() || !idPhotoEmail.trim() || !idPhotoName.trim() || !idPhotoFile || idPhotoSubmitting}
+                    >
+                      {idPhotoSubmitting ? "업로드 중..." : "신청 제출"}
+                    </Button>
+
+                    {idPhotoFormSuccess && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: theme.radiusSm, background: theme.greenBg, border: `1px solid ${theme.greenBorder}`, color: theme.green, fontSize: 12 }}>
+                        <Icons.check size={14} /> {idPhotoFormSuccess}
                       </div>
                     )}
                   </div>

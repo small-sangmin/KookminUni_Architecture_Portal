@@ -85,26 +85,6 @@ export default function App() {
   }); // 실기실 예약 ON/OFF 상태
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // ─── Community & Exhibition (shared between LoginPage & AdminPortal) ──
-  const defaultPosts = useMemo(() => [], []);
-  const [communityPosts, setCommunityPostsRaw] = useState(defaultPosts);
-  const setCommunityPosts = useCallback((updater) => {
-    setCommunityPostsRaw(prev => {
-      const next = typeof updater === "function" ? updater(prev) : updater;
-      store.set("communityPosts", next);
-      supabaseStore.set("portal/communityPosts", next).catch(() => { });
-      return next;
-    });
-  }, []);
-  const defaultExhibitionPosts = useMemo(() => [], []);
-  const [exhibitionPosts, setExhibitionPostsRaw] = useState(defaultExhibitionPosts);
-  const setExhibitionPosts = useCallback((updater) => {
-    setExhibitionPostsRaw(prev => {
-      const next = typeof updater === "function" ? updater(prev) : updater;
-      store.set("exhibitionPosts", next);
-      return next;
-    });
-  }, []);
   const [equipmentDB, setEquipmentDBRaw] = useState(DEFAULT_EQUIPMENT_DB);
   const setEquipmentDB = useCallback((updater) => {
     setEquipmentDBRaw(prev => {
@@ -167,7 +147,7 @@ export default function App() {
         setDataLoaded(true);
 
         // 2단계: 나머지 데이터 백그라운드 로드 (화면 표시 후)
-        const [wk, warn, blk, certs, res, eq, lg, notif, sheet, overdue, inq, prints, visits, visitors, analytics, cmPosts, exhPosts, exhDataOld, eqDB, dVisits, savedRoomStatus, savedCategoryOrder] = await Promise.all([
+        const [wk, warn, blk, certs, res, eq, lg, notif, sheet, overdue, inq, prints, visits, visitors, analytics, eqDB, dVisits, savedRoomStatus, savedCategoryOrder] = await Promise.all([
           store.get("workers"),
           store.get("warnings"),
           store.get("blacklist"),
@@ -183,9 +163,6 @@ export default function App() {
           store.get("visitCount"),
           store.get("visitedUsers"),
           store.get("analyticsData"),
-          store.get("communityPosts"),
-          store.get("exhibitionPosts"),
-          store.get("exhibitionData"),
           store.get("equipmentDB"),
           store.get("dailyVisits"),
           store.get("roomStatus"),
@@ -271,22 +248,6 @@ export default function App() {
         if (visitors) setVisitedUsers(visitors);
         if (dVisits) setDailyVisits(dVisits);
         if (analytics) setAnalyticsData(analytics);
-        // 커뮤니티: Supabase SSOT
-        const serverCmPosts = await supabaseStore.get("portal/communityPosts");
-        if (Array.isArray(serverCmPosts) && serverCmPosts.length > 0) {
-          setCommunityPostsRaw(serverCmPosts);
-          store.set("communityPosts", serverCmPosts).catch(() => { });
-        } else if (cmPosts && Array.isArray(cmPosts) && cmPosts.length > 0) {
-          setCommunityPostsRaw(cmPosts);
-          supabaseStore.set("portal/communityPosts", cmPosts).catch(() => { });
-        }
-        if (exhPosts && Array.isArray(exhPosts) && exhPosts.length > 0) {
-          setExhibitionPostsRaw(exhPosts);
-        } else if (exhDataOld) {
-          const migrated = [{ ...exhDataOld, id: `exh${Date.now()}`, createdAt: new Date().toISOString() }];
-          setExhibitionPostsRaw(migrated);
-          store.set("exhibitionPosts", migrated);
-        }
         // roomStatus: Supabase를 단일 진실 원천(SSOT)으로 사용
         const serverRoomStatus = await supabaseStore.get("portal/roomStatus");
         if (serverRoomStatus && typeof serverRoomStatus === "object") {
@@ -378,9 +339,8 @@ export default function App() {
     const pollServerData = async () => {
       if (!active) return;
       try {
-        const [serverWorkers, serverCmPosts, serverEqDB, serverRoomStatus, serverPrints, serverFormFiles] = await Promise.all([
+        const [serverWorkers, serverEqDB, serverRoomStatus, serverPrints, serverFormFiles] = await Promise.all([
           isAdmin  ? supabaseStore.get("portal/workers")          : Promise.resolve(null),
-          !isWorker ? supabaseStore.get("portal/communityPosts")  : Promise.resolve(null),
           supabaseStore.get("portal/equipmentDB"),
           supabaseStore.get("portal/roomStatus"),
           !isStudent ? supabaseStore.get("portal/printRequests_v2") : Promise.resolve(null),
@@ -390,12 +350,6 @@ export default function App() {
         // 근로학생 계정 (관리자만)
         const wkItems = parseArrayData(serverWorkers);
         if (wkItems && wkItems.length > 0) setWorkers(wkItems);
-
-        // 커뮤니티 게시글 (근로자 제외)
-        const cmItems = parseArrayData(serverCmPosts);
-        if (cmItems && cmItems.length > 0) {
-          setCommunityPostsRaw(cmItems);
-        }
 
         // 물품 DB
         const eqItems = parseArrayData(serverEqDB);
@@ -1078,11 +1032,6 @@ export default function App() {
       sessionStorage.removeItem(ACTIVE_PORTAL_SESSION_KEY);
     } catch { }
     if (!rememberSession) store.localSet("session", null);
-    // 커뮤니티 게시물/댓글 소유권 정보 초기화 (공용 기기 프라이버시 보호)
-    try {
-      localStorage.removeItem("myPostIds");
-      localStorage.removeItem("myCommentIds");
-    } catch { }
   };
 
   // ─── Reset data ────────────────────────────────────────────────
@@ -1156,9 +1105,6 @@ export default function App() {
             inquiries={inquiries}
             updateInquiries={updateInquiries}
             savedCredentials={savedCredentials}
-            communityPosts={communityPosts}
-            setCommunityPosts={setCommunityPosts}
-            exhibitionPosts={exhibitionPosts}
             isMobile={isMobile}
             isDark={isDark} toggleDark={toggleDark}
           />
@@ -1222,9 +1168,8 @@ export default function App() {
             blacklist={blacklist} updateBlacklist={updateBlacklist}
             certificates={certificates}
             updateCertificates={updateCertificates}
+            inquiries={inquiries} updateInquiries={updateInquiries}
             sendEmailNotification={sendEmailNotification}
-            communityPosts={communityPosts} setCommunityPosts={setCommunityPosts}
-            exhibitionPosts={exhibitionPosts} setExhibitionPosts={setExhibitionPosts}
             equipmentDB={equipmentDB} setEquipmentDB={setEquipmentDB}
             categoryOrder={categoryOrder} setCategoryOrder={setCategoryOrder}
             roomStatus={roomStatus} updateRoomStatus={updateRoomStatus}

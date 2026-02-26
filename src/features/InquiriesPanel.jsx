@@ -9,7 +9,9 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog, sendEm
   const [selectedInquiry, setSelectedInquiry] = useState(null);
   const [answerText, setAnswerText] = useState("");
 
-  const filtered = (inquiries || []).filter(i => {
+  // hasIdPhoto 문의는 관리자 전용 탭에서만 처리 — 근로학생 패널에서 제외
+  const workerInquiries = (inquiries || []).filter(i => !i.hasIdPhoto);
+  const filtered = workerInquiries.filter(i => {
     if (filter === "pending") return i.status === "pending";
     if (filter === "answered") return i.status === "answered";
     return true;
@@ -55,7 +57,7 @@ function InquiriesPanel({ inquiries, updateInquiries, workerName, addLog, sendEm
     <div className="fade-in" style={{ paddingTop: 24 }}>
       <SectionTitle icon={<Icons.file size={16} color={theme.accent} />}>
         문의 관리
-        <Badge color="accent">{(inquiries || []).filter(i => i.status === "pending").length}건 대기</Badge>
+        <Badge color="accent">{workerInquiries.filter(i => i.status === "pending").length}건 대기</Badge>
       </SectionTitle>
 
       {/* Filter */}

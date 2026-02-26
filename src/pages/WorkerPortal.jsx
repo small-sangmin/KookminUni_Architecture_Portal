@@ -24,7 +24,7 @@ function WorkerPortal({ user, onLogout, reservations, updateReservations, equipR
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
-  const pendingInquiries = inquiries?.filter(i => i.status === "pending")?.length || 0;
+  const pendingInquiries = inquiries?.filter(i => i.status === "pending" && !i.hasIdPhoto)?.length || 0;
   const pendingPrints = safePrintRequests.filter(p => p.status === "pending" || p.status === "processing").length;
 
   return (

@@ -10,7 +10,7 @@ import AnimatedBorderButton from "../components/AnimatedBorderButton";
 
 const ADMIN_ACCOUNT = EDITABLE.adminAccount;
 
-function AdminPortal({ onLogout, workers, updateWorkers, logs, addLog, updateLogs, sheetConfig, updateSheetConfig, warnings, updateWarnings, blacklist, updateBlacklist, certificates, updateCertificates, sendEmailNotification, communityPosts, setCommunityPosts, exhibitionPosts, setExhibitionPosts, equipmentDB, setEquipmentDB, categoryOrder, setCategoryOrder, roomStatus, updateRoomStatus, formFiles, updateFormFiles, isMobile, isDark, toggleDark }) {
+function AdminPortal({ onLogout, workers, updateWorkers, logs, addLog, updateLogs, sheetConfig, updateSheetConfig, warnings, updateWarnings, blacklist, updateBlacklist, certificates, updateCertificates, inquiries, updateInquiries, sendEmailNotification, equipmentDB, setEquipmentDB, categoryOrder, setCategoryOrder, roomStatus, updateRoomStatus, formFiles, updateFormFiles, isMobile, isDark, toggleDark }) {
   const [tab, setTabRaw] = useState("accounts");
   const setTab = useCallback((newTab) => {
     setTabRaw(prev => {
@@ -66,17 +66,8 @@ function AdminPortal({ onLogout, workers, updateWorkers, logs, addLog, updateLog
     setCertFileData(fileData);
     setCertFileLoading(false);
   };
-  // 커뮤니티/전시 관리 상태
-  const [exhForm, setExhForm] = useState({ title: "", description: "", dates: "", location: "", instagramUrl: "", posterUrl: "" });
-  const [exhSaved, setExhSaved] = useState(false);
-  const [exhEditingId, setExhEditingId] = useState(null);
-  const [exhDeleteConfirm, setExhDeleteConfirm] = useState(null);
-  const [exhPosterFile, setExhPosterFile] = useState(null);
-  const [exhPosterUploading, setExhPosterUploading] = useState(false);
-  const exhPosterFileRef = useRef(null);
-  const [cmDeleteConfirm, setCmDeleteConfirm] = useState(null);
-  const [cmExpandedPostId, setCmExpandedPostId] = useState(null);
-  const [cmCommentDeleteConfirm, setCmCommentDeleteConfirm] = useState(null);
+  // 학생증 사진 변경 필터 상태
+  const [idPhotoFilter, setIdPhotoFilter] = useState("all");
   // 물품 관리 상태
   const [eqForm, setEqForm] = useState({ name: "", category: "", available: 0, total: 0, deposit: false, maxDays: 1, icon: "" });
   const [eqEditingId, setEqEditingId] = useState(null);
@@ -94,32 +85,16 @@ function AdminPortal({ onLogout, workers, updateWorkers, logs, addLog, updateLog
     setEqShowForm(false);
   };
 
-  const handlePosterUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      alert("파일 크기가 5MB를 초과합니다. 더 작은 이미지를 선택해주세요.");
-      return;
-    }
-    setExhPosterUploading(true);
-    const reader = new FileReader();
-    reader.onload = () => {
-      setExhForm(p => ({ ...p, posterUrl: reader.result }));
-      setExhPosterFile(file);
-      setExhPosterUploading(false);
-    };
-    reader.onerror = () => {
-      alert("이미지 업로드 실패");
-      setExhPosterUploading(false);
-    };
-    reader.readAsDataURL(file);
-  };
 
   // 이수증 개수 계산 (승인 완료된 항목 제외)
   const pendingCertificates = certificates
     ? Object.fromEntries(Object.entries(certificates).filter(([_, c]) => !c.approved))
     : {};
   const certificateCount = Object.keys(pendingCertificates).length;
+
+  // 학생증 사진 변경 문의 (hasIdPhoto === true)
+  const idPhotoInquiries = (inquiries || []).filter(i => i.hasIdPhoto);
+  const pendingIdPhotoCount = idPhotoInquiries.filter(i => i.status === "pending").length;
 
   useEffect(() => {
     setSheetUrl(sheetConfig?.reservationWebhookUrl || "");
@@ -442,8 +417,8 @@ function AdminPortal({ onLogout, workers, updateWorkers, logs, addLog, updateLog
             { id: "roomToggle", label: "실기실 ON/OFF", icon: <Icons.power size={15} /> },
             { id: "discipline", label: "경고/블랙리스트", icon: <Icons.alert size={15} /> },
             { id: "certificates", label: "이수증 관리", icon: <Icons.file size={15} />, badge: certificateCount, badgeCircle: true },
+            { id: "idPhoto", label: "학생증 사진 변경", icon: <Icons.upload size={15} />, badge: pendingIdPhotoCount, badgeCircle: true },
             { id: "equipment", label: "물품 관리", icon: <Icons.tool size={15} /> },
-            { id: "community", label: "커뮤니티/전시", icon: <Icons.edit size={15} /> },
             { id: "forms", label: "양식함 관리", icon: <Icons.clipboard size={15} /> },
             { id: "adminLog", label: "관리 이력", icon: <Icons.log size={15} /> },
             { id: "integration", label: "연동 설정", icon: <Icons.refresh size={15} /> },
@@ -827,248 +802,6 @@ function AdminPortal({ onLogout, workers, updateWorkers, logs, addLog, updateLog
         </div>
       )}
 
-      {tab === "community" && (
-        <div>
-          {/* 전시회 정보 관리 */}
-          <SectionTitle icon={<Icons.edit size={16} color={theme.accent} />}>전시회 정보 관리</SectionTitle>
-          <Card style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: theme.accent, marginBottom: 12 }}>
-              {exhEditingId ? "전시회 수정" : "새 전시회 등록"}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14, marginBottom: 14 }}>
-              <Input label="전시 제목" value={exhForm.title || ""} onChange={e => setExhForm(p => ({ ...p, title: e.target.value }))} />
-              <Input label="장소" value={exhForm.location || ""} onChange={e => setExhForm(p => ({ ...p, location: e.target.value }))} />
-              <Input label="기간" placeholder="예: 2026.02.05 ~ 02.09" value={exhForm.dates || ""} onChange={e => setExhForm(p => ({ ...p, dates: e.target.value }))} />
-              <Input label="Instagram URL" value={exhForm.instagramUrl || ""} onChange={e => setExhForm(p => ({ ...p, instagramUrl: e.target.value }))} />
-            </div>
-            <Input label="설명" value={exhForm.description || ""} onChange={e => setExhForm(p => ({ ...p, description: e.target.value }))} />
-            {/* 포스터 이미지 업로드 */}
-            <input ref={exhPosterFileRef} type="file" accept="image/*" onChange={handlePosterUpload} style={{ display: "none" }} />
-            <div style={{ marginTop: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 6 }}>포스터 이미지</div>
-              <button
-                onClick={() => exhPosterFileRef.current?.click()}
-                disabled={exhPosterUploading}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  cursor: exhPosterUploading ? "not-allowed" : "pointer",
-                  padding: "10px 16px", background: theme.surface,
-                  border: `1px solid ${theme.border}`, borderRadius: 8,
-                  fontSize: 13, color: theme.text, transition: "all 0.2s",
-                  fontFamily: theme.font, width: "100%", justifyContent: "flex-start",
-                  opacity: exhPosterUploading ? 0.5 : 1,
-                }}
-                onMouseEnter={e => { if (!exhPosterUploading) { e.currentTarget.style.borderColor = theme.accent; } }}
-                onMouseLeave={e => { if (!exhPosterUploading) { e.currentTarget.style.borderColor = theme.border; } }}
-              >
-                <Icons.upload size={16} />
-                {exhPosterFile ? exhPosterFile.name : (exhForm.posterUrl ? (exhForm.posterUrl.startsWith("data:") ? "이미지 업로드됨 (변경하려면 클릭)" : exhForm.posterUrl) : "포스터 이미지 업로드")}
-              </button>
-              {exhForm.posterUrl && (
-                <div style={{ marginTop: 10, borderRadius: 8, overflow: "hidden", border: `1px solid ${theme.border}`, maxHeight: 200 }}>
-                  <img src={exhForm.posterUrl} alt="포스터 미리보기" style={{ width: "100%", height: "auto", display: "block", maxHeight: 200, objectFit: "cover" }} />
-                </div>
-              )}
-            </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 14, alignItems: "center" }}>
-              <Button size="sm" onClick={() => {
-                if (!exhForm.title?.trim()) return;
-                if (exhEditingId) {
-                  setExhibitionPosts(prev => prev.map(p => p.id === exhEditingId ? { ...p, ...exhForm } : p));
-                  addLog(`[관리자] 전시회 수정: "${exhForm.title}"`, "admin");
-                } else {
-                  const newPost = { ...exhForm, id: `exh${Date.now()}`, createdAt: new Date().toISOString() };
-                  setExhibitionPosts(prev => [newPost, ...prev]);
-                  addLog(`[관리자] 전시회 등록: "${exhForm.title}"`, "admin");
-                }
-                setExhForm({ title: "", description: "", dates: "", location: "", instagramUrl: "", posterUrl: "" });
-                setExhEditingId(null);
-                setExhPosterFile(null);
-                setExhSaved(true);
-                setTimeout(() => setExhSaved(false), 2000);
-              }}>
-                {exhEditingId ? "수정 저장" : "등록"}
-              </Button>
-              {exhEditingId && (
-                <Button size="sm" variant="ghost" onClick={() => {
-                  setExhForm({ title: "", description: "", dates: "", location: "", instagramUrl: "", posterUrl: "" });
-                  setExhEditingId(null);
-                  setExhPosterFile(null);
-                }}>취소</Button>
-              )}
-              {exhSaved && <span style={{ fontSize: 12, color: theme.green, fontWeight: 600 }}>저장되었습니다</span>}
-            </div>
-          </Card>
-
-          {/* 등록된 전시회 목록 */}
-          <Card style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 14, lineHeight: 1.6 }}>
-              등록된 전시회 목록입니다. 전시회 홍보 탭에 표시됩니다.
-            </div>
-            {!exhibitionPosts?.length ? (
-              <Empty icon={<Icons.list size={28} />} text="등록된 전시회가 없습니다" />
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                {exhibitionPosts.map((post, idx) => (
-                  <div key={post.id} style={{
-                    padding: "14px 16px",
-                    borderBottom: idx < exhibitionPosts.length - 1 ? `1px solid ${theme.border}` : "none",
-                    display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
-                  }}>
-                    <div style={{ flex: 1, minWidth: 0, display: "flex", gap: 12 }}>
-                      {post.posterUrl && (
-                        <img src={post.posterUrl} alt="" style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
-                          onError={e => { e.currentTarget.style.display = "none"; }}
-                        />
-                      )}
-                      <div>
-                        <div style={{ fontSize: 13, color: theme.text, fontWeight: 600, marginBottom: 4 }}>{post.title}</div>
-                        <div style={{ fontSize: 11, color: theme.textDim }}>
-                          📅 {post.dates || "미정"} · 📍 {post.location || "미정"}
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ flexShrink: 0, display: "flex", gap: 4 }}>
-                      <Button size="sm" variant="ghost" onClick={() => {
-                        setExhForm({ title: post.title || "", description: post.description || "", dates: post.dates || "", location: post.location || "", instagramUrl: post.instagramUrl || "", posterUrl: post.posterUrl || "" });
-                        setExhEditingId(post.id);
-                        setExhPosterFile(null);
-                      }}>
-                        <Icons.edit size={14} /> 수정
-                      </Button>
-                      {exhDeleteConfirm === post.id ? (
-                        <div style={{ display: "flex", gap: 4 }}>
-                          <Button size="sm" variant="danger" onClick={() => {
-                            setExhibitionPosts(prev => prev.filter(p => p.id !== post.id));
-                            setExhDeleteConfirm(null);
-                            addLog(`[관리자] 전시회 삭제: "${post.title}"`, "admin");
-                          }}>확인</Button>
-                          <Button size="sm" variant="ghost" onClick={() => setExhDeleteConfirm(null)}>취소</Button>
-                        </div>
-                      ) : (
-                        <Button size="sm" variant="ghost" onClick={() => setExhDeleteConfirm(post.id)} style={{ color: theme.red }}>
-                          <Icons.trash size={14} /> 삭제
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          {/* 커뮤니티 글 관리 */}
-          <SectionTitle icon={<Icons.list size={16} color={theme.accent} />}>커뮤니티 글 관리</SectionTitle>
-          <Card>
-            <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 14, lineHeight: 1.6 }}>
-              로그인 페이지 커뮤니티 탭에 표시되는 익명 게시글을 관리합니다. 부적절한 글이나 댓글을 삭제할 수 있습니다.
-            </div>
-            {!communityPosts?.length ? (
-              <Empty icon={<Icons.list size={28} />} text="커뮤니티 글이 없습니다" />
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                {communityPosts.map((post, idx) => (
-                  <div key={post.id} style={{ borderBottom: idx < communityPosts.length - 1 ? `1px solid ${theme.border}` : "none" }}>
-                    {/* 글 헤더 */}
-                    <div
-                      style={{
-                        padding: "14px 16px",
-                        display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
-                        cursor: post.comments?.length > 0 ? "pointer" : "default",
-                        background: cmExpandedPostId === post.id ? "rgba(212, 160, 83, 0.05)" : "transparent",
-                        transition: "background 0.2s",
-                      }}
-                      onClick={() => {
-                        if (post.comments?.length > 0) {
-                          setCmExpandedPostId(cmExpandedPostId === post.id ? null : post.id);
-                          setCmCommentDeleteConfirm(null);
-                        }
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, color: theme.text, lineHeight: 1.5, marginBottom: 6, wordBreak: "break-word" }}>{post.content}</div>
-                        <div style={{ display: "flex", gap: 12, fontSize: 11, color: theme.textDim }}>
-                          <span>{new Date(post.createdAt).toLocaleString("ko-KR")}</span>
-                          <span style={{ color: post.comments?.length > 0 ? theme.accent : theme.textDim }}>
-                            💬 댓글 {post.comments?.length || 0}개 {post.comments?.length > 0 ? (cmExpandedPostId === post.id ? "▲" : "▼") : ""}
-                          </span>
-                        </div>
-                      </div>
-                      <div style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                        {cmDeleteConfirm === post.id ? (
-                          <div style={{ display: "flex", gap: 4 }}>
-                            <Button size="sm" variant="danger" onClick={() => {
-                              setCommunityPosts(prev => prev.filter(p => p.id !== post.id));
-                              setCmDeleteConfirm(null);
-                              addLog(`[관리자] 커뮤니티 글 삭제: "${post.content.slice(0, 20)}..."`, "admin");
-                            }}>확인</Button>
-                            <Button size="sm" variant="ghost" onClick={() => setCmDeleteConfirm(null)}>취소</Button>
-                          </div>
-                        ) : (
-                          <Button size="sm" variant="ghost" onClick={() => setCmDeleteConfirm(post.id)} style={{ color: theme.red }}>
-                            <Icons.trash size={14} /> 삭제
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    {/* 댓글 목록 (펼침) */}
-                    {cmExpandedPostId === post.id && post.comments?.length > 0 && (
-                      <div style={{ padding: "0 16px 14px 32px", background: "rgba(0,0,0,0.15)" }}>
-                        {post.comments.map((comment) => (
-                          <div key={comment.id} style={{
-                            padding: "8px 0",
-                            borderBottom: `1px solid rgba(255,255,255,0.05)`,
-                            display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8,
-                          }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 12, color: theme.text, lineHeight: 1.4, marginBottom: 3 }}>
-                                ↳ {comment.content}
-                              </div>
-                              <div style={{ fontSize: 10, color: theme.textDim }}>
-                                {new Date(comment.createdAt).toLocaleString("ko-KR")}
-                              </div>
-                            </div>
-                            <div style={{ flexShrink: 0 }}>
-                              {cmCommentDeleteConfirm === comment.id ? (
-                                <div style={{ display: "flex", gap: 4 }}>
-                                  <Button size="sm" variant="danger" onClick={() => {
-                                    setCommunityPosts(prev => prev.map(p =>
-                                      p.id === post.id
-                                        ? { ...p, comments: p.comments.filter(c => c.id !== comment.id) }
-                                        : p
-                                    ));
-                                    setCmCommentDeleteConfirm(null);
-                                    addLog(`[관리자] 댓글 삭제: "${comment.content.slice(0, 20)}..."`, "admin");
-                                  }}>확인</Button>
-                                  <Button size="sm" variant="ghost" onClick={() => setCmCommentDeleteConfirm(null)}>취소</Button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => setCmCommentDeleteConfirm(comment.id)}
-                                  style={{
-                                    padding: "3px 8px", border: "none", borderRadius: 3,
-                                    background: "transparent", color: theme.textDim,
-                                    fontSize: 10, cursor: "pointer", fontFamily: theme.font,
-                                    display: "flex", alignItems: "center", gap: 4,
-                                  }}
-                                  onMouseEnter={e => e.currentTarget.style.color = theme.red}
-                                  onMouseLeave={e => e.currentTarget.style.color = theme.textDim}
-                                >
-                                  <Icons.trash size={12} /> 삭제
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </div>
-      )}
 
       {tab === "adminLog" && (
         <div>
@@ -1204,6 +937,150 @@ function AdminPortal({ onLogout, workers, updateWorkers, logs, addLog, updateLog
               </div>
             )}
           </Card>
+        </div>
+      )}
+
+      {tab === "idPhoto" && (
+        <div className="fade-in" style={{ paddingTop: 24 }}>
+          <SectionTitle icon={<Icons.upload size={16} color={theme.accent} />}>
+            학생증 사진 변경
+            <Badge color="accent">{pendingIdPhotoCount}건 대기</Badge>
+          </SectionTitle>
+
+          {/* 필터 */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+            {[
+              { id: "all", label: "전체" },
+              { id: "pending", label: "대기중" },
+              { id: "answered", label: "처리완료" },
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setIdPhotoFilter(f.id)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: theme.radiusSm,
+                  border: `1px solid ${idPhotoFilter === f.id ? theme.accent : theme.border}`,
+                  background: idPhotoFilter === f.id ? theme.accentBg : "transparent",
+                  color: idPhotoFilter === f.id ? theme.accent : theme.textMuted,
+                  fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: theme.font,
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {(() => {
+            const filtered = idPhotoInquiries.filter(i => {
+              if (idPhotoFilter === "pending") return i.status === "pending";
+              if (idPhotoFilter === "answered") return i.status === "answered";
+              return true;
+            });
+            return filtered.length === 0 ? (
+              <Card>
+                <Empty icon={<Icons.upload size={32} />} text="학생증 사진 변경 신청이 없습니다" />
+              </Card>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {filtered.map(inq => (
+                  <Card key={inq.id} style={{ padding: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 4 }}>
+                          {inq.name}
+                          <span style={{ fontSize: 12, fontWeight: 400, color: theme.textMuted, marginLeft: 8 }}>{inq.contact}</span>
+                        </div>
+                        <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.6, whiteSpace: "pre-wrap", marginBottom: 4 }}>
+                          {inq.content}
+                        </div>
+                        <div style={{ fontSize: 11, color: theme.textDim }}>{inq.createdAt}</div>
+                      </div>
+                      <Badge color={inq.status === "pending" ? "yellow" : "green"} style={{ flexShrink: 0, marginLeft: 12 }}>
+                        {inq.status === "pending" ? "대기중" : "처리완료"}
+                      </Badge>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {inq.idPhotoDriveFileId ? (
+                        <>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => window.open(`https://drive.google.com/file/d/${inq.idPhotoDriveFileId}/view`, "_blank")}
+                          >
+                            <Icons.file size={14} /> 사진 미리보기 (Drive)
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(`https://drive.google.com/uc?id=${inq.idPhotoDriveFileId}&export=download`, "_blank")}
+                          >
+                            다운로드
+                          </Button>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: 12, color: theme.textDim, padding: "4px 8px" }}>첨부 파일 없음</span>
+                      )}
+                      {inq.status === "pending" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          style={{ color: theme.green }}
+                          onClick={() => {
+                            updateInquiries(prev => prev.map(i =>
+                              i.id === inq.id
+                                ? { ...i, status: "answered", answer: { text: "처리 완료", answeredBy: "관리자", answeredAt: ts() } }
+                                : i
+                            ));
+                            addLog(`[학생증사진] ${inq.name} 처리 완료`, "inquiry");
+                            if (inq.contact && sendEmailNotification) {
+                              sendEmailNotification({
+                                to: inq.contact,
+                                subject: `[국민대 건축대학] 학생증 사진 변경 처리 완료`,
+                                body: emailTemplate(inq.name, "신청하신 학생증 사진 변경이 완료되었습니다.\n\n변경된 사진은 다음 학기 학생증 발급 시 반영됩니다.\n추가 문의사항은 건축대학 교학팀(복지관 602호)으로 연락해 주세요."),
+                              });
+                            }
+                          }}
+                        >
+                          ✅ 처리 완료
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        style={{ color: theme.red }}
+                        onClick={async () => {
+                          if (!confirm("이 신청을 삭제하시겠습니까?\n구글 드라이브에 저장된 사진 파일도 함께 삭제됩니다.")) return;
+                          updateInquiries(prev => prev.filter(i => i.id !== inq.id));
+                          if (inq.idPhotoDriveFileId) {
+                            const driveUrl = EDITABLE.driveUpload?.url?.trim();
+                            if (driveUrl) {
+                              try {
+                                await fetch(driveUrl, {
+                                  method: "POST",
+                                  headers: { "Content-Type": "text/plain;charset=UTF-8" },
+                                  body: JSON.stringify({
+                                    action: "delete_from_drive",
+                                    key: EDITABLE.apiKey,
+                                    fileId: inq.idPhotoDriveFileId,
+                                  }),
+                                });
+                              } catch (err) {
+                                console.error("Drive 사진 파일 삭제 실패:", err);
+                              }
+                            }
+                          }
+                        }}
+                      >
+                        삭제
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
 
