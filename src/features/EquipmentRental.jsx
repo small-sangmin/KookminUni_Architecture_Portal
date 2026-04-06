@@ -26,7 +26,7 @@ const nextWeekday = (dateStr) => {
   return d.toISOString().split("T")[0];
 };
 
-function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, categoryOrder, addLog, addNotification, isMobile }) {
+function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, setEquipmentDB, categoryOrder, addLog, addNotification, syncEquipToSheet, isMobile }) {
   const [selected, setSelected] = useState(null);
   const [returnDate, setReturnDate] = useState(nextWeekday(addDays(3)));
   const [note, setNote] = useState("");
@@ -67,6 +67,7 @@ function EquipmentRental({ user, equipRentals, updateEquipRentals, equipmentDB, 
       setEquipmentDB(prev => prev.map(e => e.id === item.id ? { ...e, available: Math.max(0, e.available - qty) } : e));
       addLog(`[기구대여] ${user.name}(${user.id}) → ${item.name} x${qty} | 반납: ${returnDate}`, "equipment", { studentId: user.id });
       addNotification(`🔧 기구대여 요청: ${user.name} → ${item.name} x${qty}`, "equipment", true);
+      syncEquipToSheet?.(rental);
       setSuccess(rental);
       setShowPopup(true);
       setSubmitting(false);
