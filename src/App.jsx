@@ -85,8 +85,7 @@ export default function App() {
     return def;
   }); // 실기실 예약 ON/OFF 상태
   const [bannerText, setBannerText] = useState({
-    title: "신입생분들 입학을 진심으로 환영합니다!",
-    subtitle: "세상에서 가장 긴 여행은 개강한 날부터 마감하는 날까지입니다 — 함께 떠나봅시다! 🎉"
+
   });
   const [dataLoaded, setDataLoaded] = useState(false);
 
@@ -354,8 +353,8 @@ export default function App() {
   // ─── 폴링 기반 크로스브라우저 동기화 (역할별 간격 차등 적용) ──────
   const POLL_INTERVALS = {
     student: 120_000,  // 2분 (사용자 수 가장 많음)
-    worker:  60_000,   // 1분
-    admin:   300_000,  // 5분
+    worker: 60_000,   // 1분
+    admin: 300_000,  // 5분
   };
   const lastLocalPrintWrite = useRef(0);
 
@@ -363,7 +362,7 @@ export default function App() {
     if (!userRole) return; // 로그인 전엔 폴링 안 함
     let active = true;
 
-    const isAdmin  = userRole === "admin";
+    const isAdmin = userRole === "admin";
     const isWorker = userRole === "worker";
     const isStudent = userRole === "student";
 
@@ -371,7 +370,7 @@ export default function App() {
       if (!active) return;
       try {
         const [serverWorkers, serverEqDB, serverRoomStatus, serverPrints, serverFormFiles] = await Promise.all([
-          isAdmin  ? supabaseStore.get("portal/workers")          : Promise.resolve(null),
+          isAdmin ? supabaseStore.get("portal/workers") : Promise.resolve(null),
           supabaseStore.get("portal/equipmentDB"),
           supabaseStore.get("portal/roomStatus"),
           !isStudent ? supabaseStore.get("portal/printRequests_v2") : Promise.resolve(null),
