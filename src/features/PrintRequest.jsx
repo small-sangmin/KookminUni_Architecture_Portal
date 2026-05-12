@@ -564,7 +564,7 @@ function PrintRequest({ user, printRequests, updatePrintRequests, addLog, addNot
 
         <Button size="lg" onClick={handleSubmit} disabled={submitting || !printFile || !paymentProof || (isLargeFile && !emailSentChecked)} style={{ width: "100%", justifyContent: "center" }}>
           {submitting ? "신청 중..." : (isLargeFile && !emailSentChecked
-            ? "sakucopy@kookmin.ac.kr 이메일로 출력 파일만 보내주신 후, 체크박스 눌러주시고 입금내역캡처파일은 업로드해주셔야 합니다!"
+            ? "입금캡처파일 업로드 필요"
             : "출력 신청하기")}
         </Button>
       </Card>
